@@ -2397,6 +2397,26 @@ function buildEmployeePrintPageHtml(emp, pageNum = 1, totalPages = 1) {
   const sigData = (emp.signatures && emp.signatures[monthKey]) || emp.digitalSignature;
   const companySigData = (typeof systemSettings !== 'undefined' && systemSettings.autoApplyCompanySig !== false && systemSettings.companySignature) || (emp.signatures && emp.signatures[monthKey]?.companySignature);
 
+  // Validação segura da imagem da assinatura do colaborador
+  let empSigImg = null;
+  if (sigData) {
+    if (typeof sigData === 'object' && sigData.image && typeof sigData.image === 'string' && (sigData.image.startsWith('data:image') || sigData.image.startsWith('http'))) {
+      empSigImg = sigData.image;
+    } else if (typeof sigData === 'string' && (sigData.startsWith('data:image') || sigData.startsWith('http'))) {
+      empSigImg = sigData;
+    }
+  }
+
+  // Validação segura da imagem da assinatura da empresa
+  let compSigImg = null;
+  if (companySigData) {
+    if (typeof companySigData === 'object' && companySigData.image && typeof companySigData.image === 'string' && (companySigData.image.startsWith('data:image') || companySigData.image.startsWith('http'))) {
+      compSigImg = companySigData.image;
+    } else if (typeof companySigData === 'string' && (companySigData.startsWith('data:image') || companySigData.startsWith('http'))) {
+      compSigImg = companySigData;
+    }
+  }
+
   const page = document.createElement('div');
   page.className = 'print-page';
 
@@ -2485,32 +2505,26 @@ function buildEmployeePrintPageHtml(emp, pageNum = 1, totalPages = 1) {
     <div class="print-footer-signatures">
       <div class="print-sig-row">
         <div class="print-sig-box">
-          ${sigData ? `
-            <div style="min-height: 48px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; margin-bottom: 2px;">
-              <img src="${sigData.image || sigData}" alt="Assinatura Digital" style="max-height: 40px; max-width: 180px; object-fit: contain; display: block; filter: contrast(1.2);">
-              <div style="font-size: 5.5pt; color: #047857; font-weight: 700; display: flex; align-items: center; gap: 3px; margin-top: 1px;">
-                <span>🔒</span> Assinado digitalmente em ${sigData.signedAt || new Date().toLocaleDateString('pt-BR')} ${sigData.hash ? `(${sigData.hash})` : ''}
-              </div>
+          ${empSigImg ? `
+            <div style="min-height: 46px; display: flex; align-items: flex-end; justify-content: center; margin-bottom: 2px;">
+              <img src="${empSigImg}" alt="" style="max-height: 44px; max-width: 180px; object-fit: contain; display: block; filter: contrast(1.2);" onerror="this.style.display='none'">
             </div>
             <div class="sig-line" style="margin-top: 2px !important;"></div>
           ` : `
-            <div class="sig-line" style="margin-top: 26px !important;"></div>
+            <div class="sig-line" style="margin-top: 48px !important;"></div>
           `}
           <strong>${emp.name}</strong>
           <span>Assinatura do Empregado — CPF: ${emp.cpf}</span>
           <small>Data: ${sigData ? (sigData.dateOnly || sigData.signedAt?.split(' ')[0] || new Date().toLocaleDateString('pt-BR')) : `____/____/${currentYear}`}</small>
         </div>
         <div class="print-sig-box">
-          ${companySigData ? `
-            <div style="min-height: 48px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; margin-bottom: 2px;">
-              <img src="${companySigData.image || companySigData}" alt="Assinatura Empregador" style="max-height: 40px; max-width: 180px; object-fit: contain; display: block; filter: contrast(1.2);">
-              <div style="font-size: 5.5pt; color: #047857; font-weight: 700; display: flex; align-items: center; gap: 3px; margin-top: 1px;">
-                <span>🔒</span> Assinado pelo Empregador em ${companySigData.signedAt || new Date().toLocaleDateString('pt-BR')} ${companySigData.hash ? `(${companySigData.hash})` : ''}
-              </div>
+          ${compSigImg ? `
+            <div style="min-height: 46px; display: flex; align-items: flex-end; justify-content: center; margin-bottom: 2px;">
+              <img src="${compSigImg}" alt="" style="max-height: 44px; max-width: 180px; object-fit: contain; display: block; filter: contrast(1.2);" onerror="this.style.display='none'">
             </div>
             <div class="sig-line" style="margin-top: 2px !important;"></div>
           ` : `
-            <div class="sig-line" style="margin-top: 26px !important;"></div>
+            <div class="sig-line" style="margin-top: 48px !important;"></div>
           `}
           <strong>${(typeof systemSettings !== 'undefined' && systemSettings.managerName) ? systemSettings.managerName : 'Roberto Silva'} (Gestor)</strong>
           <span>Pelo Empregador — ${(typeof systemSettings !== 'undefined' && systemSettings.companyName) ? systemSettings.companyName : 'LANE RO COMUNICAÇÕES LTDA'}</span>
