@@ -106,6 +106,25 @@ function getCurrentEmployee() {
 
 const LOCAL_STORAGE_EMPLOYEES_KEY = 'lane_comunicacoes_employees_db_v5';
 
+let _supabaseSyncTimeout = null;
+function syncCurrentTimesheetToSupabaseDebounced() {
+  if (_supabaseSyncTimeout) clearTimeout(_supabaseSyncTimeout);
+  _supabaseSyncTimeout = setTimeout(async () => {
+    if (window.supabaseService && window.supabaseService.isConfigured()) {
+      const emp = getCurrentEmployee();
+      if (emp && emp.days && emp.days.length > 0) {
+        const monthKey = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
+        try {
+          await window.supabaseService.saveFullTimesheet(emp.id, monthKey, emp.days, emp.cpf || '');
+          console.log(`☁️ Folha de ${emp.name} sincronizada com Supabase.`);
+        } catch (e) {
+          console.warn('Erro na sincronização em background:', e);
+        }
+      }
+    }
+  }, 800);
+}
+
 function saveEmployeesToLocalStorage() {
   try {
     const monthKey = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
@@ -142,6 +161,7 @@ function saveEmployeesToLocalStorage() {
       };
     });
     localStorage.setItem(LOCAL_STORAGE_EMPLOYEES_KEY, JSON.stringify(listToSave));
+    syncCurrentTimesheetToSupabaseDebounced();
   } catch (e) {
     console.warn('Erro ao salvar no localStorage:', e);
   }

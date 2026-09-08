@@ -267,27 +267,120 @@ async function atualizarFuncionarioNoSupabase(idOrCpf, updates) {
 }
 
 // 4. Salvar folha de ponto completa de um funcionário para o mês especificado
-async function saveFullTimesheetToSupabase(empId, monthKey, days) {
+async function saveFullTimesheetToSupabase(empId, monthKey, days, cpf = '') {
   const client = getSupabaseClient();
-  if (!client) return null;
+  if (!client || !empId) return null;
 
   try {
-    const { data, error } = await client
-      .from('folha_pontos')
-      .upsert({
-        funcionario_id: empId,
-        mes_ano: monthKey,
-        registros: days,
-        updated_at: new Date().toISOString()
-      }, { onConflict: 'funcionario_id,mes_ano' });
+    const cleanId = String(empId).trim();
+    const cleanCpf = cpf ? String(cpf).replace(/\D/g, '') : '';
 
-    if (error) {
-      return null;
-    }
-    return data;
+    // 1. Salva na tabela folha_pontos
+    try {
+      await client
+        .from('folha_pontos')
+        .upsert({
+          funcionario_id: cleanId,
+          mes_ano: monthKey,
+          registros: days,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'funcionario_id,mes_ano' });
+    } catch (e) {}
+
+    // 2. Salva também na coluna timesheets de funcionarios para redundância
+    try {
+      const applyFilter = (q) => {
+        if (cleanId.length === 36 && cleanId.includes('-')) {
+          return q.eq('id', cleanId);
+        }
+        if (cleanCpf) {
+          return q.or(`id.eq.${cleanId},cpf.eq.${cpf},cpf.eq.${cleanCpf}`);
+        }
+        return q.or(`id.eq.${cleanId},cpf.eq.${cleanId}`);
+      };
+
+      const { data: empRows } = await applyFilter(client.from('funcionarios').select('id, timesheets'));
+      if (empRows && empRows.length > 0) {
+        const empItem = empRows[0];
+        let currentTs = empItem.timesheets || {};
+        if (typeof currentTs === 'string') {
+          try { currentTs = JSON.parse(currentTs); } catch (e) {}
+        }
+        currentTs[monthKey] = days;
+        await client.from('funcionarios').update({ timesheets: currentTs }).eq('id', empItem.id);
+      }
+    } catch (e) {}
+
+    return true;
   } catch (err) {
+    console.warn('Erro ao salvar folha no Supabase:', err);
     return null;
   }
+}
+
+// 4b. Carregar folha de ponto / apontamentos de um funcionário do Supabase
+async function loadTimesheetFromSupabase(empId, monthKey, cpf = '') {
+  const client = getSupabaseClient();
+  if (!client || !empId) return null;
+
+  try {
+    const cleanId = String(empId).trim();
+    const cleanCpf = cpf ? String(cpf).replace(/\D/g, '') : '';
+
+    // 1. Tenta buscar da tabela folha_pontos
+    let query = client.from('folha_pontos').select('*').eq('mes_ano', monthKey);
+    if (cleanId.length === 36 && cleanId.includes('-')) {
+      query = query.eq('funcionario_id', cleanId);
+    } else if (cleanCpf) {
+      query = query.or(`funcionario_id.eq.${cleanId},funcionario_id.eq.${cleanCpf}`);
+    } else {
+      query = query.eq('funcionario_id', cleanId);
+    }
+
+    const { data: fpRows, error: fpErr } = await query;
+    if (!fpErr && fpRows && fpRows.length > 0) {
+      const fp = fpRows[0];
+      if (fp.registros && Array.isArray(fp.registros) && fp.registros.length > 0) {
+        return {
+          registros: fp.registros,
+          assinatura: fp.assinatura || null,
+          assinaturaEmpresa: fp.assinatura_empresa || null
+        };
+      }
+    }
+
+    // 2. Se não achou na tabela folha_pontos, busca na tabela funcionarios
+    let empQuery = client.from('funcionarios').select('*');
+    if (cleanId.length === 36 && cleanId.includes('-')) {
+      empQuery = empQuery.eq('id', cleanId);
+    } else if (cleanCpf) {
+      empQuery = empQuery.or(`id.eq.${cleanId},cpf.eq.${cpf},cpf.eq.${cleanCpf}`);
+    } else {
+      empQuery = empQuery.or(`id.eq.${cleanId},cpf.eq.${cleanId}`);
+    }
+
+    const { data: empRows, error: empErr } = await empQuery;
+    if (!empErr && empRows && empRows.length > 0) {
+      const emp = empRows[0];
+      let ts = emp.timesheets;
+      if (typeof ts === 'string') {
+        try { ts = JSON.parse(ts); } catch (e) {}
+      }
+      if (ts && ts[monthKey] && Array.isArray(ts[monthKey])) {
+        let sigs = emp.assinaturas || emp.signatures;
+        if (typeof sigs === 'string') {
+          try { sigs = JSON.parse(sigs); } catch (e) {}
+        }
+        return {
+          registros: ts[monthKey],
+          assinatura: (sigs && sigs[monthKey]) || null
+        };
+      }
+    }
+  } catch (err) {
+    console.warn('Erro ao carregar folha do Supabase:', err);
+  }
+  return null;
 }
 
 // 5. Salvar Assinatura Digital do Funcionário em Tempo Real
@@ -432,6 +525,7 @@ window.supabaseService = {
   cadastrarFuncionario: cadastrarFuncionarioNoSupabase,
   atualizarFuncionario: atualizarFuncionarioNoSupabase,
   saveFullTimesheet: saveFullTimesheetToSupabase,
+  loadTimesheet: loadTimesheetFromSupabase,
   saveEmployeeSignature: saveEmployeeSignatureToSupabase,
   saveCompanySignature: saveCompanySignatureToSupabase,
   loadCompanySignature: loadCompanySignatureFromSupabase,

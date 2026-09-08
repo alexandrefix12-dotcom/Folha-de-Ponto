@@ -675,15 +675,33 @@
         console.warn('Erro ao ler localStorage:', e);
       }
 
-      // Procura o colaborador por ID ou CPF
+      // Procura o colaborador por ID ou CPF no local
       currentEmp = employees.find(e => e.id === empId || (e.cpf && e.cpf.replace(/\D/g, '') === empId.replace(/\D/g, '')));
 
-      // 2. Se não encontrou e o Supabase está configurado, tenta buscar no Supabase
-      if (!currentEmp && window.supabaseService && window.supabaseService.isConfigured()) {
+      // 2. Se o Supabase está configurado, busca colaborador e os apontamentos atualizados do mês
+      if (window.supabaseService && window.supabaseService.isConfigured()) {
         try {
-          const remoteEmployees = await window.supabaseService.loadEmployees();
-          if (Array.isArray(remoteEmployees)) {
-            currentEmp = remoteEmployees.find(e => e.id === empId || (e.cpf && e.cpf.replace(/\D/g, '') === empId.replace(/\D/g, '')));
+          if (!currentEmp) {
+            const remoteEmployees = await window.supabaseService.loadEmployees();
+            if (Array.isArray(remoteEmployees)) {
+              currentEmp = remoteEmployees.find(e => e.id === empId || (e.cpf && e.cpf.replace(/\D/g, '') === empId.replace(/\D/g, '')));
+            }
+          }
+
+          // Busca a folha de ponto e registros do mês atual na nuvem
+          if (currentEmp) {
+            const tsData = await window.supabaseService.loadTimesheet(currentEmp.id || empId, targetMonthKey, currentEmp.cpf || '');
+            if (tsData) {
+              if (!currentEmp.timesheets) currentEmp.timesheets = {};
+              if (tsData.registros && Array.isArray(tsData.registros) && tsData.registros.length > 0) {
+                currentEmp.timesheets[targetMonthKey] = tsData.registros;
+                currentEmp.days = tsData.registros;
+              }
+              if (tsData.assinatura) {
+                if (!currentEmp.signatures) currentEmp.signatures = {};
+                currentEmp.signatures[targetMonthKey] = tsData.assinatura;
+              }
+            }
           }
         } catch (err) {
           console.warn('Erro ao buscar do Supabase:', err);
@@ -762,7 +780,7 @@
 
       if (status === 'meio_periodo') {
         const half = 240;
-        let total = half;
+        let total = 0;
         if (e2 && s2 && !e1 && !s1) {
           total = Math.max(0, timeToMinutes(s2) - timeToMinutes(e2));
         } else if (e1 && s1 && !e2 && !s2) {
@@ -771,6 +789,8 @@
           total = Math.max(0, timeToMinutes(s1) - timeToMinutes(e1)) + Math.max(0, timeToMinutes(s2) - timeToMinutes(e2));
         } else if (e1 && s2 && !s1 && !e2) {
           total = Math.max(0, timeToMinutes(s2) - timeToMinutes(e1));
+        } else {
+          total = half;
         }
         if (total === 0) total = half;
         const balance = total - standard;
@@ -787,6 +807,7 @@
       if (!e1 && !s1 && !e2 && !s2) {
         return { workedMins: 0, balanceMins: 0, extraMins: 0, formattedWorked: '--:--', formattedExtra: '00:00', extraType: 'zero' };
       }
+
       let total = 0;
       if (e1 && s1 && e2 && s2) {
         total = Math.max(0, timeToMinutes(s1) - timeToMinutes(e1)) + Math.max(0, timeToMinutes(s2) - timeToMinutes(e2));
@@ -794,24 +815,29 @@
         total = Math.max(0, timeToMinutes(s2) - timeToMinutes(e1));
       } else if (e1 && s1 && !e2 && !s2) {
         total = Math.max(0, timeToMinutes(s1) - timeToMinutes(e1));
-      }
-      let balance = total - standard;
-      let extra = 0;
-      if (Math.abs(balance) <= tolerance) {
-        balance = 0;
-        extra = 0;
       } else {
-        extra = balance;
+        const p1 = (e1 && s1) ? Math.max(0, timeToMinutes(s1) - timeToMinutes(e1)) : 0;
+        const p2 = (e2 && s2) ? Math.max(0, timeToMinutes(s2) - timeToMinutes(e2)) : 0;
+        total = p1 + p2;
       }
-      const extraType = extra > 0 ? 'positive' : (extra < 0 ? 'negative' : 'zero');
-      const formattedExtra = extra > 0 ? `+${minutesToTime(extra)}` : (extra < 0 ? `-${minutesToTime(Math.abs(extra))}` : '00:00');
-      return { workedMins: total, balanceMins: balance, extraMins: extra, formattedWorked: minutesToTime(total), formattedExtra, extraType };
+
+      const diff = total - standard;
+      return {
+        workedMins: total,
+        balanceMins: diff,
+        extraMins: diff > 0 ? diff : 0,
+        formattedWorked: minutesToTime(total),
+        formattedExtra: diff > 0 ? `+${minutesToTime(diff)}` : (diff < 0 ? `-${minutesToTime(Math.abs(diff))}` : '00:00'),
+        extraType: diff > 0 ? 'positive' : (diff < 0 ? 'negative' : 'zero')
+      };
     }
 
     function renderTimesheetStatsAndTable(days, year, month) {
+      let totalPresencas = 0;
+      let totalExtraMins = 0;
+      let totalAtrasoMins = 0;
       let totalWorkedMins = 0;
-      let totalNetExtraMins = 0;
-      let totalDaysWithRecords = 0;
+      let totalFaltas = 0;
 
       const tbody = document.getElementById('timesheet-preview-tbody');
       tbody.innerHTML = '';
@@ -844,16 +870,24 @@
           status = (dateObj.getDay() === 0) ? 'dsr' : (isFuture ? 'aguardando' : 'presenca');
         }
 
-        // Se for dia futuro e não tiver horários nem status especial agendado (férias/feriado/dsr), não conta horas/débito
         const hasCustomHours = Boolean((e1 && s1) || (e2 && s2) || (e1 && s2));
         
-        if (!isFuture || hasCustomHours || status === 'ferias' || status === 'feriado' || status === 'dsr') {
-          const metrics = calcDayMetrics(e1, s1, e2, s2, status, dowFull);
-          if (metrics.workedMins > 0) {
-            totalWorkedMins += metrics.workedMins;
-            totalDaysWithRecords++;
-          }
-          totalNetExtraMins += metrics.balanceMins;
+        if (status === 'presenca' && (e1 || s1 || e2 || s2)) {
+          totalPresencas++;
+          const m = calcDayMetrics(e1, s1, e2, s2, status, dowFull);
+          totalWorkedMins += m.workedMins;
+          if (m.balanceMins > 0) totalExtraMins += m.balanceMins;
+          if (m.balanceMins < 0) totalAtrasoMins += Math.abs(m.balanceMins);
+        } else if (status === 'meio_periodo') {
+          totalPresencas++;
+          const m = calcDayMetrics(e1, s1, e2, s2, status, dowFull);
+          totalWorkedMins += m.workedMins;
+          if (m.balanceMins > 0) totalExtraMins += m.balanceMins;
+          if (m.balanceMins < 0) totalAtrasoMins += Math.abs(m.balanceMins);
+        } else if (status === 'falta') {
+          totalFaltas++;
+          const m = calcDayMetrics(e1, s1, e2, s2, status, dowFull);
+          if (m.balanceMins < 0) totalAtrasoMins += Math.abs(m.balanceMins);
         }
 
         // Label estilizado da Situação do Dia
@@ -911,19 +945,20 @@
       const totalRemainderMins = totalWorkedMins % 60;
       document.getElementById('portal-stat-worked').textContent = totalWorkedMins > 0 
         ? `${String(totalHours).padStart(2, '0')}:${String(totalRemainderMins).padStart(2, '0')}h` 
-        : `${totalDaysWithRecords} dias reg.`;
+        : `00:00h`;
 
-      const extraSign = totalNetExtraMins > 0 ? '+' : (totalNetExtraMins < 0 ? '-' : '');
-      const absExtra = Math.abs(totalNetExtraMins);
+      const netBalanceMins = totalExtraMins - totalAtrasoMins;
+      const extraSign = netBalanceMins > 0 ? '+' : (netBalanceMins < 0 ? '-' : '');
+      const absExtra = Math.abs(netBalanceMins);
       const extraH = Math.floor(absExtra / 60);
       const extraM = absExtra % 60;
       const extraFormatted = `${extraSign}${String(extraH).padStart(2, '0')}:${String(extraM).padStart(2, '0')}`;
       
       const extraEl = document.getElementById('portal-stat-extras');
       extraEl.textContent = extraFormatted;
-      if (totalNetExtraMins < 0) {
+      if (netBalanceMins < 0) {
         extraEl.style.color = '#DC2626';
-      } else if (totalNetExtraMins > 0) {
+      } else if (netBalanceMins > 0) {
         extraEl.style.color = '#059669';
       } else {
         extraEl.style.color = '#0F172A';
