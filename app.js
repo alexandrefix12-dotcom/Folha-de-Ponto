@@ -106,6 +106,19 @@ function generateMonthData(year, month, empId = '') {
         just: 'Descanso Semanal Remunerado',
         signed: true
       });
+    } else if (isSaturday) {
+      // Sábado: Meio Período das 08:00 às 12:00 (Jornada de 4h, sem horas extras)
+      list.push({
+        day, dow,
+        e1: '08:00',
+        s1: '12:00',
+        e2: '',
+        s2: '',
+        status: 'meio_periodo',
+        statusLabel: 'Meio Período',
+        just: '',
+        signed: true
+      });
     } else {
       // Padrão: sem nada selecionado (manual) para o usuário definir se teve presença
       list.push({
@@ -236,11 +249,21 @@ async function initApp() {
       if (!emp.timesheets[monthKey]) {
         emp.timesheets[monthKey] = generateCurrentMonthData(currentYear, currentMonth, emp.id);
       } else if (Array.isArray(emp.timesheets[monthKey])) {
-        // Normaliza dias antigos que ficaram como 'presenca' mas sem horários digitados
+        // Normaliza dias antigos
         emp.timesheets[monthKey].forEach(d => {
           if (d.status === 'presenca' && !d.e1 && !d.s1 && !d.e2 && !d.s2) {
             d.status = '';
             d.statusLabel = 'Selecionar...';
+          }
+          // Sábado é apenas meio período (08:00 às 12:00 = 4h jornada padrão, 0h extras)
+          if (d.dow === 'Sábado' && (d.s2 === '18:00' || d.status === 'presenca' || !d.status)) {
+            d.e1 = '08:00';
+            d.s1 = '12:00';
+            d.e2 = '';
+            d.s2 = '';
+            d.status = 'meio_periodo';
+            d.statusLabel = 'Meio Período';
+            d.signed = true;
           }
         });
       }
@@ -1401,7 +1424,7 @@ function renderTimesheetTable() {
           <select class="status-select ${item.status || 'empty'}" data-index="${index}" onchange="changeDayStatus(${index}, this.value)" title="Situação do Dia">
             <option value="" ${(!item.status || item.status === 'empty' || item.status === 'none') ? 'selected' : ''}>⚪ Selecionar...</option>
             <option value="presenca" ${item.status === 'presenca' ? 'selected' : ''}>🟢 Presença</option>
-            <option value="meio_periodo" ${item.status === 'meio_periodo' ? 'selected' : ''}>🟡 Meio Período (-4h)</option>
+            <option value="meio_periodo" ${item.status === 'meio_periodo' ? 'selected' : ''}>🟡 Meio Período (08h às 12h)</option>
             <option value="falta" ${item.status === 'falta' ? 'selected' : ''}>🔴 Faltou</option>
             <option value="atestado" ${(item.status === 'atestado' || item.status === 'afastado') ? 'selected' : ''}>🟠 Afastado (INSS)</option>
             <option value="demitido" ${(item.status === 'demitido' || item.status === 'desligado') ? 'selected' : ''}>🔴 Demitido / Desligado</option>
@@ -1943,11 +1966,16 @@ function changeDayStatus(index, newStatus) {
     item.e1 = ''; item.s1 = ''; item.e2 = ''; item.s2 = '';
     item.signed = true;
   } else if (newStatus === 'meio_periodo') {
-    item.e1 = '';
-    item.s1 = '';
-    item.e2 = '14:00';
-    item.s2 = '18:00';
+    item.e1 = '08:00';
+    item.s1 = '12:00';
+    item.e2 = '';
+    item.s2 = '';
     item.signed = true;
+    item.just = '';
+    item.attachmentData = null;
+    item.attachmentType = null;
+    item.attachmentName = null;
+    item.attachmentSize = null;
   } else if (!newStatus || newStatus === 'empty') {
     item.e1 = '';
     item.s1 = '';
@@ -1960,10 +1988,18 @@ function changeDayStatus(index, newStatus) {
     item.attachmentName = null;
     item.attachmentSize = null;
   } else if (newStatus === 'presenca') {
-    if (!item.e1 || item.e1 === '--:--') item.e1 = '08:00';
-    if (!item.s1 || item.s1 === '--:--') item.s1 = '12:00';
-    if (!item.e2 || item.e2 === '--:--') item.e2 = '14:00';
-    if (!item.s2 || item.s2 === '--:--') item.s2 = '18:00';
+    if (item.dow === 'Sábado') {
+      item.status = 'meio_periodo';
+      item.e1 = '08:00';
+      item.s1 = '12:00';
+      item.e2 = '';
+      item.s2 = '';
+    } else {
+      if (!item.e1 || item.e1 === '--:--') item.e1 = '08:00';
+      if (!item.s1 || item.s1 === '--:--') item.s1 = '12:00';
+      if (!item.e2 || item.e2 === '--:--') item.e2 = '14:00';
+      if (!item.s2 || item.s2 === '--:--') item.s2 = '18:00';
+    }
     item.signed = true;
     item.just = '';
     item.attachmentData = null;
