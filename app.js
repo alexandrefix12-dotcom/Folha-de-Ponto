@@ -2282,21 +2282,31 @@ async function handleDeleteEmployeeFromModal() {
   showToast(`🗑️ Colaborador ${emp.name} excluído com sucesso!`);
 }
 
-// Estados de visualização das notificações
-let afastadosBadgeViewed = false;
-let feriasBadgeViewed = false;
+// Estados de visualização das notificações persistidos no LocalStorage
+let afastadosBadgeViewed = (localStorage.getItem('lane_afastados_badge_dismissed') === 'true');
+let feriasBadgeViewed = (localStorage.getItem('lane_ferias_badge_dismissed') === 'true');
 
 // Update Sidebar Badges (Afastados & Férias)
 function updateSidebarBadges(hasNewAfastado = false, hasNewFerias = false) {
-  if (hasNewAfastado) afastadosBadgeViewed = false;
-  if (hasNewFerias) feriasBadgeViewed = false;
+  if (hasNewAfastado) {
+    afastadosBadgeViewed = false;
+    localStorage.removeItem('lane_afastados_badge_dismissed');
+  }
+  if (hasNewFerias) {
+    feriasBadgeViewed = false;
+    localStorage.removeItem('lane_ferias_badge_dismissed');
+  }
 
   // 1. Badge Afastados & Desligados
   const badgeAfastados = document.getElementById('afastados-counter-badge');
   if (badgeAfastados) {
     const countAfastados = employeesDB.filter(e => e.statusCategory === 'afastado' || e.statusCategory === 'demitido' || e.statusCategory === 'desligado').length;
+    const viewedAfastadosCount = parseInt(localStorage.getItem('lane_viewed_afastados_count') || '0', 10);
+    const isDismissed = (localStorage.getItem('lane_afastados_badge_dismissed') === 'true') || afastadosBadgeViewed;
+    const hasUnseen = countAfastados > viewedAfastadosCount && !isDismissed;
+
     badgeAfastados.textContent = countAfastados;
-    if (countAfastados > 0 && !afastadosBadgeViewed) {
+    if (countAfastados > 0 && hasUnseen) {
       badgeAfastados.style.display = 'inline-flex';
     } else {
       badgeAfastados.style.display = 'none';
@@ -2307,8 +2317,12 @@ function updateSidebarBadges(hasNewAfastado = false, hasNewFerias = false) {
   const badgeFerias = document.getElementById('ferias-counter-badge');
   if (badgeFerias) {
     const countFerias = employeesDB.filter(e => e.statusCategory === 'ferias').length;
+    const viewedFeriasCount = parseInt(localStorage.getItem('lane_viewed_ferias_count') || '0', 10);
+    const isDismissed = (localStorage.getItem('lane_ferias_badge_dismissed') === 'true') || feriasBadgeViewed;
+    const hasUnseen = countFerias > viewedFeriasCount && !isDismissed;
+
     badgeFerias.textContent = countFerias;
-    if (countFerias > 0 && !feriasBadgeViewed) {
+    if (countFerias > 0 && hasUnseen) {
       badgeFerias.style.display = 'inline-flex';
     } else {
       badgeFerias.style.display = 'none';
@@ -2335,7 +2349,10 @@ function showEmployeesView(viewMode) {
   document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
 
   if (viewMode === 'ferias') {
-    // Ao clicar e visualizar a lista de férias, limpa o badge de notificação
+    // Ao clicar e visualizar a lista de férias, limpa e marca a notificação como lida de forma definitiva
+    const countFerias = employeesDB.filter(e => e.statusCategory === 'ferias').length;
+    localStorage.setItem('lane_viewed_ferias_count', String(countFerias));
+    localStorage.setItem('lane_ferias_badge_dismissed', 'true');
     feriasBadgeViewed = true;
     updateSidebarBadges();
 
@@ -2344,7 +2361,10 @@ function showEmployeesView(viewMode) {
     if (subtitleEl) subtitleEl.textContent = 'Controle e acompanhamento de colaboradores em gozo de férias regulamentares.';
     if (filterStatusEl) filterStatusEl.value = 'ferias';
   } else if (viewMode === 'afastados') {
-    // Ao clicar e visualizar a lista de afastados, limpa o badge de notificação
+    // Ao clicar e visualizar a lista de afastados, limpa e marca a notificação como lida de forma definitiva
+    const countAfastados = employeesDB.filter(e => e.statusCategory === 'afastado' || e.statusCategory === 'demitido' || e.statusCategory === 'desligado').length;
+    localStorage.setItem('lane_viewed_afastados_count', String(countAfastados));
+    localStorage.setItem('lane_afastados_badge_dismissed', 'true');
     afastadosBadgeViewed = true;
     updateSidebarBadges();
 
