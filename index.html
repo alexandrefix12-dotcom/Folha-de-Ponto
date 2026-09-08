@@ -1,0 +1,1034 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lane Comunicações | Sistema de Folha de Ponto Digital</title>
+  <meta name="description" content="Sistema de Folha de Ponto Digital e Gestão de Colaboradores — Lane Comunicações.">
+  <!-- Google Fonts: Plus Jakarta Sans, Outfit & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/jpeg" href="logo-lane.jpg">
+  <link rel="stylesheet" href="index.css">
+</head>
+<body>
+  <div class="suite-wrapper">
+    <!-- Top Global Switcher Bar -->
+    <header class="global-header">
+      <div class="header-left">
+        <div class="suite-logo">
+          <img src="logo-lane.jpg" alt="Logo Lane Comunicações" class="brand-logo-img">
+          <div class="logo-text">
+            <strong>Lane Comunicações</strong>
+            <span>Sistema de Folha de Ponto Digital</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Header Right Actions -->
+      <div class="header-right">
+        <button class="btn-print" onclick="printAllEmployeesTimesheets()" title="Imprimir Folhas de Ponto de Todos os Funcionários">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+          PDF / Imprimir
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Workspace Layout -->
+    <div class="app-body">
+      <!-- Dark Forest Green Sidebar (Identical to Stitch Design) -->
+      <aside class="stitch-sidebar">
+        <div class="sidebar-brand">
+          <img src="logo-lane.jpg" alt="Logo Lane Comunicações" class="sidebar-logo-img">
+          <div>
+            <h3>Lane RO Comunicações LTDA</h3>
+            <span class="role-tag" id="sidebar-role-label">Folha de Ponto Eletrônica</span>
+          </div>
+        </div>
+
+        <nav class="sidebar-menu">
+          <a href="#" class="sidebar-link active" id="nav-link-employees" onclick="showEmployeesView('ativos'); return false;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+            Funcionários
+          </a>
+          <a href="#" class="sidebar-link" id="nav-link-ferias" onclick="showEmployeesView('ferias'); return false;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2"></path><path d="M12 20v2"></path><path d="m4.93 4.93 1.41 1.41"></path><path d="m17.66 17.66 1.41 1.41"></path><path d="M2 12h2"></path><path d="M20 12h2"></path><path d="m6.34 17.66-1.41 1.41"></path><path d="m19.07 4.93-1.41 1.41"></path></svg>
+            Em Férias
+            <span class="sidebar-counter-badge ferias" id="ferias-counter-badge" style="display: none;">0</span>
+          </a>
+          <a href="#" class="sidebar-link" id="nav-link-afastados" onclick="showEmployeesView('afastados'); return false;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line></svg>
+            Afastados & Desligados
+            <span class="sidebar-counter-badge" id="afastados-counter-badge" style="display: none;">0</span>
+          </a>
+          <a href="#" class="sidebar-link" id="nav-link-settings" onclick="openSettingsModal(); return false;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+            Configurações
+          </a>
+        </nav>
+
+        <!-- Sidebar Footer User -->
+        <div class="sidebar-user">
+          <div class="user-avatar">RS</div>
+          <div class="user-info">
+            <span class="user-name">Roberto Silva (Admin)</span>
+            <span class="user-role">Gestor Administrativo</span>
+          </div>
+          <button class="btn-logout" title="Sair do Sistema">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+          </button>
+        </div>
+      </aside>
+
+      <!-- Main Dynamic Content Workspace -->
+      <main class="content-view">
+        
+        <!-- ============================================================== -->
+        <!-- SCREEN 1: FOLHA DE PONTO DIGITAL - JOÃO SILVA                  -->
+        <!-- ============================================================== -->
+        <section id="screen-timesheet" class="stitch-screen">
+          <!-- Back Link and Breadcrumb Header -->
+          <div class="screen-header-bar">
+            <button class="back-link-btn" onclick="switchScreen('screen-admin')">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+              Voltar para Lista de Funcionários
+            </button>
+            <div class="header-status-tags">
+              <button class="btn-export-individual" onclick="printCurrentEmployeeTimesheet()" title="Exportar PDF desta folha de ponto">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                Exportar PDF
+              </button>
+            </div>
+          </div>
+
+          <!-- Employee Profile Card -->
+          <div class="employee-hero-card">
+            <div class="employee-meta">
+              <div class="emp-avatar green" id="emp-hero-avatar">RS</div>
+              <div class="emp-details">
+                <div class="emp-title-row">
+                  <h2 id="emp-hero-name">Ricardo Souza</h2>
+                  <span class="badge-tag green" id="emp-hero-badge">Ativo</span>
+                  <span class="badge-tag blue" id="emp-hero-matricula">Matrícula: 0001</span>
+                </div>
+                <div class="emp-subtitle-group">
+                  <div class="emp-subtitle-line">
+                    <span class="emp-meta-item"><strong>Cargo:</strong> <span id="emp-hero-role">Assistente de Logística</span></span>
+                    <span class="meta-dot">•</span>
+                    <span class="emp-meta-item"><strong>Departamento:</strong> <span id="emp-hero-dept">Logística & Distribuição</span></span>
+                  </div>
+                  <div class="emp-subtitle-line">
+                    <span class="emp-meta-item"><strong>CPF:</strong> <span id="emp-hero-cpf" class="font-mono">789.123.456-44</span></span>
+                    <span class="meta-dot">•</span>
+                    <span class="emp-meta-item"><strong>WhatsApp:</strong> <span id="emp-hero-whatsapp" class="font-mono" style="color: #065F46; font-weight: 700;">(00) 00000-0000</span></span>
+                  </div>
+                  <div class="emp-subtitle-line" style="display: flex; align-items: center; gap: 8px; margin-top: 4px;">
+                    <button type="button" class="btn-whatsapp-sig-chip" onclick="openSendSignatureModal()" title="Enviar mensagem de WhatsApp com link para assinatura digital" style="background: #ECFDF5; border: 1px solid #A7F3D0; color: #047857; padding: 4px 10px; border-radius: 6px; font-size: 0.76rem; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; transition: all 0.2s;">
+                      <span style="font-size: 0.88rem;">📱</span> Solicitar Assinatura
+                    </button>
+                    <span id="emp-hero-sig-badge" style="display: none; padding: 4px 10px; border-radius: 6px; font-size: 0.74rem; font-weight: 700; align-items: center; gap: 4px;"></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="month-control-box">
+              <div class="month-selector">
+                <button type="button" class="btn-month-nav" onclick="changeMonth(-1)" title="Mês Anterior (◀)">◀</button>
+                <div class="current-month-display" onclick="openPeriodModal()" title="Clique para escolher mês e ano">
+                  <span class="sub">Período de Apuração</span>
+                  <strong id="current-month-display-text">Carregando período...</strong>
+                </div>
+                <button type="button" class="btn-month-nav" onclick="changeMonth(1)" title="Próximo Mês (▶)">▶</button>
+              </div>
+              <div class="action-buttons-group">
+                <button type="button" class="btn-secondary" id="btn-open-company-sig" onclick="openCompanySignatureModal()" title="Assinar esta folha digitalmente como Empregador / Gestor" style="background: #F0FDF4; border-color: #86EFAC; color: #166534; font-weight: 700;">
+                  <span style="font-size: 1rem;">✍️</span> Assinar Empresa
+                </button>
+                <button class="btn-primary" id="btn-save-timesheet" onclick="saveTimesheetData()">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                  Salvar alterações
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Timesheet Table Section -->
+          <div class="timesheet-card">
+            <div class="timesheet-card-header">
+              <div class="card-title-group">
+                <h3>Quadro Diário de Registro de Ponto</h3>
+                <span class="record-counter" id="record-counter-text"></span>
+              </div>
+            </div>
+
+            <div class="table-responsive">
+              <table class="timesheet-table" id="timesheet-main-table">
+                <thead>
+                  <tr>
+                    <th style="width: 140px;">Dia / Data</th>
+                    <th style="width: 115px; text-align: center;">Entrada</th>
+                    <th style="width: 220px; text-align: center;">Intervalo Refeição</th>
+                    <th style="width: 115px; text-align: center;">Saída</th>
+                    <th style="width: 120px; text-align: center;">Horas Extras</th>
+                    <th style="min-width: 195px; width: 200px; text-align: center;">Situação</th>
+                    <th style="width: 120px; text-align: center;"><label style="cursor: pointer; display: inline-flex; align-items: center; gap: 6px;" title="Marcar / Desmarcar todos"><input type="checkbox" id="check-all-sig" onchange="toggleAllSignatures(this.checked)" style="accent-color: #065F46; cursor: pointer;"> Assinatura</label></th>
+                  </tr>
+                </thead>
+                <tbody id="timesheet-tbody">
+                  <!-- Generated Dynamically by app.js -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Bottom Real-time Payroll Summary (Resumo Contábil do Mês) -->
+          <div class="payroll-summary-card">
+            <div class="summary-header">
+              <div class="summary-title">
+                <h3>Resumo Contábil do Mês (Tempo Real)</h3>
+                <span>Cálculo automático de proventos e descontos para a folha</span>
+              </div>
+            </div>
+
+            <div class="summary-stats-grid">
+              <div class="stat-box green">
+                <span class="stat-label">Presenças</span>
+                <strong class="stat-value" id="stat-presencas">20 <small>dias</small></strong>
+                <span class="stat-meta">160h normais trabalhadas</span>
+              </div>
+
+              <div class="stat-box orange">
+                <span class="stat-label">Horas Extras (50%/100%)</span>
+                <strong class="stat-value" id="stat-extras">+01:45 <small>h</small></strong>
+                <span class="stat-meta">Acréscimo a pagar em folha</span>
+              </div>
+
+              <div class="stat-box yellow">
+                <span class="stat-label">Atrasos / Saídas</span>
+                <strong class="stat-value" id="stat-atrasos">-00:30 <small>h</small></strong>
+                <span class="stat-meta">Dentro do banco de horas</span>
+              </div>
+
+              <div class="stat-box blue">
+                <span class="stat-label">Saldo Banco Horas</span>
+                <strong class="stat-value" id="stat-banco">+01:15 <small>h</small></strong>
+                <span class="stat-meta">Saldo acumulado positivo</span>
+              </div>
+
+              <div class="stat-box red">
+                <span class="stat-label">Faltas Injustificadas</span>
+                <strong class="stat-value" id="stat-faltas">01 <small>dia</small></strong>
+                <span class="stat-meta">Desconto de 1 DSR aplicável</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+
+        <!-- ============================================================== -->
+        <!-- SCREEN 2: ÁREA ADMINISTRATIVA - FUNCIONÁRIOS                   -->
+        <!-- ============================================================== -->
+        <section id="screen-admin" class="stitch-screen active">
+          <div class="admin-top-bar">
+            <div>
+              <h2 id="admin-screen-title">Gestão de Funcionários & Controle de Ponto</h2>
+              <p class="subtitle" id="admin-screen-subtitle">Gerencie e valide a folha de ponto digital de cada colaborador da empresa.</p>
+            </div>
+            <button class="btn-primary" onclick="openNewEmployeeModal()" id="btn-cadastrar-func">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+              Cadastrar Novo Funcionário
+            </button>
+          </div>
+
+          <!-- Filter Toolbar -->
+          <div class="filters-toolbar">
+            <div class="search-input-box">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+              <input type="text" id="filter-search" placeholder="Buscar por nome, cargo ou CPF..." onkeyup="filterEmployees()">
+            </div>
+            
+            <div class="select-box">
+              <label>Departamento:</label>
+              <select id="filter-dept" onchange="filterEmployees()">
+                <option value="all">Todos os Departamentos</option>
+                <option value="Operações">Operações</option>
+                <option value="Financeiro">Financeiro</option>
+                <option value="TI">Tecnologia (TI)</option>
+                <option value="RH">Recursos Humanos</option>
+                <option value="Logística">Logística</option>
+              </select>
+            </div>
+
+            <div class="select-box">
+              <label>Situação / Status:</label>
+              <select id="filter-status" onchange="filterEmployees()">
+                <option value="all">Todos os Status</option>
+                <option value="ativo">🟢 Ativos (Em atividade)</option>
+                <option value="afastados_all">🟠🔴 Todos Afastados & Desligados</option>
+                <option value="afastado">🟠 Apenas Afastados (INSS / Licença)</option>
+                <option value="demitido">🔴 Apenas Demitidos / Desligados</option>
+                <option value="ferias">🌴 Em Férias</option>
+              </select>
+            </div>
+
+            <button class="btn-sm btn-outline" onclick="resetFilters()">Limpar Filtros</button>
+          </div>
+
+          <!-- Employees Table Card -->
+          <div class="timesheet-card">
+            <div class="table-responsive">
+              <table class="employees-table">
+                <thead>
+                  <tr>
+                    <th style="text-align: left;">Funcionário</th>
+                    <th style="text-align: center;">Departamento & Cargo</th>
+                    <th style="text-align: center;">Situação / Status</th>
+                    <th style="text-align: center;">Horas Extras</th>
+                    <th style="text-align: right;">Ações</th>
+                  </tr>
+                </thead>
+                <tbody id="employees-tbody">
+                  <!-- Employees List dynamically rendered by JavaScript -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- Print-Only Multi-Page Document for All Employees -->
+  <div id="print-all-container" class="print-only"></div>
+
+  <!-- Modal Cadastrar Novo Funcionário -->
+  <div id="modal-new-employee" class="modal-backdrop" style="display: none;">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div>
+          <h3>Cadastrar Novo Funcionário</h3>
+          <p>Insira os dados do colaborador para cadastrar e gerar a folha de ponto.</p>
+        </div>
+        <button class="modal-close-btn" onclick="closeNewEmployeeModal()" title="Fechar">✕</button>
+      </div>
+
+      <form id="form-new-employee" onsubmit="handleCreateEmployee(event)">
+        <div class="modal-body">
+          <div class="form-field">
+            <label for="emp-input-nome">Nome Completo <span class="required">*</span></label>
+            <input type="text" id="emp-input-nome" placeholder="Ex: Roberto Albuquerque" required autocomplete="off">
+          </div>
+
+          <div class="form-field">
+            <label for="emp-input-cargo">Cargo / Função <span class="required">*</span></label>
+            <input type="text" id="emp-input-cargo" placeholder="Ex: Supervisor de Logística" required autocomplete="off">
+          </div>
+
+          <div class="form-field">
+            <label for="emp-input-cpf">CPF <span class="required">*</span></label>
+            <input type="text" id="emp-input-cpf" placeholder="000.000.000-00" maxlength="14" required autocomplete="off">
+          </div>
+          
+          <div class="form-field">
+            <label for="emp-input-whatsapp">WhatsApp (Celular) <span class="required" style="color: #DC2626;">*</span></label>
+            <input type="text" id="emp-input-whatsapp" placeholder="(00) 00000-0000" maxlength="15" required autocomplete="off">
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" onclick="closeNewEmployeeModal()">Cancelar</button>
+          <button type="submit" class="btn-primary" id="btn-submit-employee">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            Salvar
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal Editar Funcionário -->
+  <div id="modal-edit-employee" class="modal-backdrop" style="display: none;">
+    <div class="modal-dialog" style="max-width: 520px;">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div style="width: 38px; height: 38px; border-radius: 8px; background: #ECFDF5; border: 1px solid #A7F3D0; color: #065F46; display: flex; align-items: center; justify-content: center; font-size: 1.25rem;">
+            ✏️
+          </div>
+          <div>
+            <h3 style="margin: 0; font-size: 1.15rem;">Editar Colaborador</h3>
+            <p style="margin: 2px 0 0 0; font-size: 0.8rem; color: #64748B;">Atualize os dados e a situação contratual do funcionário</p>
+          </div>
+        </div>
+        <button class="modal-close-btn" onclick="closeEditEmployeeModal()" title="Fechar">✕</button>
+      </div>
+
+      <form id="form-edit-employee" onsubmit="handleSaveEditedEmployee(event)">
+        <input type="hidden" id="emp-edit-id">
+
+        <div class="modal-body" style="padding: 20px 24px; display: flex; flex-direction: column; gap: 14px;">
+          <div class="form-field">
+            <label for="emp-edit-nome" style="font-size: 0.82rem; font-weight: 600; color: #1E293B;">Nome Completo <span class="required" style="color: #DC2626;">*</span></label>
+            <input type="text" id="emp-edit-nome" required autocomplete="off" style="width: 100%; padding: 9px 12px; border: 1px solid #CBD5E1; border-radius: 6px; font-size: 0.88rem;">
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div class="form-field">
+              <label for="emp-edit-cargo" style="font-size: 0.82rem; font-weight: 600; color: #1E293B;">Cargo / Função <span class="required" style="color: #DC2626;">*</span></label>
+              <input type="text" id="emp-edit-cargo" required autocomplete="off" style="width: 100%; padding: 9px 12px; border: 1px solid #CBD5E1; border-radius: 6px; font-size: 0.88rem;">
+            </div>
+
+            <div class="form-field">
+              <label for="emp-edit-dept" style="font-size: 0.82rem; font-weight: 600; color: #1E293B;">Departamento</label>
+              <input type="text" id="emp-edit-dept" placeholder="Ex: Operações, TI, RH" autocomplete="off" style="width: 100%; padding: 9px 12px; border: 1px solid #CBD5E1; border-radius: 6px; font-size: 0.88rem;">
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div class="form-field">
+              <label for="emp-edit-cpf" style="font-size: 0.82rem; font-weight: 600; color: #1E293B;">CPF <span class="required" style="color: #DC2626;">*</span></label>
+              <input type="text" id="emp-edit-cpf" placeholder="000.000.000-00" maxlength="14" required autocomplete="off" style="width: 100%; padding: 9px 12px; border: 1px solid #CBD5E1; border-radius: 6px; font-size: 0.88rem; font-family: monospace;">
+            </div>
+
+            <div class="form-field">
+              <label for="emp-edit-whatsapp" style="font-size: 0.82rem; font-weight: 600; color: #1E293B;">WhatsApp <span class="required" style="color: #DC2626;">*</span></label>
+              <input type="text" id="emp-edit-whatsapp" placeholder="(00) 00000-0000" maxlength="15" required autocomplete="off" style="width: 100%; padding: 9px 12px; border: 1px solid #CBD5E1; border-radius: 6px; font-size: 0.88rem;">
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div class="form-field">
+              <label for="emp-edit-matricula" style="font-size: 0.82rem; font-weight: 600; color: #1E293B;">Matrícula</label>
+              <input type="text" id="emp-edit-matricula" placeholder="Ex: 0492" autocomplete="off" style="width: 100%; padding: 9px 12px; border: 1px solid #CBD5E1; border-radius: 6px; font-size: 0.88rem;">
+            </div>
+
+            <div class="form-field">
+              <label for="emp-edit-admission" style="font-size: 0.82rem; font-weight: 600; color: #1E293B;">Data de Admissão</label>
+              <input type="text" id="emp-edit-admission" placeholder="DD/MM/AAAA" maxlength="10" autocomplete="off" style="width: 100%; padding: 9px 12px; border: 1px solid #CBD5E1; border-radius: 6px; font-size: 0.88rem;">
+            </div>
+          </div>
+
+          <div class="form-field">
+            <label for="emp-edit-status" style="font-size: 0.82rem; font-weight: 600; color: #1E293B;">Situação Contratual <span class="required" style="color: #DC2626;">*</span></label>
+            <select id="emp-edit-status" style="width: 100%; padding: 9px 12px; border: 1px solid #CBD5E1; border-radius: 6px; font-size: 0.88rem; font-weight: 600; cursor: pointer; background: #FFF;">
+              <option value="ativo">🟢 Ativo (Trabalhando normalmente)</option>
+              <option value="afastado">🟠 Afastado (INSS / Licença)</option>
+              <option value="demitido">🔴 Demitido / Desligado</option>
+              <option value="ferias">🌴 Em Férias</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="modal-footer" style="padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #E2E8F0;">
+          <button type="button" class="btn-danger-outline" onclick="handleDeleteEmployeeFromModal()" style="color: #DC2626; border: 1px solid #FECACA; background: #FEF2F2; padding: 8px 14px; border-radius: 6px; font-weight: 600; font-size: 0.85rem; cursor: pointer;">
+            🗑️ Excluir Colaborador
+          </button>
+          <div style="display: flex; gap: 10px;">
+            <button type="button" class="btn-secondary" onclick="closeEditEmployeeModal()">Cancelar</button>
+            <button type="submit" class="btn-primary" id="btn-save-edit-employee">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              Salvar Alterações
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal Gestão de Férias & Retorno -->
+  <div id="modal-ferias-manager" class="modal-backdrop" style="display: none;">
+    <div class="modal-dialog" style="max-width: 490px;">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <div style="width: 40px; height: 40px; border-radius: 10px; background: #ECFDF5; border: 1px solid #A7F3D0; color: #065F46; display: flex; align-items: center; justify-content: center; font-size: 1.35rem; flex-shrink: 0;">
+            🌴
+          </div>
+          <div>
+            <h3 style="margin: 0; font-size: 1.15rem;">Controle de Férias & Retorno</h3>
+            <p style="margin: 2px 0 0 0; font-size: 0.8rem; color: #64748B;" id="ferias-modal-subtitle">Defina o período de férias ou a data de volta ao trabalho</p>
+          </div>
+        </div>
+        <button class="modal-close-btn" onclick="closeFeriasManagerModal()" title="Fechar">✕</button>
+      </div>
+
+      <div class="modal-body" style="padding: 20px 24px; display: flex; flex-direction: column; gap: 16px;">
+        <!-- Tab Switcher: Iniciar Férias ou Retorno de Férias -->
+        <div style="display: flex; background: #F1F5F9; padding: 4px; border-radius: 8px; gap: 4px;">
+          <button type="button" id="tab-mode-ferias-start" onclick="setFeriasModalMode('start')" class="btn-mode-tab active" style="flex: 1; padding: 8px 12px; border: none; border-radius: 6px; font-weight: 700; font-size: 0.84rem; cursor: pointer; background: #FFFFFF; color: #065F46; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+            🌴 Iniciar Férias
+          </button>
+          <button type="button" id="tab-mode-ferias-return" onclick="setFeriasModalMode('return')" class="btn-mode-tab" style="flex: 1; padding: 8px 12px; border: none; border-radius: 6px; font-weight: 700; font-size: 0.84rem; cursor: pointer; background: transparent; color: #64748B;">
+            🔙 Retorno de Férias
+          </button>
+        </div>
+
+        <!-- Mode 1: Iniciar Férias -->
+        <div id="section-ferias-start" style="display: flex; flex-direction: column; gap: 14px;">
+          <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 12px;">
+            <div class="form-field">
+              <label for="ferias-start-day-select" style="font-size: 0.84rem; font-weight: 600; color: #1E293B; margin-bottom: 6px; display: block;">Início das Férias:</label>
+              <select id="ferias-start-day-select" class="form-select-styled" onchange="updateFeriasStartPreview()" style="width: 100%; padding: 9px 12px; border: 1px solid #CBD5E1; border-radius: 8px; font-weight: 600; font-size: 0.88rem; outline: none; background: #FFF; cursor: pointer;">
+                <!-- Populated dynamically -->
+              </select>
+            </div>
+            <div class="form-field">
+              <label for="ferias-duration-select" style="font-size: 0.84rem; font-weight: 600; color: #1E293B; margin-bottom: 6px; display: block;">Duração das Férias:</label>
+              <select id="ferias-duration-select" class="form-select-styled" onchange="updateFeriasStartPreview()" style="width: 100%; padding: 9px 12px; border: 1px solid #CBD5E1; border-radius: 8px; font-weight: 600; font-size: 0.88rem; outline: none; background: #FFF; cursor: pointer;">
+                <option value="30" selected>🌴 30 dias (Padrão)</option>
+                <option value="20">🌴 20 dias corridos</option>
+                <option value="15">🌴 15 dias corridos</option>
+                <option value="10">🌴 10 dias corridos</option>
+                <option value="end_of_month">🌴 Até o fim do mês</option>
+              </select>
+            </div>
+          </div>
+          <div id="ferias-start-preview-box" style="background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: 8px; padding: 12px 14px; font-size: 0.84rem; color: #166534; line-height: 1.5;">
+            <!-- Dynamic Preview -->
+          </div>
+        </div>
+
+        <!-- Mode 2: Retorno de Férias -->
+        <div id="section-ferias-return" style="display: none; flex-direction: column; gap: 14px;">
+          <div class="form-field">
+            <label for="ferias-return-day-select" style="font-size: 0.84rem; font-weight: 600; color: #1E293B;">A partir de qual dia o funcionário retorna ao trabalho?</label>
+            <select id="ferias-return-day-select" class="form-select-styled" onchange="updateFeriasReturnPreview()" style="padding: 9px 12px; border: 1px solid #CBD5E1; border-radius: 8px; font-weight: 600; font-size: 0.88rem; outline: none; background: #FFF; cursor: pointer;">
+              <!-- Populated dynamically -->
+            </select>
+          </div>
+          <div id="ferias-return-preview-box" style="background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 8px; padding: 12px 14px; font-size: 0.82rem; color: #1E40AF; line-height: 1.45;">
+            <!-- Dynamic Preview -->
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer" style="display: flex; justify-content: flex-end; align-items: center; gap: 10px;">
+        <button type="button" class="btn-secondary" onclick="closeFeriasManagerModal()">Cancelar</button>
+        <button type="button" class="btn-primary" id="btn-confirm-ferias-action" onclick="executeFeriasModalAction()" style="background: #065F46; border-color: #065F46;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          <span id="btn-confirm-ferias-text">Confirmar Férias até o Fim do Mês</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Configurações do Sistema -->
+  <div id="modal-settings" class="modal-backdrop" style="display: none;">
+    <div class="modal-dialog" style="max-width: 580px;">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div style="width: 40px; height: 40px; border-radius: 8px; background: #ECFDF5; border: 1px solid #A7F3D0; color: #065F46; display: flex; align-items: center; justify-content: center; font-size: 1.25rem;">
+            ⚙️
+          </div>
+          <div>
+            <h3 style="margin: 0; font-size: 1.15rem;">Configurações do Sistema</h3>
+            <p style="margin: 2px 0 0 0; font-size: 0.8rem; color: #64748B;">Parâmetros da empresa e regras de jornada CLT</p>
+          </div>
+        </div>
+        <button class="modal-close-btn" onclick="closeSettingsModal()" title="Fechar">✕</button>
+      </div>
+
+      <!-- Settings Navigation Tabs -->
+      <div style="display: flex; background: #F1F5F9; margin: 16px 24px 0 24px; padding: 4px; border-radius: 8px; gap: 4px;">
+        <button type="button" id="tab-settings-empresa" onclick="setSettingsTab('empresa')" class="btn-mode-tab active" style="flex: 1; padding: 8px 12px; border: none; border-radius: 6px; font-weight: 700; font-size: 0.84rem; cursor: pointer; background: #FFFFFF; color: #065F46; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+          🏢 Empresa
+        </button>
+        <button type="button" id="tab-settings-jornada" onclick="setSettingsTab('jornada')" class="btn-mode-tab" style="flex: 1; padding: 8px 12px; border: none; border-radius: 6px; font-weight: 700; font-size: 0.84rem; cursor: pointer; background: transparent; color: #64748B;">
+          ⏱️ Jornada & CLT
+        </button>
+        <button type="button" id="tab-settings-assinatura" onclick="setSettingsTab('assinatura')" class="btn-mode-tab" style="flex: 1; padding: 8px 12px; border: none; border-radius: 6px; font-weight: 700; font-size: 0.84rem; cursor: pointer; background: transparent; color: #64748B;">
+          ✍️ Assinatura Empresa
+        </button>
+      </div>
+
+      <div class="modal-body" style="padding: 20px 24px; display: flex; flex-direction: column; gap: 16px; max-height: 60vh; overflow-y: auto;">
+        
+        <!-- Tab 1: Dados da Empresa -->
+        <div id="section-settings-empresa" style="display: flex; flex-direction: column; gap: 14px;">
+          <div class="form-field">
+            <label style="font-size: 0.82rem; font-weight: 600; color: #1E293B; margin-bottom: 5px; display: block;">Razão Social / Nome da Empresa:</label>
+            <input type="text" id="setting-company-name" class="form-input-styled" value="Lane RO Comunicações LTDA" style="width: 100%; padding: 9px 12px; border: 1px solid #CBD5E1; border-radius: 8px; font-size: 0.88rem; outline: none;">
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div class="form-field">
+              <label style="font-size: 0.82rem; font-weight: 600; color: #1E293B; margin-bottom: 5px; display: block;">CNPJ / CAEPF:</label>
+              <input type="text" id="setting-company-cnpj" class="form-input-styled" value="43.557.034/0001-94" style="width: 100%; padding: 9px 12px; border: 1px solid #CBD5E1; border-radius: 8px; font-size: 0.88rem; outline: none;">
+            </div>
+            <div class="form-field">
+              <label style="font-size: 0.82rem; font-weight: 600; color: #1E293B; margin-bottom: 5px; display: block;">Gestor Responsável RH:</label>
+              <input type="text" id="setting-manager-name" class="form-input-styled" value="Roberto Silva (Admin)" style="width: 100%; padding: 9px 12px; border: 1px solid #CBD5E1; border-radius: 8px; font-size: 0.88rem; outline: none;">
+            </div>
+          </div>
+          <div class="form-field">
+            <label style="font-size: 0.82rem; font-weight: 600; color: #1E293B; margin-bottom: 5px; display: block;">Endereço Completo (Cabeçalho de Impressão):</label>
+            <input type="text" id="setting-company-address" class="form-input-styled" value="Rua Winifred Avinel Wiles" style="width: 100%; padding: 9px 12px; border: 1px solid #CBD5E1; border-radius: 8px; font-size: 0.88rem; outline: none;">
+          </div>
+        </div>
+
+        <!-- Tab 2: Jornada & Regras CLT -->
+        <div id="section-settings-jornada" style="display: none; flex-direction: column; gap: 14px;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div class="form-field">
+              <label style="font-size: 0.82rem; font-weight: 600; color: #1E293B; margin-bottom: 5px; display: block;">Jornada Seg a Sex:</label>
+              <select id="setting-work-hours-weekday" class="form-select-styled" style="width: 100%; padding: 9px 12px; border: 1px solid #CBD5E1; border-radius: 8px; font-size: 0.88rem; background: #FFF; outline: none;">
+                <option value="480" selected>8 Horas Diárias (Padrão 44h)</option>
+                <option value="360">6 Horas Diárias (30h/36h)</option>
+                <option value="240">4 Horas Diárias (Estágio/Meio período)</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label style="font-size: 0.82rem; font-weight: 600; color: #1E293B; margin-bottom: 5px; display: block;">Jornada Sábado:</label>
+              <select id="setting-work-hours-saturday" class="form-select-styled" style="width: 100%; padding: 9px 12px; border: 1px solid #CBD5E1; border-radius: 8px; font-size: 0.88rem; background: #FFF; outline: none;">
+                <option value="240" selected>4 Horas (Presença matutina)</option>
+                <option value="0">Compensado / Folga (DSR)</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-field">
+            <label style="font-size: 0.82rem; font-weight: 600; color: #1E293B; margin-bottom: 5px; display: block;">Tolerância Art. 58 § 1º CLT:</label>
+            <select id="setting-clt-tolerance" class="form-select-styled" style="width: 100%; padding: 9px 12px; border: 1px solid #CBD5E1; border-radius: 8px; font-size: 0.88rem; background: #FFF; outline: none;">
+              <option value="10" selected>10 Minutos Diários (Máx. 5 min por marcação)</option>
+              <option value="15">15 Minutos Diários (Acordo Coletivo)</option>
+              <option value="0">Sem tolerância (Cálculo exato)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Tab 3: Assinatura Digital da Empresa (Gestor) -->
+        <div id="section-settings-assinatura" style="display: none; flex-direction: column; gap: 14px;">
+          <div style="background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: 8px; padding: 10px 14px; font-size: 0.82rem; color: #166534;">
+            <strong>✍️ Assinatura do Empregador / Gestor:</strong><br>
+            Desenhe a rubrica ou assinatura oficial abaixo. Ela será impressa automaticamente no campo <em>"Pelo Empregador — LANE RO COMUNICAÇÕES LTDA"</em> em todas as folhas de ponto.
+          </div>
+
+          <div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <label style="font-size: 0.82rem; font-weight: 700; color: #1E293B;">Desenhe a Assinatura do Gestor:</label>
+              <button type="button" onclick="clearCompanySettingSignatureCanvas()" style="background: #FEE2E2; color: #DC2626; border: 1px solid #FECACA; border-radius: 6px; padding: 4px 8px; font-size: 0.74rem; font-weight: 700; cursor: pointer;">
+                🗑️ Limpar
+              </button>
+            </div>
+            <div style="border: 2px dashed #94A3B8; border-radius: 8px; background: #FAFDFB; position: relative; overflow: hidden; touch-action: none;">
+              <canvas id="company-setting-sig-canvas" width="500" height="150" style="width: 100%; height: 150px; display: block; cursor: crosshair;"></canvas>
+              <div id="company-setting-sig-placeholder" style="position: absolute; bottom: 15px; left: 0; right: 0; text-align: center; pointer-events: none; color: #94A3B8; font-size: 0.8rem; font-weight: 600;">
+                ✍️ Assine aqui com o mouse ou toque
+              </div>
+            </div>
+          </div>
+
+          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.82rem; color: #334155;">
+            <input type="checkbox" id="setting-auto-apply-company-sig" checked style="accent-color: #065F46; width: 16px; height: 16px;">
+            <span>Aplicar esta assinatura digital do empregador em todas as folhas de ponto ao imprimir</span>
+          </label>
+        </div>
+
+      </div>
+
+      <div class="modal-footer" style="display: flex; justify-content: flex-end; align-items: center; gap: 10px;">
+        <button type="button" class="btn-secondary" onclick="closeSettingsModal()">Cancelar</button>
+        <button type="button" class="btn-primary" onclick="saveSystemSettings()" style="background: #065F46; border-color: #065F46;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          Salvar Configurações
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Seletor de Período (Mês e Ano) -->
+  <div id="modal-period-picker" class="modal-backdrop" style="display: none;">
+    <div class="modal-dialog" style="max-width: 420px;">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div style="width: 38px; height: 38px; border-radius: 8px; background: #ECFDF5; border: 1px solid #A7F3D0; color: #065F46; display: flex; align-items: center; justify-content: center; font-size: 1.25rem;">
+            📅
+          </div>
+          <div>
+            <h3 style="margin: 0; font-size: 1.1rem;">Selecionar Período de Apuração</h3>
+            <p style="margin: 2px 0 0 0; font-size: 0.8rem; color: #64748B;">Navegue diretamente para qualquer mês e ano</p>
+          </div>
+        </div>
+        <button class="modal-close-btn" onclick="closePeriodModal()" title="Fechar">✕</button>
+      </div>
+
+      <div class="modal-body" style="padding: 20px; display: flex; flex-direction: column; gap: 16px;">
+        <!-- Year Switcher Row -->
+        <div style="display: flex; align-items: center; justify-content: space-between; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 8px 14px;">
+          <button type="button" class="btn-month-nav" onclick="changePickerYear(-1)" title="Ano Anterior">◀</button>
+          <span id="picker-year-display" style="font-family: var(--font-display); font-size: 1.2rem; font-weight: 800; color: #0F172A;">2026</span>
+          <button type="button" class="btn-month-nav" onclick="changePickerYear(1)" title="Próximo Ano">▶</button>
+        </div>
+
+        <!-- 12 Months Grid -->
+        <div class="months-grid" id="months-picker-grid">
+          <!-- Populated dynamically with 12 months buttons -->
+        </div>
+      </div>
+
+      <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center;">
+        <button type="button" class="btn-secondary" onclick="jumpToCurrentRealMonth()" style="font-size: 0.8rem; padding: 7px 12px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+          Mês Atual (Hoje)
+        </button>
+        <button type="button" class="btn-secondary" onclick="closePeriodModal()">Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Registro de Atestado / Justificativa com Anexo -->
+  <div class="modal-backdrop" id="modal-justification" style="display: none;" onclick="handleJustificationBackdropClick(event)">
+    <div class="modal-dialog modal-dialog-md" style="max-width: 540px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);">
+      <div class="modal-header" style="background: linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%); border-bottom: 1px solid #FDE68A; padding: 18px 22px;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <div id="just-modal-icon-badge" style="width: 42px; height: 42px; border-radius: 10px; background: #D97706; color: #FFF; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; box-shadow: 0 2px 6px rgba(217, 119, 6, 0.25); flex-shrink: 0;">
+            📋
+          </div>
+          <div>
+            <h3 id="just-modal-title" style="margin: 0; font-size: 1.15rem; color: #92400E; font-weight: 800;">Atestado / Justificativa</h3>
+            <p id="just-modal-subtitle" style="margin: 3px 0 0 0; font-size: 0.82rem; color: #B45309; font-weight: 600;">Dia 00/00/0000 — Colaborador</p>
+          </div>
+        </div>
+        <button class="modal-close-btn" onclick="closeJustificationModal()" title="Fechar">✕</button>
+      </div>
+
+      <form id="form-justification" onsubmit="handleSaveJustification(event)">
+        <div class="modal-body" style="padding: 22px; display: flex; flex-direction: column; gap: 18px;">
+          <input type="hidden" id="just-day-index" value="">
+
+          <!-- Tipo de Registro -->
+          <div>
+            <label class="form-label" style="font-weight: 700; color: #334155; margin-bottom: 8px; display: block; font-size: 0.86rem;">
+              Tipo da Ausência
+            </label>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <label id="just-type-atestado-label" style="display: flex; align-items: center; gap: 8px; border: 1.5px solid #F59E0B; background: #FFFBEB; padding: 10px 14px; border-radius: 8px; cursor: pointer; font-size: 0.9rem; font-weight: 700; color: #92400E; transition: all 0.2s ease;">
+                <input type="radio" name="just-status-radio" value="atestado" checked onchange="updateJustTypeSelection('atestado')">
+                <span>🟠 Atestado Médico</span>
+              </label>
+              <label id="just-type-justificada-label" style="display: flex; align-items: center; gap: 8px; border: 1.5px solid #CBD5E1; background: #F8FAFC; padding: 10px 14px; border-radius: 8px; cursor: pointer; font-size: 0.9rem; font-weight: 700; color: #64748B; transition: all 0.2s ease;">
+                <input type="radio" name="just-status-radio" value="justificada" onchange="updateJustTypeSelection('justificada')">
+                <span>🟡 Justificou</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Observação / Justificativa Textarea -->
+          <div>
+            <label class="form-label" for="just-obs-text" style="font-weight: 700; color: #334155; margin-bottom: 6px; display: block; font-size: 0.86rem;">
+              Observação / Detalhes da Justificativa ou Atestado
+            </label>
+            <textarea id="just-obs-text" class="form-control" rows="3" placeholder="Ex: Consulta médica com Dr. Silva (CRM 12345), repouso de 1 dia por virose (CID A09), motivo particular, etc..." style="width: 100%; border: 1.5px solid #CBD5E1; border-radius: 8px; padding: 10px 12px; font-size: 0.88rem; resize: vertical; box-sizing: border-box; font-family: inherit;"></textarea>
+          </div>
+
+          <!-- Upload de Foto ou PDF -->
+          <div>
+            <label class="form-label" style="font-weight: 700; color: #334155; margin-bottom: 6px; display: block; font-size: 0.86rem;">
+              Comprovante / Anexo (Foto do Atestado ou PDF)
+            </label>
+            
+            <!-- Drop Area / Upload Container -->
+            <div id="just-upload-dropzone" class="just-dropzone" onclick="document.getElementById('just-file-input').click()" style="border: 2px dashed #CBD5E1; border-radius: 10px; padding: 20px; text-align: center; background: #F8FAFC; cursor: pointer; transition: all 0.2s ease;">
+              <input type="file" id="just-file-input" accept="image/png,image/jpeg,image/webp,image/jpg,application/pdf" style="display: none;" onchange="handleJustificationFileSelected(event)">
+              <div style="font-size: 2.2rem; margin-bottom: 6px;">📸 / 📄</div>
+              <div style="font-size: 0.92rem; font-weight: 700; color: #334155;">Clique aqui para selecionar ou arraste o arquivo</div>
+              <div style="font-size: 0.78rem; color: #64748B; margin-top: 3px;">Formatos aceitos: Foto (PNG, JPG, JPEG, WEBP) ou Documento (PDF)</div>
+            </div>
+
+            <!-- Attachment Preview Box (quando já anexou algo) -->
+            <div id="just-attachment-preview-box" style="display: none; border: 1.5px solid #CBD5E1; border-radius: 10px; padding: 14px; background: #FFFFFF; margin-top: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+              <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+                <div style="display: flex; align-items: center; gap: 12px; overflow: hidden; min-width: 0;">
+                  <div id="just-preview-thumb-container" style="width: 52px; height: 52px; border-radius: 8px; background: #F1F5F9; border: 1px solid #E2E8F0; display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0;">
+                    <!-- Image tag or PDF icon -->
+                  </div>
+                  <div style="overflow: hidden; min-width: 0;">
+                    <div id="just-preview-filename" style="font-size: 0.88rem; font-weight: 700; color: #1E293B; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">atestado.pdf</div>
+                    <div id="just-preview-filesize" style="font-size: 0.75rem; color: #64748B; margin-top: 2px;">120 KB</div>
+                  </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
+                  <button type="button" class="btn-sm" onclick="openCurrentAttachmentViewer()" style="background: #EEF2FF; color: #4338CA; border: 1px solid #C7D2FE; border-radius: 6px; padding: 7px 11px; font-size: 0.8rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 4px;">
+                    👁️ Ver
+                  </button>
+                  <button type="button" class="btn-sm" onclick="removeJustificationAttachment()" style="background: #FEF2F2; color: #DC2626; border: 1px solid #FECACA; border-radius: 6px; padding: 7px 11px; font-size: 0.8rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 4px;">
+                    🗑️ Excluir
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer" style="padding: 16px 22px; background: #F8FAFC; border-top: 1px solid #E2E8F0; display: flex; justify-content: space-between; align-items: center;">
+          <button type="button" class="btn-secondary" onclick="closeJustificationModal()">Cancelar</button>
+          <button type="submit" class="btn-primary" id="btn-save-justification" style="background: #D97706; border-color: #D97706; font-weight: 700;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            Salvar Justificativa
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Visualizador de Anexos (Fotos & PDFs em Tela Cheia) -->
+  <div class="modal-backdrop" id="modal-attachment-viewer" style="display: none; z-index: 10050;" onclick="handleAttachmentViewerBackdropClick(event)">
+    <div class="modal-dialog modal-dialog-lg" style="max-width: 900px; width: 92vw; height: 86vh; display: flex; flex-direction: column; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); border-radius: 12px; overflow: hidden; background: #0F172A;">
+      <div class="modal-header" style="background: #0F172A; color: #FFFFFF; border-bottom: 1px solid #334155; padding: 14px 20px; display: flex; align-items: center; justify-content: space-between;">
+        <div style="display: flex; align-items: center; gap: 10px; overflow: hidden; min-width: 0;">
+          <span id="viewer-type-icon" style="font-size: 1.3rem;">📄</span>
+          <div>
+            <h3 id="viewer-title" style="margin: 0; font-size: 1rem; color: #FFFFFF; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Visualizar Comprovante</h3>
+            <span id="viewer-subtitle" style="font-size: 0.75rem; color: #94A3B8;">Atestado / Justificativa</span>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 10px; flex-shrink: 0;">
+          <a id="viewer-download-link" href="#" download="comprovante" class="btn-sm" style="background: #2563EB; color: #FFFFFF; border: none; border-radius: 6px; padding: 7px 13px; font-size: 0.82rem; font-weight: 700; text-decoration: none; display: flex; align-items: center; gap: 6px;" target="_blank">
+            ⬇️ Baixar / Abrir
+          </a>
+          <button class="modal-close-btn" style="color: #94A3B8; font-size: 1.2rem;" onclick="closeAttachmentModalView()" title="Fechar">✕</button>
+        </div>
+      </div>
+      <div class="modal-body" id="viewer-body-container" style="flex: 1; padding: 0; background: #0B1120; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative;">
+        <!-- Image tag or PDF iframe embedded dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Enviar Link de Assinatura via WhatsApp -->
+  <div class="modal-backdrop" id="modal-send-signature-whatsapp" style="display: none; z-index: 10040;">
+    <div class="modal-dialog" style="max-width: 540px;">
+      <div class="modal-header" style="background: linear-gradient(135deg, #ECFDF5 0%, #F0FDF4 100%); border-bottom: 1px solid #A7F3D0; padding: 18px 22px;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <div style="width: 42px; height: 42px; border-radius: 10px; background: #059669; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-size: 1.35rem; box-shadow: 0 4px 6px -1px rgba(5, 150, 105, 0.3);">
+            📱
+          </div>
+          <div>
+            <h3 style="margin: 0; font-size: 1.15rem; color: #064E3B; font-weight: 800;">Solicitar Assinatura Digital</h3>
+            <p style="margin: 2px 0 0 0; font-size: 0.8rem; color: #047857;">Envie o link para o colaborador assinar a folha pelo WhatsApp</p>
+          </div>
+        </div>
+        <button class="modal-close-btn" onclick="closeSendSignatureModal()" title="Fechar">✕</button>
+      </div>
+
+      <div class="modal-body" style="padding: 20px 24px; display: flex; flex-direction: column; gap: 14px;">
+        <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 12px 14px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+            <span style="font-size: 0.78rem; font-weight: 700; color: #64748B; text-transform: uppercase;">Colaborador</span>
+            <span id="sig-modal-month-badge" style="background: #E0F2FE; color: #0369A1; font-size: 0.75rem; font-weight: 700; padding: 2px 8px; border-radius: 12px;">Setembro/2026</span>
+          </div>
+          <div style="font-size: 0.98rem; font-weight: 800; color: #0F172A;" id="sig-modal-emp-name">Carregando...</div>
+          <div style="font-size: 0.82rem; color: #64748B; margin-top: 2px;">
+            CPF: <span id="sig-modal-emp-cpf" class="font-mono">000.000.000-00</span> • WhatsApp: <strong id="sig-modal-emp-whatsapp" style="color: #047857;">(00) 00000-0000</strong>
+          </div>
+        </div>
+
+        <div>
+          <label style="font-size: 0.82rem; font-weight: 700; color: #334155; margin-bottom: 6px; display: block;">
+            Mensagem personalizada com link:
+          </label>
+          <textarea id="sig-whatsapp-message-text" rows="5" style="width: 100%; border: 1.5px solid #CBD5E1; border-radius: 8px; padding: 10px 12px; font-size: 0.84rem; line-height: 1.45; font-family: inherit; resize: vertical; background: #FFFFFF; color: #1E293B;"></textarea>
+        </div>
+
+        <div style="display: flex; gap: 8px;">
+          <button type="button" class="btn-secondary" onclick="copySignatureLinkOnly()" style="flex: 1; padding: 9px 12px; font-size: 0.82rem; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 6px;">
+            🔗 Copiar Somente Link
+          </button>
+          <button type="button" class="btn-secondary" onclick="copySignatureCompleteMessage()" style="flex: 1; padding: 9px 12px; font-size: 0.82rem; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 6px;">
+            📋 Copiar Mensagem
+          </button>
+        </div>
+      </div>
+
+      <div class="modal-footer" style="padding: 16px 22px; background: #F8FAFC; border-top: 1px solid #E2E8F0; display: flex; justify-content: space-between; align-items: center; gap: 10px;">
+        <button type="button" class="btn-secondary" onclick="testSignatureScreenDirectly()" style="background: #EEF2FF; color: #4338CA; border-color: #C7D2FE; font-weight: 700; font-size: 0.84rem; display: flex; align-items: center; gap: 6px;">
+          ✍️ Testar e Assinar Agora
+        </button>
+        <div style="display: flex; gap: 8px;">
+          <button type="button" class="btn-secondary" onclick="closeSendSignatureModal()">Fechar</button>
+          <button type="button" class="btn-primary" onclick="openWhatsAppWebForSignature()" style="background: #25D366; border-color: #22C55E; color: #FFFFFF; font-weight: 800; font-size: 0.88rem; display: flex; align-items: center; gap: 6px; box-shadow: 0 4px 6px -1px rgba(37, 211, 102, 0.3);">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981z"/></svg>
+            Abrir no WhatsApp
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Portal de Assinatura Digital do Funcionário (Touch & Mouse Pad) -->
+  <div class="modal-backdrop" id="modal-digital-signature" style="display: none; z-index: 10050;">
+    <div class="modal-dialog" style="max-width: 560px; width: 95vw; background: #FFFFFF; border-radius: 14px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);">
+      <!-- Header Estilizado -->
+      <div style="background: linear-gradient(135deg, #064E3B 0%, #042F2E 100%); color: #FFFFFF; padding: 18px 22px; position: relative;">
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <div style="width: 36px; height: 36px; border-radius: 8px; background: rgba(255,255,255,0.15); display: flex; align-items: center; justify-content: center; font-size: 1.25rem;">
+              ✍️
+            </div>
+            <div>
+              <div style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.5px; color: #A7F3D0; font-weight: 700;">LANE RO COMUNICAÇÕES LTDA</div>
+              <h3 style="margin: 0; font-size: 1.15rem; color: #FFFFFF; font-weight: 800;">Assinatura Digital da Folha de Ponto</h3>
+            </div>
+          </div>
+          <button class="modal-close-btn" onclick="closeDigitalSignatureModal()" style="color: #FFFFFF; opacity: 0.8;" title="Fechar">✕</button>
+        </div>
+      </div>
+
+      <div class="modal-body" style="padding: 20px 22px; display: flex; flex-direction: column; gap: 14px; max-height: 78vh; overflow-y: auto;">
+        <!-- Saudação com Nome do Colaborador -->
+        <div style="background: #F0FDF4; border: 1.5px solid #BBF7D0; border-radius: 10px; padding: 12px 16px;">
+          <div style="font-size: 1.05rem; font-weight: 800; color: #065F46; display: flex; align-items: center; gap: 6px;">
+            <span>👋</span> Olá, <span id="sig-pad-emp-name">Colaborador</span>!
+          </div>
+          <p style="margin: 4px 0 0 0; font-size: 0.82rem; color: #166534; line-height: 1.4;">
+            Por favor, confira o resumo da sua jornada referente ao mês de <strong id="sig-pad-month-name">Setembro de 2026</strong> e desenhe sua assinatura digital abaixo para validação jurídica.
+          </p>
+        </div>
+
+        <!-- Resumo Rápido da Folha -->
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 10px 12px; text-align: center;">
+          <div>
+            <div style="font-size: 0.68rem; color: #64748B; font-weight: 700; text-transform: uppercase;">Cargo</div>
+            <div style="font-size: 0.82rem; font-weight: 700; color: #0F172A;" id="sig-pad-emp-role">Vendedora</div>
+          </div>
+          <div>
+            <div style="font-size: 0.68rem; color: #64748B; font-weight: 700; text-transform: uppercase;">CPF</div>
+            <div style="font-size: 0.82rem; font-weight: 700; color: #0F172A; font-family: monospace;" id="sig-pad-emp-cpf">000.000.000-00</div>
+          </div>
+          <div>
+            <div style="font-size: 0.68rem; color: #64748B; font-weight: 700; text-transform: uppercase;">Mês/Ano</div>
+            <div style="font-size: 0.82rem; font-weight: 700; color: #047857;" id="sig-pad-period">09/2026</div>
+          </div>
+        </div>
+
+        <!-- Canvas de Assinatura Interativa -->
+        <div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <label style="font-size: 0.84rem; font-weight: 700; color: #1E293B; display: flex; align-items: center; gap: 4px;">
+              <span>🖊️</span> Desenhe sua assinatura ou rubrica:
+            </label>
+            <button type="button" onclick="clearSignatureCanvas()" style="background: #FEE2E2; color: #DC2626; border: 1px solid #FECACA; border-radius: 6px; padding: 4px 8px; font-size: 0.74rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 4px;">
+              🗑️ Limpar
+            </button>
+          </div>
+
+          <div style="border: 2px dashed #94A3B8; border-radius: 10px; background: #FAFDFB; position: relative; overflow: hidden; touch-action: none; box-shadow: inset 0 2px 4px rgba(0,0,0,0.04);">
+            <canvas id="signature-pad-canvas" width="500" height="170" style="width: 100%; height: 170px; display: block; cursor: crosshair;"></canvas>
+            
+            <div id="signature-pad-placeholder" style="position: absolute; bottom: 20px; left: 0; right: 0; text-align: center; pointer-events: none; color: #94A3B8; font-size: 0.82rem; font-weight: 600; display: flex; flex-direction: column; align-items: center; gap: 4px;">
+              <div style="width: 75%; border-top: 1px solid #CBD5E1;"></div>
+              <span>✍️ Assine aqui com o dedo ou mouse</span>
+            </div>
+          </div>
+          <div style="font-size: 0.72rem; color: #64748B; margin-top: 4px; display: flex; justify-content: space-between;">
+            <span>💡 Funciona no celular (toque com o dedo) ou computador</span>
+            <span id="sig-pad-status-text" style="color: #D97706; font-weight: 600;">Aguardando traço</span>
+          </div>
+        </div>
+
+        <!-- Termo de Aceite -->
+        <label style="display: flex; align-items: flex-start; gap: 8px; background: #F8FAFC; border: 1px solid #E2E8F0; padding: 10px 12px; border-radius: 8px; cursor: pointer;">
+          <input type="checkbox" id="sig-pad-consent" checked style="margin-top: 3px; accent-color: #059669; width: 16px; height: 16px;">
+          <span style="font-size: 0.77rem; color: #334155; line-height: 1.35;">
+            Declaro para os devidos fins que conferi os apontamentos da minha folha de ponto e reconheço a autenticidade e validade desta assinatura digital.
+          </span>
+        </label>
+      </div>
+
+      <!-- Rodapé com Confirmação -->
+      <div class="modal-footer" style="padding: 14px 22px; background: #F8FAFC; border-top: 1px solid #E2E8F0; display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap;">
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <button type="button" class="btn-secondary" onclick="closeDigitalSignatureModal()">Cancelar</button>
+          <button type="button" id="btn-delete-digital-sig" onclick="handleDeleteDigitalSignature()" style="background: #FEF2F2; border: 1.5px solid #FECACA; color: #DC2626; padding: 8px 14px; border-radius: 8px; font-size: 0.84rem; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s;" title="Apagar assinatura cadastrada deste colaborador e salvar">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+            Apagar Assinatura
+          </button>
+        </div>
+        <button type="button" class="btn-primary" id="btn-confirm-digital-signature" onclick="handleConfirmDigitalSignature()" style="background: #059669; border-color: #047857; font-weight: 800; font-size: 0.92rem; padding: 10px 20px; box-shadow: 0 4px 6px -1px rgba(5, 150, 105, 0.3); display: flex; align-items: center; gap: 6px;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          Confirmar e Salvar Assinatura
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Assinatura Digital do Empregador / Gestor -->
+  <div class="modal-backdrop" id="modal-company-signature" style="display: none; z-index: 10055;">
+    <div class="modal-dialog" style="max-width: 540px; width: 95vw; background: #FFFFFF; border-radius: 14px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);">
+      <div style="background: linear-gradient(135deg, #064E3B 0%, #042F2E 100%); color: #FFFFFF; padding: 18px 22px; position: relative;">
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <div style="width: 36px; height: 36px; border-radius: 8px; background: rgba(255,255,255,0.15); display: flex; align-items: center; justify-content: center; font-size: 1.25rem;">
+              🏢
+            </div>
+            <div>
+              <div style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.5px; color: #A7F3D0; font-weight: 700;">LANE RO COMUNICAÇÕES LTDA</div>
+              <h3 style="margin: 0; font-size: 1.15rem; color: #FFFFFF; font-weight: 800;">Assinatura Digital do Empregador</h3>
+            </div>
+          </div>
+          <button class="modal-close-btn" onclick="closeCompanySignatureModal()" style="color: #FFFFFF; opacity: 0.8;" title="Fechar">✕</button>
+        </div>
+      </div>
+
+      <div class="modal-body" style="padding: 20px 22px; display: flex; flex-direction: column; gap: 14px;">
+        <div style="background: #F0FDF4; border: 1.5px solid #BBF7D0; border-radius: 10px; padding: 12px 16px;">
+          <div style="font-size: 0.95rem; font-weight: 800; color: #065F46;">
+            Validação da Empresa — Competência <span id="company-sig-modal-month">Setembro/2026</span>
+          </div>
+          <p style="margin: 4px 0 0 0; font-size: 0.82rem; color: #166534; line-height: 1.4;">
+            Ao assinar como empregador, sua rubrica digital será gravada no campo <strong>"Pelo Empregador — LANE RO COMUNICAÇÕES LTDA"</strong> com selo criptográfico e data.
+          </p>
+        </div>
+
+        <div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <label style="font-size: 0.84rem; font-weight: 700; color: #1E293B;">
+              🖊️ Desenhe a assinatura do Gestor / RH:
+            </label>
+            <button type="button" onclick="clearCompanyDirectSignatureCanvas()" style="background: #FEE2E2; color: #DC2626; border: 1px solid #FECACA; border-radius: 6px; padding: 4px 8px; font-size: 0.74rem; font-weight: 700; cursor: pointer;">
+              🗑️ Limpar
+            </button>
+          </div>
+
+          <div style="border: 2px dashed #94A3B8; border-radius: 10px; background: #FAFDFB; position: relative; overflow: hidden; touch-action: none;">
+            <canvas id="company-direct-sig-canvas" width="500" height="160" style="width: 100%; height: 160px; display: block; cursor: crosshair;"></canvas>
+            <div id="company-direct-sig-placeholder" style="position: absolute; bottom: 20px; left: 0; right: 0; text-align: center; pointer-events: none; color: #94A3B8; font-size: 0.82rem; font-weight: 600; display: flex; flex-direction: column; align-items: center; gap: 4px;">
+              <div style="width: 75%; border-top: 1px solid #CBD5E1;"></div>
+              <span>✍️ Assine aqui com o mouse ou toque</span>
+            </div>
+          </div>
+        </div>
+
+        <label style="display: flex; align-items: center; gap: 8px; background: #F8FAFC; border: 1px solid #E2E8F0; padding: 10px 12px; border-radius: 8px; cursor: pointer;">
+          <input type="checkbox" id="company-sig-apply-all-checkbox" checked style="accent-color: #065F46; width: 16px; height: 16px;">
+          <span style="font-size: 0.8rem; color: #334155; font-weight: 600;">
+            Salvar esta assinatura como padrão da empresa para todas as folhas de ponto
+          </span>
+        </label>
+      </div>
+
+      <div class="modal-footer" style="padding: 14px 22px; background: #F8FAFC; border-top: 1px solid #E2E8F0; display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap;">
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <button type="button" class="btn-secondary" onclick="closeCompanySignatureModal()">Cancelar</button>
+          <button type="button" id="btn-delete-company-sig" onclick="handleDeleteCompanySignature()" style="background: #FEF2F2; border: 1.5px solid #FECACA; color: #DC2626; padding: 8px 14px; border-radius: 8px; font-size: 0.84rem; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s;" title="Apagar assinatura da empresa e salvar">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+            Apagar Assinatura
+          </button>
+        </div>
+        <button type="button" class="btn-primary" onclick="handleConfirmCompanySignature()" style="background: #065F46; border-color: #047857; font-weight: 800; font-size: 0.92rem; padding: 10px 20px;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          Confirmar Assinatura do Empregador
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification System -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- Supabase JS Client & Config -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
+
+  <script src="app.js"></script>
+</body>
+</html>

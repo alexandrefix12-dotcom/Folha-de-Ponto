@@ -1,0 +1,1110 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Portal do Colaborador — Assinatura Digital da Folha de Ponto</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #F1F5F9;
+      color: #0F172A;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      padding-bottom: 40px;
+    }
+
+    .portal-header {
+      background: linear-gradient(135deg, #064E3B 0%, #042F2E 100%);
+      color: #FFFFFF;
+      padding: 20px 16px 24px;
+      text-align: center;
+      box-shadow: 0 4px 20px rgba(6, 78, 59, 0.25);
+      position: relative;
+    }
+
+    .portal-brand-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      color: #A7F3D0;
+      margin-bottom: 8px;
+    }
+
+    .portal-title {
+      font-size: 1.35rem;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      margin-bottom: 4px;
+    }
+
+    .portal-subtitle {
+      font-size: 0.85rem;
+      color: #CBD5E1;
+      font-weight: 500;
+    }
+
+    .container {
+      max-width: 640px;
+      width: 100%;
+      margin: -12px auto 0;
+      padding: 0 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .card {
+      background: #FFFFFF;
+      border-radius: 14px;
+      padding: 18px 20px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+      border: 1px solid #E2E8F0;
+    }
+
+    .emp-profile-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .emp-avatar {
+      width: 52px;
+      height: 52px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #059669 0%, #047857 100%);
+      color: #FFFFFF;
+      font-size: 1.3rem;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 10px rgba(5, 150, 105, 0.25);
+      flex-shrink: 0;
+    }
+
+    .emp-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .emp-name {
+      font-size: 1.12rem;
+      font-weight: 800;
+      color: #0F172A;
+      margin-bottom: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .emp-meta-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 4px;
+    }
+
+    .pill {
+      font-size: 0.74rem;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 6px;
+      background: #F1F5F9;
+      color: #475569;
+    }
+
+    .pill.green {
+      background: #ECFDF5;
+      color: #047857;
+      border: 1px solid #A7F3D0;
+    }
+
+    .pill.blue {
+      background: #EFF6FF;
+      color: #1D4ED8;
+      border: 1px solid #BFDBFE;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px solid #F1F5F9;
+    }
+
+    .stat-box {
+      background: #F8FAFC;
+      border-radius: 8px;
+      padding: 8px;
+      text-align: center;
+      border: 1px solid #E2E8F0;
+    }
+
+    .stat-label {
+      font-size: 0.68rem;
+      font-weight: 700;
+      color: #64748B;
+      text-transform: uppercase;
+    }
+
+    .stat-value {
+      font-size: 1rem;
+      font-weight: 800;
+      color: #0F172A;
+      margin-top: 2px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .stat-value.green {
+      color: #059669;
+    }
+
+    /* Tabela Detalhada */
+    .accordion-toggle {
+      width: 100%;
+      background: #F8FAFC;
+      border: 1px solid #E2E8F0;
+      border-radius: 10px;
+      padding: 12px 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #1E293B;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .accordion-toggle:hover {
+      background: #F1F5F9;
+    }
+
+    .timesheet-preview-container {
+      display: none;
+      margin-top: 10px;
+      border: 1px solid #E2E8F0;
+      border-radius: 10px;
+      overflow-x: auto;
+      max-height: 280px;
+    }
+
+    .timesheet-preview-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.78rem;
+      text-align: center;
+      background: #FFFFFF;
+    }
+
+    .timesheet-preview-table thead {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+    }
+
+    .timesheet-preview-table th {
+      background-color: #064E3B !important;
+      color: #FFFFFF !important;
+      padding: 10px 8px;
+      font-weight: 700;
+      font-size: 0.76rem;
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+    }
+
+    .timesheet-preview-table td {
+      padding: 6px 4px;
+      border-bottom: 1px solid #F1F5F9;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .timesheet-preview-table tr:nth-child(even) {
+      background: #F8FAFC;
+    }
+
+    /* Área do Canvas */
+    .sig-canvas-wrapper {
+      border: 2px dashed #94A3B8;
+      border-radius: 12px;
+      background: #FAFDFB;
+      position: relative;
+      overflow: hidden;
+      touch-action: none;
+      box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.04);
+      margin-top: 10px;
+    }
+
+    #signature-canvas {
+      width: 100%;
+      height: 190px;
+      display: block;
+      cursor: crosshair;
+    }
+
+    .sig-placeholder-guide {
+      position: absolute;
+      bottom: 22px;
+      left: 0;
+      right: 0;
+      text-align: center;
+      pointer-events: none;
+      color: #94A3B8;
+      font-size: 0.84rem;
+      font-weight: 600;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      transition: opacity 0.2s;
+    }
+
+    .sig-line {
+      width: 75%;
+      border-top: 1.5px solid #CBD5E1;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-family: inherit;
+      font-weight: 800;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: none;
+    }
+
+    .btn-primary {
+      width: 100%;
+      background: #059669;
+      color: #FFFFFF;
+      padding: 14px 20px;
+      font-size: 1rem;
+      box-shadow: 0 4px 12px rgba(5, 150, 105, 0.35);
+    }
+
+    .btn-primary:active {
+      transform: scale(0.98);
+      background: #047857;
+    }
+
+    .btn-sm-clear {
+      background: #FEE2E2;
+      color: #DC2626;
+      border: 1px solid #FECACA;
+      border-radius: 6px;
+      padding: 5px 10px;
+      font-size: 0.76rem;
+      font-weight: 700;
+    }
+
+    .consent-box {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      background: #F8FAFC;
+      border: 1px solid #E2E8F0;
+      padding: 12px 14px;
+      border-radius: 10px;
+      font-size: 0.78rem;
+      color: #334155;
+      line-height: 1.4;
+      cursor: pointer;
+      margin-top: 12px;
+    }
+
+    .consent-box input {
+      margin-top: 3px;
+      accent-color: #059669;
+      width: 18px;
+      height: 18px;
+      flex-shrink: 0;
+    }
+
+    /* Tela de Sucesso / Recibo */
+    .success-card {
+      display: none;
+      text-align: center;
+      padding: 30px 20px;
+      background: #FFFFFF;
+      border-radius: 16px;
+      border: 2px solid #86EFAC;
+      box-shadow: 0 10px 25px -5px rgba(5, 150, 105, 0.15);
+    }
+
+    .success-icon {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background: #DCFCE7;
+      color: #166534;
+      font-size: 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 16px;
+      border: 3px solid #BBF7D0;
+    }
+
+    .receipt-box {
+      background: #F8FAFC;
+      border: 1px solid #E2E8F0;
+      border-radius: 10px;
+      padding: 14px;
+      text-align: left;
+      font-size: 0.8rem;
+      color: #475569;
+      margin: 16px 0;
+      line-height: 1.6;
+    }
+
+    .font-mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .portal-footer {
+      text-align: center;
+      font-size: 0.74rem;
+      color: #64748B;
+      margin-top: 24px;
+      line-height: 1.5;
+    }
+
+    #loading-state, #error-state {
+      text-align: center;
+      padding: 50px 20px;
+    }
+
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid #E2E8F0;
+      border-top-color: #059669;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 16px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Cabeçalho Institucional Seguro -->
+  <header class="portal-header">
+    <div class="portal-brand-badge">
+      🔒 Ambiente Seguro de Assinatura
+    </div>
+    <h1 class="portal-title">LANE RO COMUNICAÇÕES LTDA</h1>
+    <p class="portal-subtitle">Folha de Ponto Eletrônica • Validação Jurídica CLT</p>
+  </header>
+
+  <div class="container">
+    
+    <!-- Estado de Carregamento -->
+    <div id="loading-state" class="card">
+      <div class="spinner"></div>
+      <p style="font-weight: 700; color: #334155;">Carregando seus apontamentos...</p>
+      <span style="font-size: 0.78rem; color: #64748B;">Aguarde um instante</span>
+    </div>
+
+    <!-- Estado de Erro -->
+    <div id="error-state" class="card" style="display: none;">
+      <div style="font-size: 2.5rem; margin-bottom: 10px;">⚠️</div>
+      <h3 style="font-size: 1.1rem; color: #DC2626; font-weight: 800; margin-bottom: 6px;">Folha de Ponto Não Encontrada</h3>
+      <p style="font-size: 0.84rem; color: #64748B; line-height: 1.5;" id="error-message-text">
+        O link acessado é inválido ou expirou. Solicite um novo link pelo WhatsApp da empresa.
+      </p>
+    </div>
+
+    <!-- Conteúdo Principal do Portal -->
+    <div id="main-content" style="display: none; flex-direction: column; gap: 16px;">
+      
+      <!-- Card: Dados do Colaborador -->
+      <div class="card">
+        <div class="emp-profile-row">
+          <div class="emp-avatar" id="portal-emp-avatar">--</div>
+          <div class="emp-info">
+            <h2 class="emp-name" id="portal-emp-name">Nome do Colaborador</h2>
+            <div class="emp-meta-pills">
+              <span class="pill green" id="portal-emp-role">Cargo</span>
+              <span class="pill blue" id="portal-emp-period">Setembro/2026</span>
+              <span class="pill font-mono" id="portal-emp-cpf">CPF: 000.000.000-00</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Estatísticas da Folha -->
+        <div class="stats-grid">
+          <div class="stat-box">
+            <div class="stat-label">Dias Apurados</div>
+            <div class="stat-value" id="portal-stat-days">30</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">Horas Trab.</div>
+            <div class="stat-value green" id="portal-stat-worked">--:--</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">H. Extras / Saldo</div>
+            <div class="stat-value" id="portal-stat-extras">00:00</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card: Ver Situação Diária (Accordion) -->
+      <div class="card" style="padding: 12px 16px;">
+        <button type="button" class="accordion-toggle" onclick="toggleTimesheetPreview()">
+          <span>📋 Ver Situação Diária do Mês (Dias 01 a 31)</span>
+          <span id="accordion-arrow" style="font-size: 0.8rem;">▼</span>
+        </button>
+        <div class="timesheet-preview-container" id="timesheet-preview-box">
+          <table class="timesheet-preview-table">
+            <thead>
+              <tr>
+                <th style="width: 45%; text-align: left; padding-left: 14px;">Dia / Data</th>
+                <th style="width: 55%; text-align: center;">Situação do Dia</th>
+              </tr>
+            </thead>
+            <tbody id="timesheet-preview-tbody">
+              <!-- Renderizado dinamicamente -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Card de Assinatura Já Realizada (se aplicável) -->
+      <div id="already-signed-card" class="card" style="display: none; background: #F0FDF4; border: 1.5px solid #86EFAC;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="font-size: 1.6rem;">✅</span>
+          <div style="flex: 1;">
+            <strong style="color: #166534; font-size: 0.95rem; display: block;">Folha de Ponto Assinada Digitalmente</strong>
+            <span style="font-size: 0.78rem; color: #15803D;" id="already-signed-date">Assinado em 04/09/2026</span>
+          </div>
+          <button type="button" onclick="showRedrawSignatureArea()" style="background: #FFFFFF; border: 1px solid #86EFAC; color: #166534; font-size: 0.76rem; font-weight: 700; padding: 6px 10px; border-radius: 6px; cursor: pointer;">
+            ✏️ Assinar Novamente
+          </button>
+        </div>
+      </div>
+
+      <!-- Card: Campo de Assinatura Digital -->
+      <div class="card" id="signature-action-card">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <label style="font-size: 0.88rem; font-weight: 800; color: #0F172A; display: flex; align-items: center; gap: 6px;">
+            <span>✍️</span> Desenhe sua Assinatura ou Rubrica:
+          </label>
+          <button type="button" class="btn-sm-clear" onclick="clearPortalCanvas()">
+            🗑️ Limpar Traço
+          </button>
+        </div>
+
+        <div class="sig-canvas-wrapper">
+          <canvas id="signature-canvas" width="600" height="200"></canvas>
+          <div class="sig-placeholder-guide" id="sig-placeholder-guide">
+            <div class="sig-line"></div>
+            <span>👆 Assine aqui com o dedo (celular) ou mouse</span>
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.74rem; color: #64748B; margin-top: 6px;">
+          <span>📱 Tela sensível ao toque ativada</span>
+          <span id="sig-status-indicator" style="color: #D97706; font-weight: 700;">Aguardando assinatura</span>
+        </div>
+
+        <!-- Termo de Consentimento -->
+        <label class="consent-box">
+          <input type="checkbox" id="portal-consent-check" checked>
+          <span>
+            Declaro para os devidos fins que conferi os apontamentos da minha folha de ponto e reconheço a autenticidade e validade jurídica desta assinatura digital (Art. 10 § 2º da MP 2.200-2/2001 e Portaria MTE 671).
+          </span>
+        </label>
+
+        <!-- Botão de Confirmação -->
+        <div style="margin-top: 16px;">
+          <button type="button" class="btn btn-primary" id="btn-submit-sig" onclick="submitPortalSignature()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            Confirmar e Assinar Folha de Ponto
+          </button>
+        </div>
+      </div>
+
+      <!-- Card de Sucesso (Exibido após assinar) -->
+      <div id="success-view-card" class="success-card">
+        <div class="success-icon">✓</div>
+        <h2 style="font-size: 1.3rem; font-weight: 800; color: #064E3B; margin-bottom: 4px;">Assinatura Registrada com Sucesso!</h2>
+        <p style="font-size: 0.85rem; color: #047857; line-height: 1.4;">
+          Sua folha de ponto referente ao mês de <strong id="success-month-name">Setembro/2026</strong> foi validada e gravada com segurança.
+        </p>
+
+        <div class="receipt-box">
+          <div><strong>🏢 Empregador:</strong> LANE RO COMUNICAÇÕES LTDA</div>
+          <div><strong>👤 Colaborador:</strong> <span id="receipt-emp-name">--</span></div>
+          <div><strong>📄 CPF:</strong> <span id="receipt-emp-cpf" class="font-mono">--</span></div>
+          <div><strong>📅 Data/Hora:</strong> <span id="receipt-timestamp" class="font-mono">--</span></div>
+          <div><strong>🔐 Protocolo Criptográfico:</strong> <span id="receipt-hash" class="font-mono" style="color: #047857; font-weight: 700;">--</span></div>
+        </div>
+
+        <div style="background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: 8px; padding: 10px; font-size: 0.78rem; color: #166534; margin-bottom: 16px;">
+          ✅ Você já pode fechar esta página no seu navegador.
+        </div>
+      </div>
+
+    </div>
+
+    <footer class="portal-footer">
+      <strong>LANE RO COMUNICAÇÕES LTDA</strong> • CNPJ: 43.557.034/0001-94<br>
+      Sistema Eletrônico de Registro de Ponto • Portaria MTE 671 / CLT
+    </footer>
+
+  </div>
+
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
+
+  <script>
+    const MONTH_NAMES = [
+      'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+      'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+    ];
+
+    const LOCAL_STORAGE_EMPLOYEES_KEY = 'lane_comunicacoes_employees_db_v5';
+
+    let currentEmp = null;
+    let targetMonthKey = '';
+    let targetEmpId = '';
+    let sigHasDrawn = false;
+    let sigIsDrawing = false;
+    let sigLastX = 0;
+    let sigLastY = 0;
+
+    // Inicialização ao carregar a página
+    document.addEventListener('DOMContentLoaded', async () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      targetEmpId = urlParams.get('emp') || '';
+      targetMonthKey = urlParams.get('mes') || '';
+
+      // Fallback para hash (#assinar?emp=...&mes=...)
+      if (!targetEmpId && window.location.hash.includes('?')) {
+        const hashParams = new URLSearchParams(window.location.hash.split('?')[1]);
+        targetEmpId = hashParams.get('emp') || '';
+        targetMonthKey = hashParams.get('mes') || '';
+      }
+
+      if (!targetEmpId) {
+        showError('Identificador do colaborador não foi informado.');
+        return;
+      }
+
+      if (!targetMonthKey || !targetMonthKey.includes('-')) {
+        const now = new Date();
+        targetMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      }
+
+      await loadEmployeeData(targetEmpId);
+    });
+
+    async function loadEmployeeData(empId) {
+      let employees = [];
+
+      // 1. Tenta carregar do LocalStorage
+      try {
+        const raw = localStorage.getItem(LOCAL_STORAGE_EMPLOYEES_KEY);
+        if (raw) employees = JSON.parse(raw) || [];
+      } catch (e) {
+        console.warn('Erro ao ler localStorage:', e);
+      }
+
+      // Procura o colaborador por ID ou CPF
+      currentEmp = employees.find(e => e.id === empId || (e.cpf && e.cpf.replace(/\D/g, '') === empId.replace(/\D/g, '')));
+
+      // 2. Se não encontrou e o Supabase está configurado, tenta buscar no Supabase
+      if (!currentEmp && window.supabaseService && window.supabaseService.isConfigured()) {
+        try {
+          const remoteEmployees = await window.supabaseService.loadEmployees();
+          if (Array.isArray(remoteEmployees)) {
+            currentEmp = remoteEmployees.find(e => e.id === empId || (e.cpf && e.cpf.replace(/\D/g, '') === empId.replace(/\D/g, '')));
+          }
+        } catch (err) {
+          console.warn('Erro ao buscar do Supabase:', err);
+        }
+      }
+
+      if (!currentEmp) {
+        showError('Colaborador não cadastrado ou link inválido.');
+        return;
+      }
+
+      renderPortalUI();
+    }
+
+    function renderPortalUI() {
+      document.getElementById('loading-state').style.display = 'none';
+      document.getElementById('main-content').style.display = 'flex';
+
+      const [year, month] = targetMonthKey.split('-');
+      const monthNum = parseInt(month, 10);
+      const monthName = MONTH_NAMES[monthNum - 1] || 'Mês Atual';
+
+      // Avatar e Iniciais
+      const initials = currentEmp.initials || currentEmp.name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
+      document.getElementById('portal-emp-avatar').textContent = initials;
+      document.getElementById('portal-emp-name').textContent = currentEmp.name;
+      document.getElementById('portal-emp-role').textContent = currentEmp.role || 'Colaborador';
+      document.getElementById('portal-emp-period').textContent = `${monthName}/${year}`;
+      document.getElementById('portal-emp-cpf').textContent = `CPF: ${currentEmp.cpf || 'Não informado'}`;
+
+      // Apontamentos do mês
+      const days = (currentEmp.timesheets && currentEmp.timesheets[targetMonthKey]) || currentEmp.days || [];
+      renderTimesheetStatsAndTable(days, year, monthNum);
+
+      // Verifica se já assinou
+      const existingSig = (currentEmp.signatures && currentEmp.signatures[targetMonthKey]) || currentEmp.digitalSignature;
+      if (existingSig) {
+        document.getElementById('already-signed-card').style.display = 'block';
+        document.getElementById('already-signed-date').textContent = `Assinado digitalmente em: ${existingSig.signedAt || existingSig.dateOnly || 'Data registrada'}`;
+        document.getElementById('signature-action-card').style.display = 'none';
+      } else {
+        document.getElementById('already-signed-card').style.display = 'none';
+        document.getElementById('signature-action-card').style.display = 'block';
+      }
+
+      initCanvas();
+    }
+
+    // Funções de Cálculo de Jornada CLT
+    function timeToMinutes(t) {
+      if (!t || typeof t !== 'string' || !t.includes(':')) return 0;
+      const [h, m] = t.split(':').map(Number);
+      if (isNaN(h) || isNaN(m)) return 0;
+      return h * 60 + m;
+    }
+
+    function minutesToTime(mins) {
+      const isNeg = mins < 0;
+      const abs = Math.abs(mins);
+      const h = Math.floor(abs / 60);
+      const m = abs % 60;
+      const formatted = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+      return isNeg ? `-${formatted}` : formatted;
+    }
+
+    function calcDayMetrics(e1, s1, e2, s2, status, dow = '') {
+      if (status === 'dsr' || status === 'feriado' || status === 'ferias' || status === 'atestado' || status === 'justificada') {
+        return { workedMins: 0, balanceMins: 0, extraMins: 0, formattedWorked: '--:--', formattedExtra: '00:00', extraType: 'zero' };
+      }
+      const standard = (dow === 'Sábado') ? 240 : 480;
+      const tolerance = 10;
+
+      if (status === 'falta') {
+        return { workedMins: 0, balanceMins: -standard, extraMins: -standard, formattedWorked: '00:00', formattedExtra: `-${minutesToTime(standard)}`, extraType: 'negative' };
+      }
+
+      if (status === 'meio_periodo') {
+        const half = 240;
+        let total = half;
+        if (e2 && s2 && !e1 && !s1) {
+          total = Math.max(0, timeToMinutes(s2) - timeToMinutes(e2));
+        } else if (e1 && s1 && !e2 && !s2) {
+          total = Math.max(0, timeToMinutes(s1) - timeToMinutes(e1));
+        } else if (e1 && s1 && e2 && s2) {
+          total = Math.max(0, timeToMinutes(s1) - timeToMinutes(e1)) + Math.max(0, timeToMinutes(s2) - timeToMinutes(e2));
+        } else if (e1 && s2 && !s1 && !e2) {
+          total = Math.max(0, timeToMinutes(s2) - timeToMinutes(e1));
+        }
+        if (total === 0) total = half;
+        const balance = total - standard;
+        return {
+          workedMins: total,
+          balanceMins: balance,
+          extraMins: balance > 0 ? balance : 0,
+          formattedWorked: minutesToTime(total),
+          formattedExtra: balance < 0 ? `-${minutesToTime(Math.abs(balance))}` : (balance > 0 ? `+${minutesToTime(balance)}` : '00:00'),
+          extraType: 'negative'
+        };
+      }
+
+      if (!e1 && !s1 && !e2 && !s2) {
+        return { workedMins: 0, balanceMins: 0, extraMins: 0, formattedWorked: '--:--', formattedExtra: '00:00', extraType: 'zero' };
+      }
+      let total = 0;
+      if (e1 && s1 && e2 && s2) {
+        total = Math.max(0, timeToMinutes(s1) - timeToMinutes(e1)) + Math.max(0, timeToMinutes(s2) - timeToMinutes(e2));
+      } else if (e1 && s2 && !s1 && !e2) {
+        total = Math.max(0, timeToMinutes(s2) - timeToMinutes(e1));
+      } else if (e1 && s1 && !e2 && !s2) {
+        total = Math.max(0, timeToMinutes(s1) - timeToMinutes(e1));
+      }
+      let balance = total - standard;
+      let extra = 0;
+      if (Math.abs(balance) <= tolerance) {
+        balance = 0;
+        extra = 0;
+      } else {
+        extra = balance;
+      }
+      const extraType = extra > 0 ? 'positive' : (extra < 0 ? 'negative' : 'zero');
+      const formattedExtra = extra > 0 ? `+${minutesToTime(extra)}` : (extra < 0 ? `-${minutesToTime(Math.abs(extra))}` : '00:00');
+      return { workedMins: total, balanceMins: balance, extraMins: extra, formattedWorked: minutesToTime(total), formattedExtra, extraType };
+    }
+
+    function renderTimesheetStatsAndTable(days, year, month) {
+      let totalWorkedMins = 0;
+      let totalNetExtraMins = 0;
+      let totalDaysWithRecords = 0;
+
+      const tbody = document.getElementById('timesheet-preview-tbody');
+      tbody.innerHTML = '';
+
+      const numDays = new Date(year, month, 0).getDate();
+      const now = new Date();
+      const currentRealYear = now.getFullYear();
+      const currentRealMonth = now.getMonth() + 1;
+      const currentRealDate = now.getDate();
+
+      const isCurrentViewingMonth = (Number(year) === currentRealYear && Number(month) === currentRealMonth);
+      const isPastMonth = (Number(year) < currentRealYear) || (Number(year) === currentRealYear && Number(month) < currentRealMonth);
+
+      for (let day = 1; day <= numDays; day++) {
+        const dayData = (days && days[day - 1]) || {};
+        const fullDows = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
+        const dateObj = new Date(year, month - 1, day);
+        const dowFull = fullDows[dateObj.getDay()];
+
+        const isToday = isCurrentViewingMonth && (day === currentRealDate);
+        const isFuture = (!isPastMonth && isCurrentViewingMonth && day > currentRealDate) || (Number(year) > currentRealYear) || (Number(year) === currentRealYear && Number(month) > currentRealMonth);
+
+        const e1 = dayData.e1 || dayData.entry1 || '';
+        const s1 = dayData.s1 || dayData.exit1 || '';
+        const e2 = dayData.e2 || dayData.entry2 || '';
+        const s2 = dayData.s2 || dayData.exit2 || '';
+        
+        let status = dayData.status;
+        if (!status) {
+          status = (dateObj.getDay() === 0) ? 'dsr' : (isFuture ? 'aguardando' : 'presenca');
+        }
+
+        // Se for dia futuro e não tiver horários nem status especial agendado (férias/feriado/dsr), não conta horas/débito
+        const hasCustomHours = Boolean((e1 && s1) || (e2 && s2) || (e1 && s2));
+        
+        if (!isFuture || hasCustomHours || status === 'ferias' || status === 'feriado' || status === 'dsr') {
+          const metrics = calcDayMetrics(e1, s1, e2, s2, status, dowFull);
+          if (metrics.workedMins > 0) {
+            totalWorkedMins += metrics.workedMins;
+            totalDaysWithRecords++;
+          }
+          totalNetExtraMins += metrics.balanceMins;
+        }
+
+        // Label estilizado da Situação do Dia
+        let sitLabel = '';
+        if (isFuture && !hasCustomHours && status !== 'ferias' && status !== 'feriado' && status !== 'dsr' && status !== 'atestado' && status !== 'justificada' && status !== 'meio_periodo' && status !== 'falta') {
+          sitLabel = '<span style="background: #F8FAFC; color: #94A3B8; border: 1px dashed #CBD5E1; padding: 4px 12px; border-radius: 6px; font-weight: 600; font-size: 0.76rem; display: inline-block;">⏳ Aguardando data</span>';
+        } else if (status === 'meio_periodo') {
+          sitLabel = '<span style="background: #FEF3C7; color: #B45309; border: 1px solid #FDE68A; padding: 4px 12px; border-radius: 6px; font-weight: 700; font-size: 0.78rem; display: inline-block;">🟡 Meio Período (-4h)</span>';
+        } else if (status === 'falta') {
+          sitLabel = '<span style="background: #FEE2E2; color: #DC2626; padding: 4px 12px; border-radius: 6px; font-weight: 700; font-size: 0.78rem; display: inline-block;">🔴 Faltou</span>';
+        } else if (status === 'atestado') {
+          sitLabel = '<span style="background: #FFEDD5; color: #C2410C; padding: 4px 12px; border-radius: 6px; font-weight: 700; font-size: 0.78rem; display: inline-block;">🟠 Atestado</span>';
+        } else if (status === 'justificada') {
+          sitLabel = '<span style="background: #FEF9C3; color: #854D0E; padding: 4px 12px; border-radius: 6px; font-weight: 700; font-size: 0.78rem; display: inline-block;">🟡 Justificou</span>';
+        } else if (status === 'ferias') {
+          sitLabel = '<span style="background: #ECFDF5; color: #047857; padding: 4px 12px; border-radius: 6px; font-weight: 700; font-size: 0.78rem; display: inline-block;">🌴 Férias</span>';
+        } else if (status === 'dsr') {
+          sitLabel = '<span style="background: #F3E8FF; color: #7E22CE; padding: 4px 12px; border-radius: 6px; font-weight: 700; font-size: 0.78rem; display: inline-block;">🟣 DSR / Folga</span>';
+        } else if (status === 'feriado') {
+          sitLabel = '<span style="background: #EFF6FF; color: #1D4ED8; padding: 4px 12px; border-radius: 6px; font-weight: 700; font-size: 0.78rem; display: inline-block;">🔵 Feriado</span>';
+        } else {
+          sitLabel = '<span style="background: #ECFDF5; color: #047857; padding: 4px 12px; border-radius: 6px; font-weight: 700; font-size: 0.78rem; display: inline-block;">🟢 Presença</span>';
+        }
+
+        const tr = document.createElement('tr');
+        if (isToday) {
+          tr.style.background = '#F0FDF4';
+          tr.style.fontWeight = '600';
+        } else if (isFuture) {
+          tr.style.color = '#64748B';
+        }
+
+        tr.innerHTML = `
+          <td style="text-align: left; padding: 10px 14px;">
+            <strong>${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}</strong>
+            ${isToday ? '<span style="background: #166534; color: #FFFFFF; font-size: 0.66rem; font-weight: 800; padding: 2px 7px; border-radius: 9999px; margin-left: 6px; text-transform: uppercase;">Hoje</span>' : ''}
+            <span style="font-size: 0.74rem; color: #64748B; margin-left: 4px;">(${dowFull})</span>
+          </td>
+          <td style="text-align: center; padding: 10px 8px;">${sitLabel}</td>
+        `;
+        tbody.appendChild(tr);
+      }
+
+      // Atualiza os cards estatísticos em tempo real
+      let daysDisplay = `${numDays} dias`;
+      if (isCurrentViewingMonth) {
+        const elapsed = Math.min(numDays, currentRealDate);
+        daysDisplay = `${elapsed} de ${numDays} dias`;
+      } else if (!isPastMonth) {
+        daysDisplay = `0 de ${numDays} dias`;
+      }
+      document.getElementById('portal-stat-days').textContent = daysDisplay;
+      
+      const totalHours = Math.floor(totalWorkedMins / 60);
+      const totalRemainderMins = totalWorkedMins % 60;
+      document.getElementById('portal-stat-worked').textContent = totalWorkedMins > 0 
+        ? `${String(totalHours).padStart(2, '0')}:${String(totalRemainderMins).padStart(2, '0')}h` 
+        : `${totalDaysWithRecords} dias reg.`;
+
+      const extraSign = totalNetExtraMins > 0 ? '+' : (totalNetExtraMins < 0 ? '-' : '');
+      const absExtra = Math.abs(totalNetExtraMins);
+      const extraH = Math.floor(absExtra / 60);
+      const extraM = absExtra % 60;
+      const extraFormatted = `${extraSign}${String(extraH).padStart(2, '0')}:${String(extraM).padStart(2, '0')}`;
+      
+      const extraEl = document.getElementById('portal-stat-extras');
+      extraEl.textContent = extraFormatted;
+      if (totalNetExtraMins < 0) {
+        extraEl.style.color = '#DC2626';
+      } else if (totalNetExtraMins > 0) {
+        extraEl.style.color = '#059669';
+      } else {
+        extraEl.style.color = '#0F172A';
+      }
+    }
+
+    // Sincronização em tempo real quando alterado no painel administrativo
+    window.addEventListener('storage', (e) => {
+      if (e.key === LOCAL_STORAGE_EMPLOYEES_KEY) {
+        loadEmployeeData(targetEmpId);
+      }
+    });
+    window.addEventListener('focus', () => {
+      loadEmployeeData(targetEmpId);
+    });
+
+    function toggleTimesheetPreview() {
+      const box = document.getElementById('timesheet-preview-box');
+      const arrow = document.getElementById('accordion-arrow');
+      if (box.style.display === 'block') {
+        box.style.display = 'none';
+        arrow.textContent = '▼';
+      } else {
+        box.style.display = 'block';
+        arrow.textContent = '▲';
+      }
+    }
+
+    function showRedrawSignatureArea() {
+      document.getElementById('already-signed-card').style.display = 'none';
+      document.getElementById('signature-action-card').style.display = 'block';
+      clearPortalCanvas();
+    }
+
+    function showError(msg) {
+      document.getElementById('loading-state').style.display = 'none';
+      document.getElementById('error-state').style.display = 'block';
+      if (msg) document.getElementById('error-message-text').textContent = msg;
+    }
+
+    /* ====================================================================== */
+    /* Manipulação do Canvas de Assinatura (Touch + Mouse)                    */
+    /* ====================================================================== */
+    let canvas, ctx;
+
+    function initCanvas() {
+      canvas = document.getElementById('signature-canvas');
+      if (!canvas) return;
+
+      ctx = canvas.getContext('2d');
+      const rect = canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      ctx.scale(dpr, dpr);
+
+      ctx.strokeStyle = '#000000';
+      ctx.lineWidth = 3.2;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      function getPos(e) {
+        const r = canvas.getBoundingClientRect();
+        if (e.touches && e.touches.length > 0) {
+          return { x: e.touches[0].clientX - r.left, y: e.touches[0].clientY - r.top };
+        }
+        return { x: e.clientX - r.left, y: e.clientY - r.top };
+      }
+
+      function startDraw(e) {
+        e.preventDefault();
+        sigIsDrawing = true;
+        const pos = getPos(e);
+        sigLastX = pos.x;
+        sigLastY = pos.y;
+        document.getElementById('sig-placeholder-guide').style.opacity = '0.05';
+        document.getElementById('sig-status-indicator').textContent = '✍️ Desenhando...';
+        document.getElementById('sig-status-indicator').style.color = '#059669';
+      }
+
+      function draw(e) {
+        if (!sigIsDrawing) return;
+        e.preventDefault();
+        const pos = getPos(e);
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 3.2;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.beginPath();
+        ctx.moveTo(sigLastX, sigLastY);
+        ctx.lineTo(pos.x, pos.y);
+        ctx.stroke();
+        sigLastX = pos.x;
+        sigLastY = pos.y;
+        sigHasDrawn = true;
+      }
+
+      function stopDraw(e) {
+        if (!sigIsDrawing) return;
+        sigIsDrawing = false;
+        if (sigHasDrawn) {
+          document.getElementById('sig-status-indicator').textContent = '✅ Assinatura pronta';
+          document.getElementById('sig-status-indicator').style.color = '#047857';
+        }
+      }
+
+      // Mouse
+      canvas.addEventListener('mousedown', startDraw);
+      canvas.addEventListener('mousemove', draw);
+      canvas.addEventListener('mouseup', stopDraw);
+      canvas.addEventListener('mouseleave', stopDraw);
+
+      // Touch (Mobile)
+      canvas.addEventListener('touchstart', startDraw, { passive: false });
+      canvas.addEventListener('touchmove', draw, { passive: false });
+      canvas.addEventListener('touchend', stopDraw);
+      canvas.addEventListener('touchcancel', stopDraw);
+    }
+
+    function clearPortalCanvas() {
+      if (!canvas || !ctx) return;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      sigHasDrawn = false;
+      document.getElementById('sig-placeholder-guide').style.opacity = '1';
+      document.getElementById('sig-status-indicator').textContent = 'Aguardando assinatura';
+      document.getElementById('sig-status-indicator').style.color = '#D97706';
+    }
+
+    /* ====================================================================== */
+    /* Salvar Assinatura Digital                                              */
+    /* ====================================================================== */
+    async function submitPortalSignature() {
+      if (!sigHasDrawn) {
+        alert('⚠️ Por favor, desenhe sua assinatura no quadro antes de confirmar.');
+        return;
+      }
+
+      const consent = document.getElementById('portal-consent-check');
+      if (consent && !consent.checked) {
+        alert('⚠️ É necessário marcar a declaração de concordância para validar a assinatura.');
+        return;
+      }
+
+      const btn = document.getElementById('btn-submit-sig');
+      btn.disabled = true;
+      btn.innerHTML = 'Gravando assinatura segura...';
+
+      const dataUrl = canvas.toDataURL('image/png');
+      const now = new Date();
+      const hash = 'LANE-SIG-' + Math.random().toString(36).substring(2, 9).toUpperCase();
+
+      const signatureObj = {
+        image: dataUrl,
+        signedAt: now.toLocaleString('pt-BR'),
+        dateOnly: now.toLocaleDateString('pt-BR'),
+        hash: hash,
+        ipInfo: 'Assinado via Portal do Colaborador (Mobile/Web)'
+      };
+
+      // Atualiza base local
+      try {
+        let employees = [];
+        const raw = localStorage.getItem(LOCAL_STORAGE_EMPLOYEES_KEY);
+        if (raw) employees = JSON.parse(raw) || [];
+
+        const idx = employees.findIndex(e => e.id === currentEmp.id || (e.cpf && e.cpf.replace(/\D/g, '') === currentEmp.cpf?.replace(/\D/g, '')));
+        if (idx !== -1) {
+          if (!employees[idx].signatures) employees[idx].signatures = {};
+          employees[idx].signatures[targetMonthKey] = signatureObj;
+          employees[idx].digitalSignature = signatureObj;
+
+          // Marca todos os dias da folha como assinados
+          if (employees[idx].timesheets && employees[idx].timesheets[targetMonthKey]) {
+            employees[idx].timesheets[targetMonthKey].forEach(d => { if (d) d.signed = true; });
+          }
+          if (employees[idx].days && Array.isArray(employees[idx].days)) {
+            employees[idx].days.forEach(d => { if (d) d.signed = true; });
+          }
+
+          localStorage.setItem(LOCAL_STORAGE_EMPLOYEES_KEY, JSON.stringify(employees));
+        }
+      } catch (e) {
+        console.warn('Erro ao salvar no localStorage:', e);
+      }
+
+      // Sincroniza com Supabase se configurado
+      if (window.supabaseService && window.supabaseService.isConfigured()) {
+        try {
+          const days = (currentEmp.timesheets && currentEmp.timesheets[targetMonthKey]) || currentEmp.days || [];
+          days.forEach(d => { if (d) d.signed = true; });
+          await window.supabaseService.saveFullTimesheet(currentEmp.id, targetMonthKey, days);
+        } catch (err) {
+          console.warn('Erro ao sincronizar com Supabase:', err);
+        }
+      }
+
+      // Exibe tela de Sucesso / Recibo
+      document.getElementById('signature-action-card').style.display = 'none';
+      document.getElementById('already-signed-card').style.display = 'none';
+      
+      const successCard = document.getElementById('success-view-card');
+      const [y, m] = targetMonthKey.split('-');
+      document.getElementById('success-month-name').textContent = `${MONTH_NAMES[parseInt(m,10)-1] || m} de ${y}`;
+      document.getElementById('receipt-emp-name').textContent = currentEmp.name;
+      document.getElementById('receipt-emp-cpf').textContent = currentEmp.cpf || '--';
+      document.getElementById('receipt-timestamp').textContent = now.toLocaleString('pt-BR');
+      document.getElementById('receipt-hash').textContent = hash;
+
+      successCard.style.display = 'block';
+      successCard.scrollIntoView({ behavior: 'smooth' });
+    }
+  </script>
+</body>
+</html>

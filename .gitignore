@@ -1,0 +1,5 @@
+.agents/
+mcp_config.json
+temp_seed.json
+.DS_Store
+Thumbs.db
