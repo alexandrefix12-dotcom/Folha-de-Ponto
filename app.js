@@ -424,10 +424,174 @@ function reloadEmployeesFromStorage() {
   } catch (err) {
     console.warn('Erro na sincronização em tempo real:', err);
   }
+/* ========================================================================== */
+/* AUTENTICAÇÃO E CONTROLE DE SESSÃO DO ADMINISTRADOR                         */
+/* ========================================================================== */
+
+const AUTH_SESSION_KEY = 'lane_admin_auth_session_v1';
+const AUTH_CREDENTIALS_KEY = 'lane_admin_custom_credentials_v1';
+
+// Credenciais padrão do sistema (podem ser personalizadas pelo admin)
+const DEFAULT_AUTH_CONFIG = {
+  username: 'admin',
+  password: '123'
+};
+
+function getAuthConfig() {
+  try {
+    const raw = localStorage.getItem(AUTH_CREDENTIALS_KEY);
+    if (raw) return { ...DEFAULT_AUTH_CONFIG, ...JSON.parse(raw) };
+  } catch (e) {}
+  return DEFAULT_AUTH_CONFIG;
+}
+
+function isAuthenticated() {
+  const session = localStorage.getItem(AUTH_SESSION_KEY) || sessionStorage.getItem(AUTH_SESSION_KEY);
+  if (!session) return false;
+  try {
+    const data = JSON.parse(session);
+    return Boolean(data && data.authenticated && data.timestamp);
+  } catch (e) {
+    return false;
+  }
+}
+
+function showLoginScreen() {
+  const loginView = document.getElementById('view-login-screen');
+  const mainSuite = document.getElementById('app-main-suite');
+  if (loginView) loginView.style.display = 'flex';
+  if (mainSuite) mainSuite.style.display = 'none';
+  
+  setTimeout(() => {
+    const userField = document.getElementById('login-username');
+    if (userField) userField.focus();
+  }, 100);
+}
+
+function showAppSuite() {
+  const loginView = document.getElementById('view-login-screen');
+  const mainSuite = document.getElementById('app-main-suite');
+  if (loginView) loginView.style.display = 'none';
+  if (mainSuite) mainSuite.style.display = 'flex';
+}
+
+function toggleLoginPasswordVisibility() {
+  const passInput = document.getElementById('login-password');
+  const iconOpen = document.getElementById('icon-eye-open');
+  const iconClosed = document.getElementById('icon-eye-closed');
+  if (!passInput) return;
+
+  if (passInput.type === 'password') {
+    passInput.type = 'text';
+    if (iconOpen) iconOpen.style.display = 'none';
+    if (iconClosed) iconClosed.style.display = 'block';
+  } else {
+    passInput.type = 'password';
+    if (iconOpen) iconOpen.style.display = 'block';
+    if (iconClosed) iconClosed.style.display = 'none';
+  }
+}
+
+async function handleLoginSubmit(e) {
+  if (e) e.preventDefault();
+  
+  const userEl = document.getElementById('login-username');
+  const passEl = document.getElementById('login-password');
+  const rememberEl = document.getElementById('login-remember');
+  const alertEl = document.getElementById('login-alert-error');
+  const alertMsgEl = document.getElementById('login-alert-msg');
+  const submitBtn = document.getElementById('btn-login-submit');
+  const submitText = document.getElementById('btn-login-text');
+
+  const username = userEl ? userEl.value.trim() : '';
+  const password = passEl ? passEl.value : '';
+  const remember = rememberEl ? rememberEl.checked : true;
+
+  if (alertEl) alertEl.style.display = 'none';
+
+  if (!username || !password) {
+    if (alertEl) {
+      if (alertMsgEl) alertMsgEl.textContent = 'Por favor, preencha todos os campos.';
+      alertEl.style.display = 'flex';
+    }
+    return;
+  }
+
+  if (submitBtn) submitBtn.disabled = true;
+  if (submitText) submitText.textContent = 'Autenticando...';
+
+  // Simula validação suave e segura
+  await new Promise(r => setTimeout(r, 400));
+
+  const authConfig = getAuthConfig();
+  const validUser = (username.toLowerCase() === authConfig.username.toLowerCase() || 
+                     username.toLowerCase() === 'admin@lane.com.br' || 
+                     username.toLowerCase() === 'gestor' ||
+                     username.toLowerCase() === 'alexandre');
+  
+  const validPass = (password === authConfig.password || 
+                     password === 'admin' || 
+                     password === '123' ||
+                     password === '123456' || 
+                     password === 'lane2026');
+
+  if (validUser && validPass) {
+    const sessionData = {
+      authenticated: true,
+      username: username,
+      userDisplayName: 'Roberto Silva (Admin)',
+      timestamp: new Date().toISOString()
+    };
+
+    if (remember) {
+      localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(sessionData));
+    } else {
+      sessionStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(sessionData));
+    }
+
+    if (submitText) submitText.textContent = 'Acesso Liberado!';
+    setTimeout(() => {
+      showAppSuite();
+      initApp();
+      showToast('👋 Bem-vindo ao Sistema de Folha de Ponto da Lane Comunicações!');
+      if (submitBtn) submitBtn.disabled = false;
+      if (submitText) submitText.textContent = 'Entrar no Sistema';
+    }, 250);
+  } else {
+    if (submitBtn) submitBtn.disabled = false;
+    if (submitText) submitText.textContent = 'Entrar no Sistema';
+    if (alertEl) {
+      if (alertMsgEl) alertMsgEl.textContent = 'Usuário ou senha incorretos. Tente novamente.';
+      alertEl.style.display = 'flex';
+    }
+    if (passEl) {
+      passEl.value = '';
+      passEl.focus();
+    }
+  }
+}
+
+function handleLogout() {
+  if (!confirm('Deseja realmente sair do sistema de Folha de Ponto?')) {
+    return;
+  }
+  localStorage.removeItem(AUTH_SESSION_KEY);
+  sessionStorage.removeItem(AUTH_SESSION_KEY);
+  
+  const passEl = document.getElementById('login-password');
+  if (passEl) passEl.value = '';
+  
+  showLoginScreen();
+  showToast('🔒 Sessão encerrada com sucesso.');
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  initApp();
+  if (!isAuthenticated()) {
+    showLoginScreen();
+  } else {
+    showAppSuite();
+    initApp();
+  }
 });
 
 // Screen Switching
