@@ -1363,24 +1363,24 @@ function renderTimesheetTable() {
         </div>
       </td>
       <td style="text-align: center;">
-        <input type="text" class="time-input" data-index="${index}" data-field="e1" value="${item.e1 || ''}" placeholder="--:--" maxlength="5" inputmode="numeric" autocomplete="off" ${(isFuture || (isNonWorking && !item.e1)) ? 'disabled' : ''}>
+        <input type="text" class="time-input" data-index="${index}" data-field="e1" value="${item.e1 || ''}" placeholder="--:--" maxlength="5" inputmode="numeric" autocomplete="off" ${(isNonWorking && !item.e1) ? 'disabled' : ''}>
       </td>
       <td style="text-align: center;">
         <div class="interval-input-group">
-          <input type="text" class="time-input" data-index="${index}" data-field="s1" value="${item.s1 || ''}" placeholder="--:--" maxlength="5" inputmode="numeric" autocomplete="off" title="Saída Intervalo" ${(isFuture || (isNonWorking && !item.s1)) ? 'disabled' : ''}>
+          <input type="text" class="time-input" data-index="${index}" data-field="s1" value="${item.s1 || ''}" placeholder="--:--" maxlength="5" inputmode="numeric" autocomplete="off" title="Saída Intervalo" ${(isNonWorking && !item.s1) ? 'disabled' : ''}>
           <span class="interval-separator">às</span>
-          <input type="text" class="time-input" data-index="${index}" data-field="e2" value="${item.e2 || ''}" placeholder="--:--" maxlength="5" inputmode="numeric" autocomplete="off" title="Retorno Intervalo" ${(isFuture || (isNonWorking && !item.e2)) ? 'disabled' : ''}>
+          <input type="text" class="time-input" data-index="${index}" data-field="e2" value="${item.e2 || ''}" placeholder="--:--" maxlength="5" inputmode="numeric" autocomplete="off" title="Retorno Intervalo" ${(isNonWorking && !item.e2) ? 'disabled' : ''}>
         </div>
       </td>
       <td style="text-align: center;">
-        <input type="text" class="time-input" data-index="${index}" data-field="s2" value="${item.s2 || ''}" placeholder="--:--" maxlength="5" inputmode="numeric" autocomplete="off" title="Saída Final" ${(isFuture || (isNonWorking && !item.s2)) ? 'disabled' : ''}>
+        <input type="text" class="time-input" data-index="${index}" data-field="s2" value="${item.s2 || ''}" placeholder="--:--" maxlength="5" inputmode="numeric" autocomplete="off" title="Saída Final" ${(isNonWorking && !item.s2) ? 'disabled' : ''}>
       </td>
       <td style="text-align: center;">
         <span class="extra-badge ${metrics.extraType}" id="extra-${index}">${metrics.formattedExtra}</span>
       </td>
       <td style="text-align: center;">
         <div class="status-cell-wrapper">
-          <select class="status-select ${item.status || 'presenca'}" data-index="${index}" onchange="changeDayStatus(${index}, this.value)" title="${isFuture ? 'Disponível apenas quando chegar a data' : 'Situação do Dia'}" ${isFuture ? 'disabled' : ''}>
+          <select class="status-select ${item.status || 'presenca'}" data-index="${index}" onchange="changeDayStatus(${index}, this.value)" title="Situação do Dia">
             <option value="presenca" ${(item.status === 'presenca' || !item.status) ? 'selected' : ''}>🟢 Presença</option>
             <option value="meio_periodo" ${item.status === 'meio_periodo' ? 'selected' : ''}>🟡 Meio Período (-4h)</option>
             <option value="falta" ${item.status === 'falta' ? 'selected' : ''}>🔴 Faltou</option>
@@ -1402,7 +1402,7 @@ function renderTimesheetTable() {
       </td>
       <td style="text-align: center;">
         <div class="signature-check-cell">
-          <input type="checkbox" class="sig-checkbox" id="sig-${index}" data-index="${index}" ${(item.signed || Boolean(emp.signatures && emp.signatures[monthKey])) ? 'checked' : ''} onchange="toggleSignature(${index}, this.checked)" title="${isFuture ? 'Disponível na data' : 'Marcar Assinatura'}" ${isFuture ? 'disabled' : ''}>
+          <input type="checkbox" class="sig-checkbox" id="sig-${index}" data-index="${index}" ${(item.signed || Boolean(emp.signatures && emp.signatures[monthKey])) ? 'checked' : ''} onchange="toggleSignature(${index}, this.checked)" title="Marcar Assinatura">
         </div>
       </td>
     `;
@@ -1893,16 +1893,6 @@ function changeDayStatus(index, newStatus) {
   if (!emp || !emp.days || !emp.days[index]) return;
 
   const item = emp.days[index];
-  const now = new Date();
-  const todayYear = now.getFullYear();
-  const todayMonth = now.getMonth() + 1;
-  const todayDate = now.getDate();
-  const isFuture = (currentYear > todayYear) || 
-                   (currentYear === todayYear && currentMonth > todayMonth) || 
-                   (currentYear === todayYear && currentMonth === todayMonth && item.day > todayDate);
-
-  if (isFuture) return;
-
   const prevStatus = item.status || 'presenca';
 
   if (newStatus === 'ferias') {
@@ -1940,11 +1930,16 @@ function changeDayStatus(index, newStatus) {
     item.s2 = '18:00';
     item.signed = true;
   } else if (newStatus === 'presenca') {
-    if (!item.e1) item.e1 = '08:00';
-    if (!item.s1) item.s1 = '12:00';
-    if (!item.e2) item.e2 = '13:00';
-    if (!item.s2) item.s2 = '17:00';
+    if (!item.e1 || item.e1 === '--:--') item.e1 = '08:00';
+    if (!item.s1 || item.s1 === '--:--') item.s1 = '12:00';
+    if (!item.e2 || item.e2 === '--:--') item.e2 = '14:00';
+    if (!item.s2 || item.s2 === '--:--') item.s2 = '18:00';
     item.signed = true;
+    item.just = '';
+    item.attachmentData = null;
+    item.attachmentType = null;
+    item.attachmentName = null;
+    item.attachmentSize = null;
   }
 
   // Auto persistência ao mudar situação
@@ -1962,38 +1957,27 @@ function changeDayStatus(index, newStatus) {
 function toggleSignature(index, isChecked) {
   const emp = getCurrentEmployee();
   if (emp && emp.days && emp.days[index]) {
-    const now = new Date();
-    const todayYear = now.getFullYear();
-    const todayMonth = now.getMonth() + 1;
-    const todayDate = now.getDate();
-    const isFuture = (currentYear > todayYear) || 
-                     (currentYear === todayYear && currentMonth > todayMonth) || 
-                     (currentYear === todayYear && currentMonth === todayMonth && emp.days[index].day > todayDate);
-    if (!isFuture) {
-      emp.days[index].signed = isChecked;
-    }
+    emp.days[index].signed = isChecked;
+    const monthKey = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
+    if (!emp.timesheets) emp.timesheets = {};
+    emp.timesheets[monthKey] = JSON.parse(JSON.stringify(emp.days));
+    saveEmployeesToLocalStorage();
   }
 }
 
 // Toggle all signatures checkbox
 function toggleAllSignatures(isChecked) {
   const emp = getCurrentEmployee();
-  const now = new Date();
-  const todayYear = now.getFullYear();
-  const todayMonth = now.getMonth() + 1;
-  const todayDate = now.getDate();
-
   if (emp && emp.days) {
     emp.days.forEach(day => {
-      const isFuture = (currentYear > todayYear) || 
-                       (currentYear === todayYear && currentMonth > todayMonth) || 
-                       (currentYear === todayYear && currentMonth === todayMonth && day.day > todayDate);
-      if (!isFuture) {
-        day.signed = isChecked;
-      }
+      day.signed = isChecked;
     });
+    const monthKey = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
+    if (!emp.timesheets) emp.timesheets = {};
+    emp.timesheets[monthKey] = JSON.parse(JSON.stringify(emp.days));
+    saveEmployeesToLocalStorage();
   }
-  document.querySelectorAll('.sig-checkbox:not(:disabled)').forEach(cb => {
+  document.querySelectorAll('.sig-checkbox').forEach(cb => {
     cb.checked = isChecked;
   });
 }
