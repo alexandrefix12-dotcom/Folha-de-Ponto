@@ -117,6 +117,465 @@ function getCurrentEmployee() {
 
 const LOCAL_STORAGE_EMPLOYEES_KEY = 'lane_comunicacoes_employees_db_v5';
 
+// ==========================================================================
+// Base de 20 Funcionários de Simulação com Horários Variados / Testes
+// ==========================================================================
+const SIMULATED_EMPLOYEES_SEED = [
+  {
+    name: 'Alexandre Gabriel Santos',
+    role: 'Vendedor Interno',
+    dept: 'Comercial',
+    cpf: '917.639.242-20',
+    whatsapp: '(11) 98765-4321',
+    matricula: 'MAT-0001',
+    admission: '15/01/2023',
+    color: 'green',
+    statusCategory: 'ativo',
+    signed: true,
+    shift: { e1: '08:00', s1: '12:00', e2: '13:00', s2: '17:00' }
+  },
+  {
+    name: 'Beatriz Helena Silveira',
+    role: 'Analista Financeiro Pleno',
+    dept: 'Financeiro',
+    cpf: '382.914.750-11',
+    whatsapp: '(11) 97123-8844',
+    matricula: 'MAT-0002',
+    admission: '10/03/2022',
+    color: 'blue',
+    statusCategory: 'ativo',
+    signed: true,
+    shift: { e1: '08:30', s1: '12:30', e2: '13:30', s2: '17:30' }
+  },
+  {
+    name: 'Carlos Eduardo Moreira',
+    role: 'Supervisor de Operações',
+    dept: 'Operações',
+    cpf: '519.832.406-88',
+    whatsapp: '(11) 99451-2299',
+    matricula: 'MAT-0003',
+    admission: '01/08/2021',
+    color: 'purple',
+    statusCategory: 'ativo',
+    signed: false,
+    shift: { e1: '07:00', s1: '11:00', e2: '12:00', s2: '16:00' }
+  },
+  {
+    name: 'Daniela Cristina Rocha',
+    role: 'Recepcionista',
+    dept: 'Atendimento',
+    cpf: '247.618.903-45',
+    whatsapp: '(11) 96321-4477',
+    matricula: 'MAT-0004',
+    admission: '20/05/2023',
+    color: 'orange',
+    statusCategory: 'ativo',
+    signed: false,
+    shift: { e1: '08:00', s1: '12:00', e2: '13:00', s2: '17:00' }
+  },
+  {
+    name: 'Eduardo Ramos Ferreira',
+    role: 'Desenvolvedor Full Stack',
+    dept: 'Tecnologia (TI)',
+    cpf: '674.195.832-60',
+    whatsapp: '(11) 98112-9900',
+    matricula: 'MAT-0005',
+    admission: '12/09/2022',
+    color: 'blue',
+    statusCategory: 'ativo',
+    signed: true,
+    shift: { e1: '09:00', s1: '13:00', e2: '14:00', s2: '18:00' }
+  },
+  {
+    name: 'Fernanda Lima Barbosa',
+    role: 'Analista de DP / RH',
+    dept: 'Recursos Humanos',
+    cpf: '458.729.130-92',
+    whatsapp: '(11) 97455-6611',
+    matricula: 'MAT-0006',
+    admission: '03/02/2021',
+    color: 'purple',
+    statusCategory: 'ativo',
+    signed: false,
+    shift: { e1: '08:00', s1: '12:00', e2: '13:00', s2: '17:00' }
+  },
+  {
+    name: 'Gabriel Santana Ribeiro',
+    role: 'Assistente de Almoxarifado',
+    dept: 'Logística',
+    cpf: '189.542.763-04',
+    whatsapp: '(11) 99877-3322',
+    matricula: 'MAT-0007',
+    admission: '14/11/2023',
+    color: 'green',
+    statusCategory: 'ativo',
+    signed: true,
+    shift: { e1: '07:30', s1: '11:30', e2: '12:30', s2: '16:30' }
+  },
+  {
+    name: 'Heloísa Guimarães Castro',
+    role: 'Designer Gráfico & UI',
+    dept: 'Marketing',
+    cpf: '731.849.205-37',
+    whatsapp: '(11) 96544-7788',
+    matricula: 'MAT-0008',
+    admission: '01/04/2023',
+    color: 'orange',
+    statusCategory: 'ativo',
+    signed: false,
+    shift: { e1: '09:00', s1: '12:30', e2: '13:30', s2: '18:00' }
+  },
+  {
+    name: 'Igor Vinícius Nascimento',
+    role: 'Motorista Entregador',
+    dept: 'Logística',
+    cpf: '820.364.917-53',
+    whatsapp: '(11) 98322-1144',
+    matricula: 'MAT-0009',
+    admission: '18/06/2022',
+    color: 'green',
+    statusCategory: 'ativo',
+    signed: true,
+    shift: { e1: '06:30', s1: '11:30', e2: '12:30', s2: '15:30' }
+  },
+  {
+    name: 'Juliana Mendes Martins',
+    role: 'Executiva de Contas B2B',
+    dept: 'Comercial',
+    cpf: '592.178.430-66',
+    whatsapp: '(11) 97665-8899',
+    matricula: 'MAT-0010',
+    admission: '05/01/2022',
+    color: 'blue',
+    statusCategory: 'ativo',
+    signed: false,
+    shift: { e1: '08:30', s1: '12:30', e2: '13:30', s2: '17:30' }
+  },
+  {
+    name: 'Lucas Fernandes Azevedo',
+    role: 'Técnico de Suporte TI',
+    dept: 'Tecnologia (TI)',
+    cpf: '315.682.947-81',
+    whatsapp: '(11) 99123-5566',
+    matricula: 'MAT-0011',
+    admission: '22/08/2023',
+    color: 'purple',
+    statusCategory: 'ativo',
+    signed: true,
+    shift: { e1: '08:00', s1: '12:00', e2: '13:00', s2: '17:00' }
+  },
+  {
+    name: 'Mariana Duarte Albuquerque',
+    role: 'Analista de Marketing Digital',
+    dept: 'Marketing',
+    cpf: '648.291.503-74',
+    whatsapp: '(11) 98844-2211',
+    matricula: 'MAT-0012',
+    admission: '10/10/2022',
+    color: 'orange',
+    statusCategory: 'ativo',
+    signed: false,
+    shift: { e1: '09:30', s1: '13:30', e2: '14:30', s2: '18:30' }
+  },
+  {
+    name: 'Nelson Rodrigo Tavares',
+    role: 'Operador de Atendimento',
+    dept: 'Atendimento',
+    cpf: '934.715.826-19',
+    whatsapp: '(11) 96789-0011',
+    matricula: 'MAT-0013',
+    admission: '01/02/2024',
+    color: 'green',
+    statusCategory: 'ativo',
+    signed: false,
+    shift: { e1: '10:00', s1: '14:00', e2: '15:00', s2: '19:00' }
+  },
+  {
+    name: 'Patrícia Rezende Fontes',
+    role: 'Assistente Administrativo',
+    dept: 'Administrativo',
+    cpf: '427.893.150-28',
+    whatsapp: '(11) 97234-9988',
+    matricula: 'MAT-0014',
+    admission: '15/07/2021',
+    color: 'blue',
+    statusCategory: 'ativo',
+    signed: true,
+    shift: { e1: '08:00', s1: '12:00', e2: '13:00', s2: '17:00' }
+  },
+  {
+    name: 'Rafael Costa Valente',
+    role: 'Consultor de Vendas',
+    dept: 'Comercial',
+    cpf: '751.428.693-02',
+    whatsapp: '(11) 98456-7733',
+    matricula: 'MAT-0015',
+    admission: '03/05/2023',
+    color: 'purple',
+    statusCategory: 'ativo',
+    signed: false,
+    shift: { e1: '08:00', s1: '12:00', e2: '13:00', s2: '17:00' }
+  },
+  {
+    name: 'Sabrina Esteves Correa',
+    role: 'Analista de Controladoria',
+    dept: 'Financeiro',
+    cpf: '163.904.572-85',
+    whatsapp: '(11) 99345-6677',
+    matricula: 'MAT-0016',
+    admission: '19/09/2022',
+    color: 'orange',
+    statusCategory: 'ativo',
+    signed: true,
+    shift: { e1: '08:30', s1: '12:30', e2: '13:30', s2: '17:30' }
+  },
+  {
+    name: 'Thiago Henrique Peixoto',
+    role: 'Técnico de Manutenção',
+    dept: 'Operações',
+    cpf: '890.137.426-59',
+    whatsapp: '(11) 97788-4411',
+    matricula: 'MAT-0017',
+    admission: '08/03/2023',
+    color: 'green',
+    statusCategory: 'ativo',
+    signed: false,
+    shift: { e1: '07:00', s1: '11:00', e2: '12:00', s2: '16:00' }
+  },
+  {
+    name: 'Vanessa Toledo Pires',
+    role: 'Coordenadora Comercial',
+    dept: 'Comercial',
+    cpf: '528.614.937-40',
+    whatsapp: '(11) 98199-3355',
+    matricula: 'MAT-0018',
+    admission: '11/11/2020',
+    color: 'blue',
+    statusCategory: 'ferias',
+    vacationDays: 30,
+    vacationStart: '2026-09-01',
+    vacationEnd: '2026-09-30',
+    signed: true,
+    shift: { e1: '08:00', s1: '12:00', e2: '13:00', s2: '17:00' }
+  },
+  {
+    name: 'Wagner Antunes Medeiros',
+    role: 'Técnico de Telecomunicações',
+    dept: 'Tecnologia (TI)',
+    cpf: '379.502.814-63',
+    whatsapp: '(11) 99567-8822',
+    matricula: 'MAT-0019',
+    admission: '14/02/2022',
+    color: 'orange',
+    statusCategory: 'afastado',
+    signed: true,
+    shift: { e1: '08:00', s1: '12:00', e2: '13:00', s2: '17:00' }
+  },
+  {
+    name: 'Yasmin Beatriz Cardoso',
+    role: 'Assistente de Cobrança',
+    dept: 'Financeiro',
+    cpf: '604.831.295-17',
+    whatsapp: '(11) 97412-3344',
+    matricula: 'MAT-0020',
+    admission: '02/06/2022',
+    color: 'red',
+    statusCategory: 'demitido',
+    signed: false,
+    shift: { e1: '08:30', s1: '12:30', e2: '13:30', s2: '17:30' }
+  }
+];
+
+function generateSimulatedTimesheet(year, month, empSeed, empId) {
+  const dows = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
+  const numDays = new Date(year, month, 0).getDate();
+  const list = [];
+  const shift = empSeed.shift || { e1: '08:00', s1: '12:00', e2: '13:00', s2: '17:00' };
+
+  const now = new Date();
+  const todayYear = now.getFullYear();
+  const todayMonth = now.getMonth() + 1;
+  const todayDate = now.getDate();
+
+  function addMinutes(timeStr, mins) {
+    if (!timeStr) return '';
+    const [h, m] = timeStr.split(':').map(Number);
+    let total = h * 60 + m + mins;
+    if (total < 0) total = 0;
+    if (total > 1439) total = 1439;
+    const resH = Math.floor(total / 60);
+    const resM = total % 60;
+    return `${String(resH).padStart(2, '0')}:${String(resM).padStart(2, '0')}`;
+  }
+
+  function getJitter(day, idx) {
+    const seed = ((empSeed.name || '').charCodeAt(0) * 17 + day * 13 + idx * 7) % 100;
+    return (seed % 9) - 4; // -4 a +4 minutos de variação natural
+  }
+
+  for (let day = 1; day <= numDays; day++) {
+    const date = new Date(year, month - 1, day);
+    const dowIndex = date.getDay();
+    const dow = dows[dowIndex];
+    const holidayKey = `${day}-${month}`;
+    const isPastOrToday = (year < todayYear) || 
+                          (year === todayYear && month < todayMonth) || 
+                          (year === todayYear && month === todayMonth && day <= todayDate);
+
+    if (empSeed.statusCategory === 'ferias') {
+      list.push({
+        day, dow,
+        e1: '', s1: '', e2: '', s2: '',
+        status: 'ferias',
+        statusLabel: 'Férias Regulamentares',
+        just: 'Férias Regulamentares (30 dias)',
+        signed: true
+      });
+    } else if (empSeed.statusCategory === 'afastado') {
+      list.push({
+        day, dow,
+        e1: '', s1: '', e2: '', s2: '',
+        status: 'atestado',
+        statusLabel: 'Afastado (INSS)',
+        just: 'Afastamento INSS / Licença Médica',
+        signed: true
+      });
+    } else if (empSeed.statusCategory === 'demitido') {
+      list.push({
+        day, dow,
+        e1: '', s1: '', e2: '', s2: '',
+        status: 'falta',
+        statusLabel: 'Demitido / Desligado',
+        just: 'Colaborador Desligado / Demitido',
+        signed: false
+      });
+    } else if (BRAZIL_HOLIDAYS[holidayKey]) {
+      list.push({
+        day, dow,
+        e1: '', s1: '', e2: '', s2: '',
+        status: 'feriado',
+        statusLabel: 'Feriado',
+        just: BRAZIL_HOLIDAYS[holidayKey],
+        signed: true
+      });
+    } else if (dowIndex === 0 || dowIndex === 6) {
+      list.push({
+        day, dow,
+        e1: '', s1: '', e2: '', s2: '',
+        status: 'dsr',
+        statusLabel: 'D.S.R.',
+        just: dowIndex === 6 ? 'Acordo de Compensação Semanal' : 'Descanso Semanal Remunerado',
+        signed: true
+      });
+    } else {
+      if (isPastOrToday) {
+        const j1 = getJitter(day, 1);
+        const j2 = getJitter(day, 2);
+        const j3 = getJitter(day, 3);
+        const overtimeBonus = (day % 3 === 0) ? (15 + (day % 4) * 10) : 0;
+        const j4 = getJitter(day, 4) + overtimeBonus;
+
+        const e1 = addMinutes(shift.e1, j1);
+        const s1 = addMinutes(shift.s1, j2);
+        const e2 = addMinutes(shift.e2, j3);
+        const s2 = addMinutes(shift.s2, j4);
+
+        list.push({
+          day, dow,
+          e1, s1, e2, s2,
+          status: 'presenca',
+          statusLabel: 'Presença',
+          just: '',
+          signed: true
+        });
+      } else {
+        list.push({
+          day, dow,
+          e1: '', s1: '', e2: '', s2: '',
+          status: 'presenca',
+          statusLabel: 'Presença',
+          just: '',
+          signed: false
+        });
+      }
+    }
+  }
+  return list;
+}
+
+function generate20MockEmployees(force = false) {
+  if (force && !confirm('Deseja carregar os 20 colaboradores de teste com folhas e horários aleatórios completos?')) {
+    return;
+  }
+
+  const monthKey = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
+  const list = [];
+
+  SIMULATED_EMPLOYEES_SEED.forEach((seed, index) => {
+    const id = `emp-sim-${index + 1}`;
+    const initials = seed.name.split(/\s+/).map(p => p[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
+    const pillInfo = getStatusPillInfo(seed.statusCategory);
+    const timesheet = generateSimulatedTimesheet(currentYear, currentMonth, seed, id);
+
+    const signaturesObj = {};
+    if (seed.signed) {
+      signaturesObj[monthKey] = {
+        signed: true,
+        date: `08/${String(currentMonth).padStart(2, '0')}/${currentYear}, 16:${String(30 + (index % 25)).padStart(2, '0')}:00`,
+        signerName: seed.name,
+        cpf: seed.cpf,
+        type: 'digital_portal',
+        ip: `189.40.${10 + index}.${100 + index}`
+      };
+    }
+
+    list.push({
+      id,
+      name: seed.name,
+      initials,
+      color: seed.color || 'green',
+      role: seed.role,
+      shortRole: seed.role,
+      dept: seed.dept,
+      fullDept: `Departamento - ${seed.dept}`,
+      admission: seed.admission || '01/01/2023',
+      cpf: seed.cpf,
+      whatsapp: seed.whatsapp || '',
+      pis: `120.${String(10000 + index * 372).padStart(5, '0')}.${String(10 + index).padStart(2, '0')}-0`,
+      matricula: seed.matricula || `MAT-${String(index + 1).padStart(4, '0')}`,
+      statusTag: pillInfo.tagLabel,
+      statusTagClass: pillInfo.tagClass,
+      statusCategory: seed.statusCategory,
+      statusPillLabel: pillInfo.label,
+      statusPillClass: pillInfo.pillClass,
+      vacationStart: seed.vacationStart || null,
+      vacationEnd: seed.vacationEnd || null,
+      vacationDays: seed.vacationDays || null,
+      signatures: signaturesObj,
+      digitalSignature: null,
+      timesheets: {
+        [monthKey]: timesheet
+      },
+      days: timesheet
+    });
+  });
+
+  employeesDB.length = 0;
+  employeesDB.push(...list);
+  saveEmployeesToLocalStorage();
+
+  populateQuickEmployeeSelect();
+  renderEmployeesAdminTable();
+  updateSidebarBadges();
+  updateCompanySignatureButtonState();
+
+  if (employeesDB.length > 0) {
+    selectEmployee(employeesDB[0].id, false);
+  }
+
+  showToast('⚡ 20 Colaboradores de simulação carregados com sucesso!');
+}
+
 let _supabaseSyncTimeout = null;
 function syncCurrentTimesheetToSupabaseDebounced() {
   if (_supabaseSyncTimeout) clearTimeout(_supabaseSyncTimeout);
@@ -190,10 +649,7 @@ function loadEmployeesFromLocalStorage() {
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed) && parsed.length > 0) {
-      // Exclui mocks de simulação
-      const mockIds = ['joao-silva', 'maria-santos', 'carlos-oliveira', 'fernanda-lima', 'ricardo-souza'];
-      const filtered = parsed.filter(emp => !mockIds.includes(emp.id));
-      return filtered.length > 0 ? filtered : [];
+      return parsed;
     }
   } catch (e) {
     console.warn('Erro ao carregar do localStorage:', e);
@@ -291,14 +747,19 @@ async function initApp() {
     }
   }
 
-  saveEmployeesToLocalStorage();
-  populateQuickEmployeeSelect();
-  renderEmployeesAdminTable();
-  updateSidebarBadges();
-  updateCompanySignatureButtonState();
-  
-  const firstId = employeesDB[0]?.id || '';
-  selectEmployee(firstId, false);
+  // Se não houver funcionários cadastrados, carrega os 20 colaboradores de simulação automaticamente para testes
+  if (!employeesDB || employeesDB.length === 0) {
+    generate20MockEmployees(false);
+  } else {
+    saveEmployeesToLocalStorage();
+    populateQuickEmployeeSelect();
+    renderEmployeesAdminTable();
+    updateSidebarBadges();
+    updateCompanySignatureButtonState();
+    
+    const firstId = employeesDB[0]?.id || '';
+    selectEmployee(firstId, false);
+  }
 
   // Restaura a visualização anterior (Férias ou Afastados) se estava aberta antes do F5
   const savedViewMode = localStorage.getItem('lane_last_admin_view_mode');
