@@ -3027,7 +3027,7 @@ function buildEmployeePrintPageHtml(emp, pageNum = 1, totalPages = 1) {
           ` : `
             <div class="sig-line" style="margin-top: 48px !important;"></div>
           `}
-          <strong>${(typeof systemSettings !== 'undefined' && systemSettings.managerName) ? systemSettings.managerName : 'Roberto Silva'} (Gestor)</strong>
+          <strong>${(typeof systemSettings !== 'undefined' && systemSettings.managerName) ? systemSettings.managerName : 'Antônio Sousa'} (Gestor)</strong>
           <span>Pelo Empregador — ${(typeof systemSettings !== 'undefined' && systemSettings.companyName) ? systemSettings.companyName : 'LANE RO COMUNICAÇÕES LTDA'}</span>
           <small>CNPJ/CAEPF: ${(typeof systemSettings !== 'undefined' && systemSettings.companyCnpj) ? systemSettings.companyCnpj : '43.557.034/0001-94'}</small>
         </div>
@@ -3169,7 +3169,7 @@ const SYSTEM_SETTINGS_KEY = 'lane_system_settings_v3';
 let systemSettings = {
   companyName: 'Lane RO Comunicações LTDA',
   companyCnpj: '43.557.034/0001-94',
-  managerName: 'Roberto Silva (Admin)',
+  managerName: 'Antônio Sousa (Admin)',
   companyAddress: 'Rua Winifred Avinel Wiles',
   workHoursWeekday: 480, // 8h diárias
   workHoursSaturday: 240, // 4h sábado
@@ -3193,6 +3193,9 @@ function loadSystemSettings() {
     if (!systemSettings.companyAddress || systemSettings.companyAddress.includes('Paulista')) {
       systemSettings.companyAddress = 'Rua Winifred Avinel Wiles';
     }
+    if (!systemSettings.managerName || systemSettings.managerName.includes('Roberto')) {
+      systemSettings.managerName = 'Antônio Sousa (Admin)';
+    }
     localStorage.setItem(SYSTEM_SETTINGS_KEY, JSON.stringify(systemSettings));
   } catch (e) {
     console.warn('Erro ao carregar configurações:', e);
@@ -3208,7 +3211,10 @@ function applySystemSettingsToUI() {
   if (sidebarBrand) sidebarBrand.textContent = systemSettings.companyName || 'Lane RO Comunicações LTDA';
 
   const sidebarUserName = document.querySelector('.sidebar-user .user-name');
-  if (sidebarUserName) sidebarUserName.textContent = systemSettings.managerName || 'Roberto Silva (Admin)';
+  if (sidebarUserName) sidebarUserName.textContent = systemSettings.managerName || 'Antônio Sousa (Admin)';
+
+  const sidebarAvatar = document.querySelector('.sidebar-user .user-avatar');
+  if (sidebarAvatar) sidebarAvatar.textContent = 'AS';
 
   updateCompanySignatureButtonState();
 }
@@ -3227,7 +3233,7 @@ function openSettingsModal() {
 
   if (nameEl) nameEl.value = systemSettings.companyName || 'Lane RO Comunicações LTDA';
   if (cnpjEl) cnpjEl.value = systemSettings.companyCnpj || '43.557.034/0001-94';
-  if (managerEl) managerEl.value = systemSettings.managerName || 'Roberto Silva (Admin)';
+  if (managerEl) managerEl.value = systemSettings.managerName || 'Antônio Sousa (Admin)';
   if (addrEl) addrEl.value = systemSettings.companyAddress || 'Rua Winifred Avinel Wiles';
   if (weekdayEl) weekdayEl.value = String(systemSettings.workHoursWeekday ?? 480);
   if (satEl) satEl.value = String(systemSettings.workHoursSaturday ?? 240);
@@ -3292,7 +3298,7 @@ function setSettingsTab(tabName) {
 async function saveSystemSettings() {
   const companyName = document.getElementById('setting-company-name')?.value.trim() || 'Lane RO Comunicações LTDA';
   const companyCnpj = document.getElementById('setting-company-cnpj')?.value.trim() || '43.557.034/0001-94';
-  const managerName = document.getElementById('setting-manager-name')?.value.trim() || 'Roberto Silva (Admin)';
+  const managerName = document.getElementById('setting-manager-name')?.value.trim() || 'Antônio Sousa (Admin)';
   const companyAddress = document.getElementById('setting-company-address')?.value.trim() || 'Rua Winifred Avinel Wiles';
   const workHoursWeekday = parseInt(document.getElementById('setting-work-hours-weekday')?.value, 10) || 480;
   const workHoursSaturday = parseInt(document.getElementById('setting-work-hours-saturday')?.value, 10) || 240;
@@ -4606,7 +4612,7 @@ function askConfirmCompanySignature() {
   const dateEl = document.getElementById('confirm-comp-modal-date');
 
   if (nameEl) nameEl.textContent = systemSettings.companyName || 'LANE RO COMUNICAÇÕES LTDA';
-  if (managerEl) managerEl.textContent = systemSettings.managerName || 'Roberto Silva (Admin)';
+  if (managerEl) managerEl.textContent = systemSettings.managerName || 'Antônio Sousa (Admin)';
   if (dateEl) dateEl.textContent = new Date().toLocaleString('pt-BR');
 
   const modal = document.getElementById('modal-confirm-company-signature');
@@ -4637,7 +4643,7 @@ async function executeConfirmedCompanySignature() {
   }
 
   const now = new Date();
-  const managerName = systemSettings.managerName || 'Roberto Silva (Admin)';
+  const managerName = systemSettings.managerName || 'Antônio Sousa (Admin)';
 
   const companySigObj = {
     image: dataUrl,
