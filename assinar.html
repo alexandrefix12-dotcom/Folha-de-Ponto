@@ -503,17 +503,19 @@
         </div>
       </div>
 
-      <!-- Card de Assinatura Já Realizada (se aplicável) -->
+      <!-- Card de Assinatura Já Realizada (se aplicável - Bloqueado sem opção de re-assinar) -->
       <div id="already-signed-card" class="card" style="display: none; background: #F0FDF4; border: 1.5px solid #86EFAC;">
-        <div style="display: flex; align-items: center; gap: 10px;">
-          <span style="font-size: 1.6rem;">✅</span>
-          <div style="flex: 1;">
-            <strong style="color: #166534; font-size: 0.95rem; display: block;">Folha de Ponto Assinada Digitalmente</strong>
-            <span style="font-size: 0.78rem; color: #15803D;" id="already-signed-date">Assinado em 04/09/2026</span>
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <div style="width: 42px; height: 42px; border-radius: 50%; background: #DCFCE7; color: #166534; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; flex-shrink: 0; font-weight: 800;">
+            ✓
           </div>
-          <button type="button" onclick="showRedrawSignatureArea()" style="background: #FFFFFF; border: 1px solid #86EFAC; color: #166534; font-size: 0.76rem; font-weight: 700; padding: 6px 10px; border-radius: 6px; cursor: pointer;">
-            ✏️ Assinar Novamente
-          </button>
+          <div style="flex: 1;">
+            <strong style="color: #166534; font-size: 0.95rem; display: block;">Folha de Ponto Assinada & Homologada</strong>
+            <span style="font-size: 0.78rem; color: #15803D;" id="already-signed-date">Assinado digitalmente em: --</span>
+            <div style="margin-top: 4px; font-size: 0.72rem; color: #047857; display: flex; align-items: center; gap: 4px;">
+              <span>🔒 Documento homologado e assinado com validade jurídica CLT.</span>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -549,9 +551,9 @@
           </span>
         </label>
 
-        <!-- Botão de Confirmação -->
+        <!-- Botão de Confirmação com Modal Prévio -->
         <div style="margin-top: 16px;">
-          <button type="button" class="btn btn-primary" id="btn-submit-sig" onclick="submitPortalSignature()">
+          <button type="button" class="btn btn-primary" id="btn-submit-sig" onclick="askConfirmPortalSignature()">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
             Confirmar e Assinar Folha de Ponto
           </button>
@@ -575,10 +577,38 @@
         </div>
 
         <div style="background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: 8px; padding: 10px; font-size: 0.78rem; color: #166534; margin-bottom: 16px;">
-          ✅ Você já pode fechar esta página no seu navegador.
+          ✅ Sua folha foi concluída e homologada. Você já pode fechar esta página.
         </div>
       </div>
 
+    </div>
+
+    <!-- Modal de Confirmação de Assinatura -->
+    <div id="modal-confirm-signature" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(4px); z-index: 9999; align-items: center; justify-content: center; padding: 16px;">
+      <div style="background: #FFFFFF; border-radius: 16px; max-width: 440px; width: 100%; padding: 24px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2); text-align: center; border: 1px solid #E2E8F0;">
+        <div style="width: 56px; height: 56px; border-radius: 50%; background: #ECFDF5; color: #059669; font-size: 1.8rem; display: flex; align-items: center; justify-content: center; margin: 0 auto 14px;">
+          ✍️
+        </div>
+        <h3 style="font-size: 1.2rem; font-weight: 800; color: #0F172A; margin: 0 0 8px;">Confirmar Assinatura Digital?</h3>
+        <p style="font-size: 0.86rem; color: #475569; line-height: 1.5; margin: 0 0 16px;">
+          Você está prestes a registrar e homologar a folha de ponto referente ao mês de <strong id="confirm-modal-period-text">--</strong>.
+        </p>
+        
+        <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; padding: 12px; font-size: 0.78rem; color: #64748B; text-align: left; margin-bottom: 20px; display: flex; flex-direction: column; gap: 6px;">
+          <div>👤 <strong>Colaborador:</strong> <span id="confirm-modal-emp-name">--</span></div>
+          <div>📅 <strong>Data de Registro:</strong> <span id="confirm-modal-date">--</span></div>
+          <div style="color: #047857; font-weight: 700; margin-top: 4px;">⚠️ Atenção: Após confirmar, o documento será gravado em definitivo e não poderá ser re-assinado.</div>
+        </div>
+
+        <div style="display: flex; gap: 10px;">
+          <button type="button" onclick="closeConfirmSignatureModal()" style="flex: 1; padding: 12px; background: #F1F5F9; border: 1px solid #CBD5E1; color: #475569; font-weight: 700; border-radius: 10px; cursor: pointer; font-size: 0.88rem; transition: background 0.2s;">
+            Voltar e Revisar
+          </button>
+          <button type="button" id="btn-final-confirm-sig" onclick="executeConfirmedSignature()" style="flex: 1.4; padding: 12px; background: #059669; border: 1px solid #047857; color: #FFFFFF; font-weight: 800; border-radius: 10px; cursor: pointer; font-size: 0.88rem; box-shadow: 0 4px 6px -1px rgba(5, 150, 105, 0.3); transition: background 0.2s;">
+            ✓ Sim, Confirmar
+          </button>
+        </div>
+      </div>
     </div>
 
     <footer class="portal-footer">
@@ -922,10 +952,44 @@
       }
     }
 
-    function showRedrawSignatureArea() {
-      document.getElementById('already-signed-card').style.display = 'none';
-      document.getElementById('signature-action-card').style.display = 'block';
-      clearPortalCanvas();
+    function askConfirmPortalSignature() {
+      if (!sigHasDrawn) {
+        alert('⚠️ Por favor, desenhe sua assinatura ou rubrica no quadro antes de prosseguir.');
+        return;
+      }
+
+      const consent = document.getElementById('portal-consent-check');
+      if (consent && !consent.checked) {
+        alert('⚠️ É necessário marcar a declaração de concordância para validar sua assinatura digital.');
+        return;
+      }
+
+      const [year, month] = targetMonthKey.split('-');
+      const monthNum = parseInt(month, 10);
+      const monthName = MONTH_NAMES[monthNum - 1] || 'Mês Atual';
+
+      document.getElementById('confirm-modal-period-text').textContent = `${monthName} de ${year}`;
+      document.getElementById('confirm-modal-emp-name').textContent = currentEmp ? currentEmp.name : '--';
+      document.getElementById('confirm-modal-date').textContent = new Date().toLocaleString('pt-BR');
+
+      const modal = document.getElementById('modal-confirm-signature');
+      if (modal) modal.style.display = 'flex';
+    }
+
+    function closeConfirmSignatureModal() {
+      const modal = document.getElementById('modal-confirm-signature');
+      if (modal) modal.style.display = 'none';
+    }
+
+    async function executeConfirmedSignature() {
+      const btnFinal = document.getElementById('btn-final-confirm-sig');
+      if (btnFinal) {
+        btnFinal.disabled = true;
+        btnFinal.innerHTML = 'Gravando assinatura...';
+      }
+
+      closeConfirmSignatureModal();
+      await submitPortalSignature();
     }
 
     function showError(msg) {
@@ -1038,8 +1102,10 @@
       }
 
       const btn = document.getElementById('btn-submit-sig');
-      btn.disabled = true;
-      btn.innerHTML = 'Gravando assinatura segura...';
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = 'Gravando assinatura segura...';
+      }
 
       const dataUrl = canvas.toDataURL('image/png');
       const now = new Date();
@@ -1094,10 +1160,16 @@
         }
       }
 
-      // Exibe tela de Sucesso / Recibo
+      // Oculta área de desenhar assinatura definitivamente (sem opção de assinar novamente)
       document.getElementById('signature-action-card').style.display = 'none';
-      document.getElementById('already-signed-card').style.display = 'none';
       
+      const alreadySignedCard = document.getElementById('already-signed-card');
+      if (alreadySignedCard) {
+        document.getElementById('already-signed-date').textContent = `Assinado digitalmente em: ${now.toLocaleString('pt-BR')}`;
+        alreadySignedCard.style.display = 'block';
+      }
+      
+      // Exibe tela de Sucesso / Recibo Criptográfico
       const successCard = document.getElementById('success-view-card');
       const [y, m] = targetMonthKey.split('-');
       document.getElementById('success-month-name').textContent = `${MONTH_NAMES[parseInt(m,10)-1] || m} de ${y}`;
