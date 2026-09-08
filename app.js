@@ -3656,9 +3656,12 @@ async function handleConfirmDigitalSignature() {
 
   // Sincronizar com Supabase se conectado
   if (window.supabaseService && window.supabaseService.isConfigured()) {
-    window.supabaseService.saveFullTimesheet(emp.id, currentSigTargetMonthKey, emp.days).catch(err => {
-      console.warn('Erro ao sincronizar assinatura com Supabase:', err);
-    });
+    try {
+      window.supabaseService.saveEmployeeSignature(emp.id, currentSigTargetMonthKey, signatureObj);
+      window.supabaseService.saveFullTimesheet(emp.id, currentSigTargetMonthKey, emp.days, emp.cpf || '');
+    } catch (e) {
+      console.warn('Erro ao sincronizar assinatura com Supabase:', e);
+    }
   }
 
   // Atualiza Hero e Tabela de visualização
@@ -3669,7 +3672,7 @@ async function handleConfirmDigitalSignature() {
   showToast(`🎉 Folha de Ponto de ${emp.name} assinada digitalmente com sucesso!`);
 }
 
-// Apaga a Assinatura Digital do Colaborador e Salva
+// Apaga a Assinatura Digital do Colaborador e Salva (Local + Supabase)
 async function handleDeleteDigitalSignature() {
   const emp = employeesDB.find(e => e.id === currentSigTargetEmpId);
   if (!emp) return;
@@ -3683,11 +3686,11 @@ async function handleDeleteDigitalSignature() {
     return;
   }
 
-  if (!confirm(`Deseja realmente apagar a assinatura digital de ${emp.name} referente a este período? A folha voltará ao status pendente.`)) {
+  if (!confirm(`Deseja realmente apagar a assinatura digital de ${emp.name} referente a este período? A folha voltará ao status pendente e será removida do sistema e do celular.`)) {
     return;
   }
 
-  // Remove assinatura do mês e legado
+  // Remove assinatura do mês e legado no objeto local
   if (emp.signatures && emp.signatures[monthKey]) {
     delete emp.signatures[monthKey];
   }
@@ -3696,11 +3699,14 @@ async function handleDeleteDigitalSignature() {
   // Salvar no LocalStorage
   saveEmployeesToLocalStorage();
 
-  // Sincronizar com Supabase se conectado
+  // Excluir e anular no Supabase imediatamente
   if (window.supabaseService && window.supabaseService.isConfigured()) {
-    window.supabaseService.saveFullTimesheet(emp.id, monthKey, emp.days).catch(err => {
-      console.warn('Erro ao sincronizar remoção de assinatura com Supabase:', err);
-    });
+    try {
+      await window.supabaseService.deleteEmployeeSignature(emp.id, monthKey, emp.cpf || '');
+      console.log(`🗑️ Assinatura de ${emp.name} excluída com sucesso do Supabase.`);
+    } catch (err) {
+      console.warn('Erro ao excluir assinatura no Supabase:', err);
+    }
   }
 
   // Atualiza Hero e Tabela

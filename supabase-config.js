@@ -442,6 +442,66 @@ async function saveEmployeeSignatureToSupabase(empId, monthKey, signatureObj) {
   }
 }
 
+// 5b. Excluir/Limpar Assinatura Digital do Funcionário no Supabase
+async function deleteEmployeeSignatureFromSupabase(empId, monthKey, cpf = '') {
+  const client = getSupabaseClient();
+  if (!client || !empId) return false;
+
+  try {
+    const cleanId = String(empId).trim();
+    const cleanCpf = cpf ? String(cpf).replace(/\D/g, '') : '';
+
+    const applyFilter = (q) => {
+      if (cleanId.length === 36 && cleanId.includes('-')) {
+        return q.eq('id', cleanId);
+      }
+      if (cleanCpf) {
+        return q.or(`id.eq.${cleanId},cpf.eq.${cpf},cpf.eq.${cleanCpf}`);
+      }
+      return q.or(`id.eq.${cleanId},cpf.eq.${cleanId}`);
+    };
+
+    // 1. Remove da tabela funcionarios (assinaturas / signatures)
+    try {
+      const { data: empRows } = await applyFilter(client.from('funcionarios').select('id, assinaturas, signatures'));
+      if (empRows && empRows.length > 0) {
+        for (const item of empRows) {
+          let sigs = item.assinaturas || item.signatures || {};
+          if (typeof sigs === 'string') {
+            try { sigs = JSON.parse(sigs); } catch (e) {}
+          }
+          if (sigs[monthKey]) {
+            delete sigs[monthKey];
+          }
+          await client.from('funcionarios').update({ assinaturas: sigs, signatures: sigs }).eq('id', item.id);
+        }
+      }
+    } catch (e) {
+      console.warn('Aviso ao limpar assinaturas em funcionarios:', e);
+    }
+
+    // 2. Remove/Nula na tabela folha_pontos
+    try {
+      let fpQuery = client.from('folha_pontos').update({ assinatura: null, updated_at: new Date().toISOString() }).eq('mes_ano', monthKey);
+      if (cleanId.length === 36 && cleanId.includes('-')) {
+        fpQuery = fpQuery.eq('funcionario_id', cleanId);
+      } else if (cleanCpf) {
+        fpQuery = fpQuery.or(`funcionario_id.eq.${cleanId},funcionario_id.eq.${cleanCpf}`);
+      } else {
+        fpQuery = fpQuery.eq('funcionario_id', cleanId);
+      }
+      await fpQuery;
+    } catch (e) {
+      console.warn('Aviso ao anular assinatura em folha_pontos:', e);
+    }
+
+    return true;
+  } catch (err) {
+    console.warn('Erro ao excluir assinatura do funcionário no Supabase:', err);
+    return false;
+  }
+}
+
 // 6. Excluir funcionário no Supabase (por ID ou CPF)
 async function excluirFuncionarioNoSupabase(idOrCpf) {
   const client = getSupabaseClient();
@@ -527,6 +587,7 @@ window.supabaseService = {
   saveFullTimesheet: saveFullTimesheetToSupabase,
   loadTimesheet: loadTimesheetFromSupabase,
   saveEmployeeSignature: saveEmployeeSignatureToSupabase,
+  deleteEmployeeSignature: deleteEmployeeSignatureFromSupabase,
   saveCompanySignature: saveCompanySignatureToSupabase,
   loadCompanySignature: loadCompanySignatureFromSupabase,
   deleteCompanySignature: deleteCompanySignatureFromSupabase,
