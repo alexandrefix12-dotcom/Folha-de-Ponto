@@ -906,8 +906,14 @@
         const s2 = dayData.s2 || dayData.exit2 || '';
         
         let status = dayData.status;
-        if (!status) {
-          status = (dateObj.getDay() === 0) ? 'dsr' : (isFuture ? 'aguardando' : 'presenca');
+        if (!status || status === 'empty' || status === 'none') {
+          if (dateObj.getDay() === 0) {
+            status = 'dsr';
+          } else if (BRAZIL_HOLIDAYS[holidayKey]) {
+            status = 'feriado';
+          } else {
+            status = isFuture ? 'aguardando' : '';
+          }
         }
 
         const hasCustomHours = Boolean((e1 && s1) || (e2 && s2) || (e1 && s2));
@@ -932,8 +938,10 @@
 
         // Label estilizado da Situação do Dia
         let sitLabel = '';
-        if (isFuture && !hasCustomHours && status !== 'ferias' && status !== 'feriado' && status !== 'dsr' && status !== 'atestado' && status !== 'justificada' && status !== 'meio_periodo' && status !== 'falta') {
+        if (status === 'aguardando' || (isFuture && !status)) {
           sitLabel = '<span style="background: #F8FAFC; color: #94A3B8; border: 1px dashed #CBD5E1; padding: 4px 12px; border-radius: 6px; font-weight: 600; font-size: 0.76rem; display: inline-block;">⏳ Aguardando data</span>';
+        } else if (!status) {
+          sitLabel = '<span style="background: #F8FAFC; color: #64748B; border: 1px dashed #CBD5E1; padding: 4px 12px; border-radius: 6px; font-weight: 600; font-size: 0.76rem; display: inline-block;">⚪ Não preenchido</span>';
         } else if (status === 'meio_periodo') {
           sitLabel = '<span style="background: #FEF3C7; color: #B45309; border: 1px solid #FDE68A; padding: 4px 12px; border-radius: 6px; font-weight: 700; font-size: 0.78rem; display: inline-block;">🟡 Meio Período (-4h)</span>';
         } else if (status === 'falta') {

@@ -58,6 +58,8 @@ function generateMonthData(year, month, empId = '') {
     const curDateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
     const isDayInVacation = targetEmp && targetEmp.vacationStart && targetEmp.vacationEnd && (curDateStr >= targetEmp.vacationStart && curDateStr <= targetEmp.vacationEnd);
+    const isHoliday = Boolean(BRAZIL_HOLIDAYS[holidayKey]);
+    const isSunday = (dowIndex === 0);
 
     if (isDayInVacation || (isFerias && (!targetEmp || !targetEmp.vacationStart))) {
       list.push({
@@ -86,13 +88,31 @@ function generateMonthData(year, month, empId = '') {
         just: 'Colaborador Desligado / Demitido',
         signed: false
       });
-    } else {
-      // Padrão: Presença para todos os dias
+    } else if (isHoliday) {
       list.push({
         day, dow,
         e1: '', s1: '', e2: '', s2: '',
-        status: 'presenca',
-        statusLabel: 'Presença',
+        status: 'feriado',
+        statusLabel: 'Feriado',
+        just: BRAZIL_HOLIDAYS[holidayKey],
+        signed: true
+      });
+    } else if (isSunday) {
+      list.push({
+        day, dow,
+        e1: '', s1: '', e2: '', s2: '',
+        status: 'dsr',
+        statusLabel: 'D.S.R.',
+        just: 'Descanso Semanal Remunerado',
+        signed: true
+      });
+    } else {
+      // Padrão: sem nada selecionado (manual) para o usuário definir se teve presença
+      list.push({
+        day, dow,
+        e1: '', s1: '', e2: '', s2: '',
+        status: '',
+        statusLabel: 'Selecionar...',
         just: '',
         signed: false
       });
@@ -215,6 +235,14 @@ async function initApp() {
       if (!emp.timesheets) emp.timesheets = {};
       if (!emp.timesheets[monthKey]) {
         emp.timesheets[monthKey] = generateCurrentMonthData(currentYear, currentMonth, emp.id);
+      } else if (Array.isArray(emp.timesheets[monthKey])) {
+        // Normaliza dias antigos que ficaram como 'presenca' mas sem horários digitados
+        emp.timesheets[monthKey].forEach(d => {
+          if (d.status === 'presenca' && !d.e1 && !d.s1 && !d.e2 && !d.s2) {
+            d.status = '';
+            d.statusLabel = 'Selecionar...';
+          }
+        });
       }
       emp.days = emp.timesheets[monthKey];
       employeesDB.push(emp);
@@ -1380,8 +1408,9 @@ function renderTimesheetTable() {
       </td>
       <td style="text-align: center;">
         <div class="status-cell-wrapper">
-          <select class="status-select ${item.status || 'presenca'}" data-index="${index}" onchange="changeDayStatus(${index}, this.value)" title="Situação do Dia">
-            <option value="presenca" ${(item.status === 'presenca' || !item.status) ? 'selected' : ''}>🟢 Presença</option>
+          <select class="status-select ${item.status || 'empty'}" data-index="${index}" onchange="changeDayStatus(${index}, this.value)" title="Situação do Dia">
+            <option value="" ${(!item.status || item.status === 'empty' || item.status === 'none') ? 'selected' : ''}>⚪ Selecionar...</option>
+            <option value="presenca" ${item.status === 'presenca' ? 'selected' : ''}>🟢 Presença</option>
             <option value="meio_periodo" ${item.status === 'meio_periodo' ? 'selected' : ''}>🟡 Meio Período (-4h)</option>
             <option value="falta" ${item.status === 'falta' ? 'selected' : ''}>🔴 Faltou</option>
             <option value="atestado" ${(item.status === 'atestado' || item.status === 'afastado') ? 'selected' : ''}>🟠 Afastado (INSS)</option>
@@ -1929,6 +1958,17 @@ function changeDayStatus(index, newStatus) {
     item.e2 = '14:00';
     item.s2 = '18:00';
     item.signed = true;
+  } else if (!newStatus || newStatus === 'empty') {
+    item.e1 = '';
+    item.s1 = '';
+    item.e2 = '';
+    item.s2 = '';
+    item.signed = false;
+    item.just = '';
+    item.attachmentData = null;
+    item.attachmentType = null;
+    item.attachmentName = null;
+    item.attachmentSize = null;
   } else if (newStatus === 'presenca') {
     if (!item.e1 || item.e1 === '--:--') item.e1 = '08:00';
     if (!item.s1 || item.s1 === '--:--') item.s1 = '12:00';

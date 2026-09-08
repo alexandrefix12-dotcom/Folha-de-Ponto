@@ -1223,6 +1223,20 @@ body {
   text-align: left;
 }
 
+.status-select.empty,
+.status-select:not(.presenca):not(.meio_periodo):not(.falta):not(.atestado):not(.demitido):not(.justificada):not(.ferias):not(.dsr):not(.feriado) {
+  background-color: #F8FAFC;
+  color: #64748B;
+  border: 1.5px dashed #CBD5E1;
+}
+
+.status-select.empty:hover,
+.status-select:not(.presenca):not(.meio_periodo):not(.falta):not(.atestado):not(.demitido):not(.justificada):not(.ferias):not(.dsr):not(.feriado):hover {
+  background-color: #F1F5F9;
+  border-color: #94A3B8;
+  color: #334155;
+}
+
 .status-select.presenca {
   background-color: #ECFDF5;
   color: #065F46;
