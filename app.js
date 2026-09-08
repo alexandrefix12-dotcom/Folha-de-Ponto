@@ -208,6 +208,18 @@ async function initApp() {
             mergedTimesheets[monthKey] = generateCurrentMonthData(currentYear, currentMonth, remoteEmp.id);
           }
 
+          // Preserva com prioridade o status de Férias/Afastado/Demitido caso configurado
+          let finalStatus = 'ativo';
+          if (remoteEmp.statusCategory && remoteEmp.statusCategory !== 'ativo') {
+            finalStatus = remoteEmp.statusCategory;
+          } else if (localMatch && localMatch.statusCategory && localMatch.statusCategory !== 'ativo') {
+            finalStatus = localMatch.statusCategory;
+          } else {
+            finalStatus = remoteEmp.statusCategory || (localMatch && localMatch.statusCategory) || 'ativo';
+          }
+
+          const pillInfo = getStatusPillInfo(finalStatus);
+
           employeesDB.push({
             ...remoteEmp,
             ...(localMatch || {}),
@@ -218,7 +230,11 @@ async function initApp() {
             whatsapp: (localMatch && localMatch.whatsapp) || remoteEmp.whatsapp || '',
             matricula: remoteEmp.matricula || (localMatch && localMatch.matricula) || '',
             admission: remoteEmp.admission || (localMatch && localMatch.admission) || '01/01/2024',
-            statusCategory: remoteEmp.statusCategory || (localMatch && localMatch.statusCategory) || 'ativo',
+            statusCategory: finalStatus,
+            statusTag: pillInfo.tagLabel,
+            statusTagClass: pillInfo.tagClass,
+            statusPillLabel: pillInfo.label,
+            statusPillClass: pillInfo.pillClass,
             signatures: (localMatch && localMatch.signatures) || remoteEmp.signatures || {},
             timesheets: mergedTimesheets,
             days: mergedTimesheets[monthKey]
@@ -237,8 +253,15 @@ async function initApp() {
   populateQuickEmployeeSelect();
   renderEmployeesAdminTable();
   updateSidebarBadges();
+  
   const firstId = employeesDB[0]?.id || '';
   selectEmployee(firstId, false);
+
+  // Restaura a visualização anterior (Férias ou Afastados) se estava aberta antes do F5
+  const savedViewMode = localStorage.getItem('lane_last_admin_view_mode');
+  if (savedViewMode && (savedViewMode === 'ferias' || savedViewMode === 'afastados')) {
+    showEmployeesView(savedViewMode);
+  }
 
   // Verifica se a URL foi acessada via link de assinatura do WhatsApp (#assinar)
   checkUrlHashForSignature();
@@ -2046,6 +2069,7 @@ function updateAfastadosBadgeCounter(hasNewNotification = false) {
 // Switch between Active Employees, Férias, and Afastados/Desligados view
 function showEmployeesView(viewMode) {
   switchScreen('screen-admin');
+  localStorage.setItem('lane_last_admin_view_mode', viewMode || 'ativos');
   
   const navEmployees = document.getElementById('nav-link-employees');
   const navFerias = document.getElementById('nav-link-ferias');

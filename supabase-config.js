@@ -185,36 +185,38 @@ async function loadEmployeeByIdFromSupabase(idOrCpf) {
   }
 }
 
-// 2. Inserir novo funcionário na tabela do Supabase (nome, cargo, cpf, telefone/whatsapp)
-async function cadastrarFuncionarioNoSupabase(nome, cargo, cpf, whatsapp = '', situacao = 'ativo') {
+// 2. Inserir novo funcionário na tabela do Supabase (nome, cargo, cpf, telefone/whatsapp, situacao, dept)
+async function cadastrarFuncionarioNoSupabase(nome, cargo, cpf, whatsapp = '', situacao = 'ativo', dept = 'Operacional') {
   const client = getSupabaseClient();
   if (!client) return null;
 
   try {
-    const r1 = await client
-      .from('funcionarios')
-      .insert([{ nome, cargo, cpf, telefone: whatsapp, situacao }])
-      .select();
-    if (!r1.error && r1.data && r1.data.length > 0) return r1.data;
+    const attempts = [
+      { nome, cargo, cpf, situacao, status_category: situacao, departamento: dept, telefone: whatsapp, whatsapp: whatsapp },
+      { nome, cargo, cpf, situacao, status_category: situacao, departamento: dept, whatsapp: whatsapp },
+      { nome, cargo, cpf, situacao, telefone: whatsapp },
+      { nome, cargo, cpf, situacao, whatsapp: whatsapp },
+      { nome, cargo, cpf, situacao },
+      { nome, cargo, cpf, status_category: situacao },
+      { nome, cargo, cpf, telefone: whatsapp },
+      { nome, cargo, cpf, whatsapp: whatsapp },
+      { nome, cargo, cpf }
+    ];
 
-    const r2 = await client
-      .from('funcionarios')
-      .insert([{ nome, cargo, cpf, whatsapp: whatsapp }])
-      .select();
-    if (!r2.error && r2.data && r2.data.length > 0) return r2.data;
-
-    const fallback = await client
-      .from('funcionarios')
-      .insert([{ nome, cargo, cpf }])
-      .select();
-    return fallback.data;
+    for (const payload of attempts) {
+      try {
+        const res = await client.from('funcionarios').insert([payload]).select();
+        if (!res.error && res.data && res.data.length > 0) return res.data;
+      } catch (e) {}
+    }
+    return null;
   } catch (err) {
     console.error('Exceção ao cadastrar funcionário:', err);
     return null;
   }
 }
 
-// 3. Atualizar funcionário existente no Supabase (nome, cargo, cpf, telefone/whatsapp, situacao)
+// 3. Atualizar funcionário existente no Supabase (nome, cargo, cpf, telefone/whatsapp, situacao, dept)
 async function atualizarFuncionarioNoSupabase(idOrCpf, updates) {
   const client = getSupabaseClient();
   if (!client) return null;
@@ -225,6 +227,9 @@ async function atualizarFuncionarioNoSupabase(idOrCpf, updates) {
     const cpfVal = updates.cpf;
     const whatsVal = updates.whatsapp || updates.telefone || '';
     const situacaoVal = updates.statusCategory || updates.situacao || 'ativo';
+    const deptVal = updates.dept || updates.departamento || '';
+    const matVal = updates.matricula || '';
+    const admVal = updates.admission || updates.admissao || '';
 
     const applyFilter = (q) => {
       if (typeof idOrCpf === 'string' && idOrCpf.length === 36 && idOrCpf.includes('-')) {
@@ -236,17 +241,25 @@ async function atualizarFuncionarioNoSupabase(idOrCpf, updates) {
       }
     };
 
-    const p1 = { nome: nomeVal, cargo: cargoVal, cpf: cpfVal, telefone: whatsVal, situacao: situacaoVal };
-    const res1 = await applyFilter(client.from('funcionarios').update(p1)).select();
-    if (!res1.error && res1.data && res1.data.length > 0) return res1.data;
+    const attempts = [
+      { nome: nomeVal, cargo: cargoVal, cpf: cpfVal, situacao: situacaoVal, status_category: situacaoVal, departamento: deptVal, matricula: matVal, admissao: admVal, telefone: whatsVal, whatsapp: whatsVal },
+      { nome: nomeVal, cargo: cargoVal, cpf: cpfVal, situacao: situacaoVal, status_category: situacaoVal, departamento: deptVal, whatsapp: whatsVal },
+      { nome: nomeVal, cargo: cargoVal, cpf: cpfVal, situacao: situacaoVal, telefone: whatsVal },
+      { nome: nomeVal, cargo: cargoVal, cpf: cpfVal, situacao: situacaoVal, whatsapp: whatsVal },
+      { nome: nomeVal, cargo: cargoVal, cpf: cpfVal, situacao: situacaoVal },
+      { nome: nomeVal, cargo: cargoVal, cpf: cpfVal, status_category: situacaoVal },
+      { nome: nomeVal, cargo: cargoVal, cpf: cpfVal, telefone: whatsVal },
+      { nome: nomeVal, cargo: cargoVal, cpf: cpfVal, whatsapp: whatsVal },
+      { nome: nomeVal, cargo: cargoVal, cpf: cpfVal }
+    ];
 
-    const p2 = { nome: nomeVal, cargo: cargoVal, cpf: cpfVal, whatsapp: whatsVal };
-    const res2 = await applyFilter(client.from('funcionarios').update(p2)).select();
-    if (!res2.error && res2.data && res2.data.length > 0) return res2.data;
-
-    const p3 = { nome: nomeVal, cargo: cargoVal, cpf: cpfVal };
-    const res3 = await applyFilter(client.from('funcionarios').update(p3)).select();
-    return res3.data;
+    for (const payload of attempts) {
+      try {
+        const res = await applyFilter(client.from('funcionarios').update(payload)).select();
+        if (!res.error && res.data && res.data.length > 0) return res.data;
+      } catch (e) {}
+    }
+    return null;
   } catch (err) {
     console.warn('Exceção ao atualizar no Supabase:', err);
     return null;
