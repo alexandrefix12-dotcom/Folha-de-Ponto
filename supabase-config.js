@@ -395,42 +395,47 @@ async function saveEmployeeSignatureToSupabase(empId, monthKey, signatureObj, cp
   try {
     const cleanId = String(empId).trim();
     const cleanCpf = cpf ? String(cpf).replace(/\D/g, '') : cleanId.replace(/\D/g, '');
+    const padMonthKey = monthKey.replace(/-(\d)$/, '-0$1');
+    const altMonthKey = monthKey.replace(/-0(\d)$/, '-$1');
 
-    const applyFilter = (q) => {
-      if (isUUID(cleanId)) {
-        return q.eq('id', cleanId);
+    let query = client.from('funcionarios').select('id, nome, cpf, assinaturas, signatures');
+    if (isUUID(cleanId)) {
+      query = query.eq('id', cleanId);
+    } else if (cleanCpf && cleanCpf.length === 11) {
+      if (cpf && cpf !== cleanCpf) {
+        query = query.or(`cpf.eq.${cpf},cpf.eq.${cleanCpf}`);
+      } else {
+        query = query.eq('cpf', cleanCpf);
       }
-      if (cleanCpf && cleanCpf.length === 11) {
-        return q.or(`cpf.eq.${cpf},cpf.eq.${cleanCpf}`);
-      }
-      if (name) {
-        return q.ilike('nome', `%${name}%`);
-      }
-      return q.eq('cpf', cleanId);
-    };
+    } else if (name) {
+      query = query.ilike('nome', `%${name.trim()}%`);
+    } else {
+      query = query.ilike('nome', `%${cleanId.replace(/-/g, ' ')}%`);
+    }
 
-    let currentSignatures = {};
-    try {
-      const { data: empRows } = await applyFilter(client.from('funcionarios').select('*'));
-      if (empRows && empRows.length > 0) {
-        const item = empRows[0];
+    const { data: empRows } = await query;
+    if (empRows && empRows.length > 0) {
+      for (const item of empRows) {
+        let currentSignatures = {};
         const raw = item.assinaturas || item.signatures;
         if (raw) {
           currentSignatures = typeof raw === 'string' ? JSON.parse(raw) : { ...raw };
         }
+        currentSignatures[padMonthKey] = signatureObj;
+        currentSignatures[altMonthKey] = signatureObj;
         currentSignatures[monthKey] = signatureObj;
         await client.from('funcionarios').update({ 
           assinaturas: currentSignatures, 
           signatures: currentSignatures 
         }).eq('id', item.id);
       }
-    } catch (e) {}
+    }
 
     // Salva também na tabela folha_pontos se existir
     try {
       await client.from('folha_pontos').upsert({
         funcionario_id: cleanId,
-        mes_ano: monthKey,
+        mes_ano: padMonthKey,
         assinatura: signatureObj,
         updated_at: new Date().toISOString()
       }, { onConflict: 'funcionario_id,mes_ano' });
@@ -451,55 +456,76 @@ async function deleteEmployeeSignatureFromSupabase(empId, monthKey, cpf = '', na
   try {
     const cleanId = String(empId).trim();
     const cleanCpf = cpf ? String(cpf).replace(/\D/g, '') : cleanId.replace(/\D/g, '');
+    const altMonthKey = monthKey.replace(/-0(\d)$/, '-$1');
+    const padMonthKey = monthKey.replace(/-(\d)$/, '-0$1');
 
-    const applyFilter = (q) => {
-      if (isUUID(cleanId)) {
-        return q.eq('id', cleanId);
+    // 1. Localiza o funcionário na tabela funcionarios
+    let query = client.from('funcionarios').select('id, nome, cpf, assinaturas, signatures');
+    if (isUUID(cleanId)) {
+      query = query.eq('id', cleanId);
+    } else if (cleanCpf && cleanCpf.length === 11) {
+      if (cpf && cpf !== cleanCpf) {
+        query = query.or(`cpf.eq.${cpf},cpf.eq.${cleanCpf}`);
+      } else {
+        query = query.eq('cpf', cleanCpf);
       }
-      if (cleanCpf && cleanCpf.length === 11) {
-        return q.or(`cpf.eq.${cpf},cpf.eq.${cleanCpf}`);
-      }
-      if (name) {
-        return q.ilike('nome', `%${name}%`);
-      }
-      return q.eq('cpf', cleanId);
-    };
+    } else if (name) {
+      query = query.ilike('nome', `%${name.trim()}%`);
+    } else {
+      query = query.ilike('nome', `%${cleanId.replace(/-/g, ' ')}%`);
+    }
 
-    // 1. Remove da tabela funcionarios (coluna assinaturas e signatures)
-    try {
-      const { data: empRows } = await applyFilter(client.from('funcionarios').select('id, assinaturas, signatures'));
-      if (empRows && empRows.length > 0) {
-        for (const item of empRows) {
-          let sigs = item.assinaturas || item.signatures || {};
-          if (typeof sigs === 'string') {
-            try { sigs = JSON.parse(sigs); } catch (e) {}
-          }
-          if (sigs && typeof sigs === 'object') {
-            delete sigs[monthKey];
-          }
-          await client.from('funcionarios').update({ 
-            assinaturas: sigs, 
-            signatures: sigs 
-          }).eq('id', item.id);
+    const { data: empRows, error: empErr } = await query;
+    if (!empErr && empRows && empRows.length > 0) {
+      for (const item of empRows) {
+        let sigs = item.assinaturas || item.signatures || {};
+        if (typeof sigs === 'string') {
+          try { sigs = JSON.parse(sigs); } catch (e) {}
         }
+        if (sigs && typeof sigs === 'object') {
+          delete sigs[monthKey];
+          delete sigs[altMonthKey];
+          delete sigs[padMonthKey];
+          Object.keys(sigs).forEach(k => {
+            if (k === monthKey || k === altMonthKey || k === padMonthKey || k.startsWith(padMonthKey)) {
+              delete sigs[k];
+            }
+          });
+        } else {
+          sigs = {};
+        }
+
+        await client.from('funcionarios').update({ 
+          assinaturas: sigs, 
+          signatures: sigs,
+          digital_signature: null,
+          digitalSignature: null
+        }).eq('id', item.id);
       }
-    } catch (e) {
-      console.warn('Aviso ao limpar assinaturas em funcionarios:', e);
     }
 
     // 2. Remove/Nula na tabela folha_pontos
     try {
-      const targets = [cleanId];
-      if (cleanCpf && cleanCpf.length === 11) targets.push(cleanCpf);
-      if (cpf && !targets.includes(cpf)) targets.push(cpf);
+      const targetIds = [cleanId];
+      if (cleanCpf && cleanCpf.length === 11) {
+        targetIds.push(cleanCpf);
+        if (cpf && !targetIds.includes(cpf)) targetIds.push(cpf);
+      }
+      if (empRows && empRows.length > 0) {
+        empRows.forEach(r => {
+          if (r.id && !targetIds.includes(String(r.id))) targetIds.push(String(r.id));
+        });
+      }
 
-      for (const tId of targets) {
-        try {
+      const targetMonths = [monthKey, altMonthKey, padMonthKey].filter((v, i, a) => a.indexOf(v) === i);
+
+      for (const tId of targetIds) {
+        for (const mKey of targetMonths) {
           await client.from('folha_pontos')
             .update({ assinatura: null, updated_at: new Date().toISOString() })
             .eq('funcionario_id', tId)
-            .eq('mes_ano', monthKey);
-        } catch (e) {}
+            .eq('mes_ano', mKey);
+        }
       }
     } catch (e) {
       console.warn('Aviso ao anular assinatura em folha_pontos:', e);

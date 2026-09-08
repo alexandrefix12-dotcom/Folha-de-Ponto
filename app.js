@@ -255,7 +255,7 @@ async function initApp() {
             statusTagClass: pillInfo.tagClass,
             statusPillLabel: pillInfo.label,
             statusPillClass: pillInfo.pillClass,
-            signatures: (remoteEmp && remoteEmp.signatures) ? remoteEmp.signatures : ((localMatch && localMatch.signatures) ? localMatch.signatures : {}),
+            signatures: (remoteEmp && remoteEmp.signatures !== undefined) ? remoteEmp.signatures : ((localMatch && localMatch.signatures) ? localMatch.signatures : {}),
             digitalSignature: null,
             timesheets: mergedTimesheets,
             days: mergedTimesheets[monthKey]
@@ -328,29 +328,37 @@ async function syncWithSupabaseRealtime() {
     const remoteEmployees = await window.supabaseService.loadEmployees();
     if (!Array.isArray(remoteEmployees) || remoteEmployees.length === 0) return;
 
-    const monthKey = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
+    const padMonthKey = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
+    const altMonthKey = `${currentYear}-${parseInt(currentMonth, 10)}`;
     let newlySignedNames = [];
+    let stateChanged = false;
 
     remoteEmployees.forEach(remote => {
       const target = employeesDB.find(e => e.id === remote.id || (e.cpf && remote.cpf && e.cpf.replace(/\D/g, '') === remote.cpf.replace(/\D/g, '')));
       if (target) {
-        const wasSigned = Boolean((target.signatures && target.signatures[monthKey]) || target.digitalSignature);
-        const nowSigned = Boolean((remote.signatures && remote.signatures[monthKey]) || remote.digitalSignature);
+        const wasSigned = Boolean(target.signatures && (target.signatures[padMonthKey] || target.signatures[altMonthKey]));
+        const nowSigned = Boolean(remote.signatures && (remote.signatures[padMonthKey] || remote.signatures[altMonthKey]));
 
         if (!wasSigned && nowSigned) {
           newlySignedNames.push(remote.name);
         }
 
-        target.signatures = remote.signatures || target.signatures || {};
-        target.digitalSignature = remote.digitalSignature || target.digitalSignature || null;
-        if (remote.timesheets && remote.timesheets[monthKey]) {
+        if (JSON.stringify(target.signatures || {}) !== JSON.stringify(remote.signatures || {})) {
+          target.signatures = remote.signatures || {};
+          stateChanged = true;
+        }
+
+        target.digitalSignature = null;
+        if (remote.timesheets && (remote.timesheets[padMonthKey] || remote.timesheets[altMonthKey])) {
           target.timesheets = { ...(target.timesheets || {}), ...remote.timesheets };
-          target.days = target.timesheets[monthKey];
+          if (target.id === currentEmployeeId) {
+            target.days = target.timesheets[padMonthKey] || target.timesheets[altMonthKey] || target.days;
+          }
         }
       }
     });
 
-    if (newlySignedNames.length > 0) {
+    if (newlySignedNames.length > 0 || stateChanged) {
       saveEmployeesToLocalStorage();
       const currentEmp = getCurrentEmployee();
       if (currentEmp) {
@@ -359,7 +367,9 @@ async function syncWithSupabaseRealtime() {
         renderEmployeesAdminTable();
         updateSidebarBadges();
       }
-      showToast(`✍️ Nova assinatura confirmada: ${newlySignedNames.join(', ')}!`);
+      if (newlySignedNames.length > 0) {
+        showToast(`✍️ Nova assinatura confirmada: ${newlySignedNames.join(', ')}!`);
+      }
     }
   } catch (err) {
     console.warn('Erro ao verificar novas assinaturas no Supabase:', err);
@@ -3278,8 +3288,9 @@ function updateHeroSignatureBadge(emp) {
     return;
   }
 
-  const monthKey = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
-  const sig = emp.signatures && emp.signatures[monthKey];
+  const padMonthKey = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
+  const altMonthKey = `${currentYear}-${parseInt(currentMonth, 10)}`;
+  const sig = emp.signatures && (emp.signatures[padMonthKey] || emp.signatures[altMonthKey]);
 
   if (sig && (sig.image || typeof sig === 'string')) {
     badgeEl.style.display = 'inline-flex';
@@ -3289,7 +3300,7 @@ function updateHeroSignatureBadge(emp) {
     badgeEl.style.cursor = 'pointer';
     badgeEl.title = `Assinado digitalmente em ${sig.signedAt || sig.dateOnly || 'Data registrada'}. Clique para gerenciar ou apagar.`;
     badgeEl.innerHTML = `✅ Assinada em ${sig.dateOnly || sig.signedAt?.split(' ')[0] || 'OK'}`;
-    badgeEl.onclick = () => openDigitalSignatureModal(emp.id, monthKey);
+    badgeEl.onclick = () => openDigitalSignatureModal(emp.id, padMonthKey);
   } else {
     badgeEl.style.display = 'inline-flex';
     badgeEl.style.background = '#FEF3C7';
@@ -3678,7 +3689,10 @@ async function handleDeleteDigitalSignature() {
   if (!emp) return;
 
   const monthKey = currentSigTargetMonthKey || `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
-  const existingSig = (emp.signatures && emp.signatures[monthKey]) || emp.digitalSignature;
+  const altMonthKey = `${currentYear}-${parseInt(currentMonth, 10)}`;
+  const padMonthKey = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
+
+  const existingSig = (emp.signatures && (emp.signatures[monthKey] || emp.signatures[altMonthKey] || emp.signatures[padMonthKey])) || emp.digitalSignature;
 
   if (!existingSig && !sigHasDrawn) {
     clearSignatureCanvas();
@@ -3693,6 +3707,13 @@ async function handleDeleteDigitalSignature() {
   // 1. Remove assinatura do mês e legado no objeto local
   if (emp.signatures) {
     delete emp.signatures[monthKey];
+    delete emp.signatures[altMonthKey];
+    delete emp.signatures[padMonthKey];
+    Object.keys(emp.signatures).forEach(k => {
+      if (k === monthKey || k === altMonthKey || k === padMonthKey || k.startsWith(padMonthKey)) {
+        delete emp.signatures[k];
+      }
+    });
   }
   delete emp.digitalSignature;
   emp.digitalSignature = null;
@@ -3700,11 +3721,13 @@ async function handleDeleteDigitalSignature() {
   // 2. Desmarca status de assinado nos dias do mês
   if (emp.days && Array.isArray(emp.days)) {
     emp.days.forEach(d => {
-      d.signed = false;
+      if (d) d.signed = false;
     });
   }
-  if (emp.timesheets && emp.timesheets[monthKey]) {
-    emp.timesheets[monthKey] = JSON.parse(JSON.stringify(emp.days));
+  if (emp.timesheets) {
+    if (emp.timesheets[monthKey]) emp.timesheets[monthKey].forEach(d => { if (d) d.signed = false; });
+    if (emp.timesheets[altMonthKey]) emp.timesheets[altMonthKey].forEach(d => { if (d) d.signed = false; });
+    if (emp.timesheets[padMonthKey]) emp.timesheets[padMonthKey].forEach(d => { if (d) d.signed = false; });
   }
 
   // 3. Salvar no LocalStorage
@@ -3713,7 +3736,7 @@ async function handleDeleteDigitalSignature() {
   // 4. Excluir e anular no Supabase imediatamente
   if (window.supabaseService && window.supabaseService.isConfigured()) {
     try {
-      await window.supabaseService.deleteEmployeeSignature(emp.id, monthKey, emp.cpf || '');
+      await window.supabaseService.deleteEmployeeSignature(emp.id, monthKey, emp.cpf || '', emp.name || '');
       await window.supabaseService.saveFullTimesheet(emp.id, monthKey, emp.days, emp.cpf || '');
       console.log(`🗑️ Assinatura de ${emp.name} excluída com sucesso do Supabase.`);
     } catch (err) {
@@ -3726,6 +3749,7 @@ async function handleDeleteDigitalSignature() {
   updateHeroSignatureBadge(emp);
   renderTimesheetTable();
   renderEmployeesAdminTable();
+  updateSidebarBadges();
 
   closeDigitalSignatureModal();
   showToast(`🗑️ Assinatura de ${emp.name} apagada com sucesso! Status alterado para "Assinatura Pendente".`);
