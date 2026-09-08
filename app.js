@@ -255,6 +255,17 @@ async function initApp() {
             d.status = '';
             d.statusLabel = 'Selecionar...';
           }
+          // Domingo é folga semanal (DSR)
+          if (d.dow === 'Domingo') {
+            d.e1 = '';
+            d.s1 = '';
+            d.e2 = '';
+            d.s2 = '';
+            d.status = 'dsr';
+            d.statusLabel = 'D.S.R.';
+            d.just = 'Descanso Semanal Remunerado (Folga)';
+            d.signed = true;
+          }
           // Sábado é apenas meio período (08:00 às 12:00 = 4h jornada padrão, 0h extras)
           if (d.dow === 'Sábado' && (d.s2 === '18:00' || d.status === 'presenca' || !d.status)) {
             d.e1 = '08:00';
