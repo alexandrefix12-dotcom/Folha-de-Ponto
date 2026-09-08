@@ -103,7 +103,7 @@ function generateMonthData(year, month, empId = '') {
         e1: '', s1: '', e2: '', s2: '',
         status: 'dsr',
         statusLabel: 'D.S.R.',
-        just: 'Descanso Semanal Remunerado',
+        just: '',
         signed: true
       });
     } else if (isSaturday) {
@@ -263,7 +263,9 @@ async function initApp() {
             d.s2 = '';
             d.status = 'dsr';
             d.statusLabel = 'D.S.R.';
-            d.just = 'Descanso Semanal Remunerado (Folga)';
+            d.just = '';
+            d.attachmentData = null;
+            d.attachmentType = null;
             d.signed = true;
           }
           // Sábado é apenas meio período (08:00 às 12:00 = 4h jornada padrão, 0h extras)
@@ -1444,7 +1446,7 @@ function renderTimesheetTable() {
             <option value="dsr" ${item.status === 'dsr' ? 'selected' : ''}>🟣 DSR / Folga</option>
             <option value="feriado" ${item.status === 'feriado' ? 'selected' : ''}>🔵 Feriado</option>
           </select>
-          ${ (item.status === 'atestado' || item.status === 'afastado' || item.status === 'demitido' || item.status === 'desligado' || item.status === 'justificada' || item.just || item.attachmentData) ? `
+          ${ (item.status === 'atestado' || item.status === 'afastado' || item.status === 'demitido' || item.status === 'desligado' || item.status === 'justificada') ? `
             <button type="button" class="btn-just-chip ${item.attachmentData ? 'has-attachment' : (item.just ? 'has-text' : '')}" onclick="openJustificationModal(${index})" title="${item.just || 'Adicionar ou visualizar observação e comprovante'}">
               ${ item.attachmentData 
                  ? (item.attachmentType && item.attachmentType.includes('pdf') ? '📄 PDF Anexado' : '📷 Foto Anexada')
@@ -1976,6 +1978,11 @@ function changeDayStatus(index, newStatus) {
   } else if (newStatus === 'dsr' || newStatus === 'feriado') {
     item.e1 = ''; item.s1 = ''; item.e2 = ''; item.s2 = '';
     item.signed = true;
+    item.just = '';
+    item.attachmentData = null;
+    item.attachmentType = null;
+    item.attachmentName = null;
+    item.attachmentSize = null;
   } else if (newStatus === 'meio_periodo') {
     item.e1 = '08:00';
     item.s1 = '12:00';
