@@ -704,31 +704,36 @@
 
   <!-- Modal Seletor de Período (Mês e Ano) -->
   <div id="modal-period-picker" class="modal-backdrop" style="display: none;">
-    <div class="modal-dialog" style="max-width: 420px;">
+    <div class="modal-dialog" style="max-width: 480px;">
       <div class="modal-header">
         <div style="display: flex; align-items: center; gap: 10px;">
           <div style="width: 38px; height: 38px; border-radius: 8px; background: #ECFDF5; border: 1px solid #A7F3D0; color: #065F46; display: flex; align-items: center; justify-content: center; font-size: 1.25rem;">
             📅
           </div>
           <div>
-            <h3 style="margin: 0; font-size: 1.1rem;">Selecionar Período de Apuração</h3>
-            <p style="margin: 2px 0 0 0; font-size: 0.8rem; color: #64748B;">Navegue diretamente para qualquer mês e ano</p>
+            <h3 style="margin: 0; font-size: 1.1rem;">Histórico & Período de Apuração</h3>
+            <p style="margin: 2px 0 0 0; font-size: 0.8rem; color: #64748B;">Navegue pelo histórico de qualquer mês e ano</p>
           </div>
         </div>
         <button class="modal-close-btn" onclick="closePeriodModal()" title="Fechar">✕</button>
       </div>
 
-      <div class="modal-body" style="padding: 20px; display: flex; flex-direction: column; gap: 16px;">
+      <div class="modal-body" style="padding: 18px 22px; display: flex; flex-direction: column; gap: 14px;">
         <!-- Year Switcher Row -->
-        <div style="display: flex; align-items: center; justify-content: space-between; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 8px 14px;">
+        <div style="display: flex; align-items: center; justify-content: space-between; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 6px 14px;">
           <button type="button" class="btn-month-nav" onclick="changePickerYear(-1)" title="Ano Anterior">◀</button>
           <span id="picker-year-display" style="font-family: var(--font-display); font-size: 1.2rem; font-weight: 800; color: #0F172A;">2026</span>
           <button type="button" class="btn-month-nav" onclick="changePickerYear(1)" title="Próximo Ano">▶</button>
         </div>
 
-        <!-- 12 Months Grid -->
-        <div class="months-grid" id="months-picker-grid">
-          <!-- Populated dynamically with 12 months buttons -->
+        <!-- Quick Year Chips -->
+        <div class="years-quick-bar" id="years-quick-bar">
+          <!-- Populated dynamically with year buttons -->
+        </div>
+
+        <!-- 12 Months Grid with Status Badges -->
+        <div class="months-picker-grid" id="months-picker-grid">
+          <!-- Populated dynamically with 12 months buttons and history status -->
         </div>
       </div>
 

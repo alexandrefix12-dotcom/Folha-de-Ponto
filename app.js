@@ -900,16 +900,72 @@ function renderPeriodModal() {
   const yearDisplay = document.getElementById('picker-year-display');
   if (yearDisplay) yearDisplay.textContent = pickerYear;
 
+  // Render Quick Year Chips
+  const yearsBar = document.getElementById('years-quick-bar');
+  if (yearsBar) {
+    yearsBar.innerHTML = '';
+    const nowYear = new Date().getFullYear();
+    const availableYears = [nowYear - 2, nowYear - 1, nowYear, nowYear + 1];
+    if (!availableYears.includes(pickerYear)) {
+      availableYears.push(pickerYear);
+      availableYears.sort((a, b) => a - b);
+    }
+    availableYears.forEach(y => {
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = `year-chip-btn ${y === pickerYear ? 'active' : ''}`;
+      chip.textContent = y;
+      chip.onclick = () => {
+        pickerYear = y;
+        renderPeriodModal();
+      };
+      yearsBar.appendChild(chip);
+    });
+  }
+
   const grid = document.getElementById('months-picker-grid');
   if (!grid) return;
 
   grid.innerHTML = '';
+  const activeEmp = getCurrentEmployee();
+  const realDate = new Date();
+  const realYear = realDate.getFullYear();
+  const realMonth = realDate.getMonth() + 1;
+
   MONTH_NAMES.forEach((mName, idx) => {
     const monthNum = idx + 1;
+    const targetMonthKey = `${pickerYear}-${String(monthNum).padStart(2, '0')}`;
+    const altMonthKey = `${pickerYear}-${monthNum}`;
+    const isCurrentActive = (pickerYear === currentYear && monthNum === currentMonth);
+    const isRealTodayMonth = (pickerYear === realYear && monthNum === realMonth);
+
+    // Identifica histórico daquele período para o colaborador ativo
+    let statusBadgeHtml = '<span class="m-badge empty">⚪ Vazio</span>';
+    
+    if (activeEmp) {
+      const sig = activeEmp.signatures && (activeEmp.signatures[targetMonthKey] || activeEmp.signatures[altMonthKey]);
+      const hasTimesheet = activeEmp.timesheets && (activeEmp.timesheets[targetMonthKey] || activeEmp.timesheets[altMonthKey]);
+
+      if (sig && (sig.image || typeof sig === 'string')) {
+        statusBadgeHtml = '<span class="m-badge signed">✍️ Assinado</span>';
+      } else if (hasTimesheet && Array.isArray(hasTimesheet) && hasTimesheet.some(d => d.e1 || d.status !== 'presenca')) {
+        statusBadgeHtml = '<span class="m-badge records">📋 Registrado</span>';
+      } else if (activeEmp.statusCategory === 'afastado') {
+        statusBadgeHtml = '<span class="m-badge pending">🟠 Afastado</span>';
+      } else if (activeEmp.statusCategory === 'ferias') {
+        statusBadgeHtml = '<span class="m-badge records">🌴 Férias</span>';
+      } else if (isRealTodayMonth) {
+        statusBadgeHtml = '<span class="m-badge pending">🟡 Mês Atual</span>';
+      }
+    }
+
     const btn = document.createElement('button');
     btn.type = 'button';
-    btn.className = `month-grid-btn ${(pickerYear === currentYear && monthNum === currentMonth) ? 'active' : ''}`;
-    btn.textContent = mName;
+    btn.className = `month-grid-btn ${isCurrentActive ? 'active' : ''}`;
+    btn.innerHTML = `
+      <span class="m-name">${mName}</span>
+      ${statusBadgeHtml}
+    `;
     btn.onclick = () => {
       setPeriod(pickerYear, monthNum);
       closePeriodModal();
@@ -924,29 +980,51 @@ function jumpToCurrentRealMonth() {
   closePeriodModal();
 }
 
-// Universal Set Period (Sets Year & Month dynamically)
+// Universal Set Period (Sets Year & Month dynamically com histórico)
 async function setPeriod(year, month) {
-  // 1. Save in-memory days of current period before switching
-  const oldMonthKey = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
-  employeesDB.forEach(employee => {
-    if (!employee.timesheets) employee.timesheets = {};
-    if (employee.days) {
-      employee.timesheets[oldMonthKey] = JSON.parse(JSON.stringify(employee.days));
+  // 1. Salva os inputs atuais do colaborador ativo antes de trocar de período
+  const activeEmp = getCurrentEmployee();
+  if (activeEmp && activeEmp.days) {
+    const rows = document.querySelectorAll('#timesheet-tbody tr');
+    if (rows && rows.length > 0) {
+      rows.forEach((row, idx) => {
+        if (activeEmp.days[idx]) {
+          const e1 = row.querySelector('[data-field="e1"]')?.value;
+          const s1 = row.querySelector('[data-field="s1"]')?.value;
+          const e2 = row.querySelector('[data-field="e2"]')?.value;
+          const s2 = row.querySelector('[data-field="s2"]')?.value;
+          const status = row.querySelector('.status-select')?.value;
+          const just = row.querySelector('.justification-input')?.value;
+          const signed = row.querySelector('.sig-checkbox')?.checked;
+
+          if (e1 !== undefined) activeEmp.days[idx].e1 = e1.trim();
+          if (s1 !== undefined) activeEmp.days[idx].s1 = s1.trim();
+          if (e2 !== undefined) activeEmp.days[idx].e2 = e2.trim();
+          if (s2 !== undefined) activeEmp.days[idx].s2 = s2.trim();
+          if (status !== undefined) activeEmp.days[idx].status = status;
+          if (just !== undefined) activeEmp.days[idx].just = just.trim();
+          if (signed !== undefined) activeEmp.days[idx].signed = signed;
+        }
+      });
+      const oldMonthKey = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
+      if (!activeEmp.timesheets) activeEmp.timesheets = {};
+      activeEmp.timesheets[oldMonthKey] = JSON.parse(JSON.stringify(activeEmp.days));
+      saveEmployeesToLocalStorage();
     }
-  });
+  }
 
   currentYear = year;
   currentMonth = month;
-  const monthKey = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
+  const newMonthKey = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
 
-  // 2. Load or generate days for all employees for the selected month
+  // 2. Carrega ou gera os dias de cada colaborador para o novo período
   for (const emp of employeesDB) {
     if (!emp.timesheets) emp.timesheets = {};
-    if (!emp.timesheets[monthKey]) {
+    if (!emp.timesheets[newMonthKey]) {
       if (window.supabaseService && window.supabaseService.isConfigured()) {
-        const records = await window.supabaseService.loadRecords(emp.id, monthKey);
+        const records = await window.supabaseService.loadRecords(emp.id, newMonthKey);
         if (records && records.length > 0) {
-          emp.timesheets[monthKey] = records.map(r => ({
+          emp.timesheets[newMonthKey] = records.map(r => ({
             day: r.day,
             dow: r.dow,
             e1: r.e1 || '',
@@ -959,21 +1037,43 @@ async function setPeriod(year, month) {
             signed: r.signed !== false
           }));
         } else {
-          emp.timesheets[monthKey] = generateMonthData(currentYear, currentMonth, emp.id);
+          emp.timesheets[newMonthKey] = generateMonthData(currentYear, currentMonth, emp.id);
         }
       } else {
-        emp.timesheets[monthKey] = generateMonthData(currentYear, currentMonth, emp.id);
+        emp.timesheets[newMonthKey] = generateMonthData(currentYear, currentMonth, emp.id);
       }
     }
-    emp.days = emp.timesheets[monthKey];
+    emp.days = emp.timesheets[newMonthKey];
+
+    // Se o colaborador for afastado ou de férias, sincroniza
+    if (emp.statusCategory === 'afastado' && emp.days && Array.isArray(emp.days)) {
+      const hasWrong = emp.days.some(d => d.status === 'ferias' || d.status === 'presenca');
+      if (hasWrong) {
+        emp.days.forEach(item => {
+          item.status = 'atestado';
+          item.statusLabel = 'Afastado (INSS)';
+          item.just = 'Afastamento INSS / Licença Médica';
+          item.e1 = ''; item.s1 = ''; item.e2 = ''; item.s2 = '';
+          item.signed = true;
+        });
+        emp.timesheets[newMonthKey] = JSON.parse(JSON.stringify(emp.days));
+      }
+    }
   }
 
+  saveEmployeesToLocalStorage();
   updateMonthDisplay();
+  
+  const currentSelectedEmp = getCurrentEmployee();
+  if (currentSelectedEmp) {
+    updateHeroSignatureBadge(currentSelectedEmp);
+  }
+
   renderTimesheetTable();
   recalculateAllTimes();
   renderEmployeesAdminTable();
 
-  showToast(`📅 Período alterado para ${MONTH_NAMES[currentMonth - 1]} de ${currentYear}`);
+  showToast(`📅 Histórico carregado: ${MONTH_NAMES[currentMonth - 1]} de ${currentYear}`);
 }
 
 // Change Month Action (Previous ◀ / Next ▶)

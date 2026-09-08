@@ -3031,4 +3031,139 @@ body {
   font-weight: 600;
 }
 
+/* ========================================================================== */
+/* Seletor de Período de Apuração & Histórico de Meses                       */
+/* ========================================================================== */
+.years-quick-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.year-chip-btn {
+  background: #F1F5F9;
+  border: 1px solid #E2E8F0;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.year-chip-btn:hover {
+  background: #E2E8F0;
+  color: #0F172A;
+}
+
+.year-chip-btn.active {
+  background: #064E3B;
+  color: #FFFFFF;
+  border-color: #064E3B;
+}
+
+.months-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.month-grid-btn {
+  background: #FFFFFF;
+  border: 1.5px solid #E2E8F0;
+  border-radius: 10px;
+  padding: 10px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  text-align: center;
+}
+
+.month-grid-btn:hover {
+  border-color: #059669;
+  background: #F0FDF4;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(5, 150, 105, 0.12);
+}
+
+.month-grid-btn.active {
+  background: linear-gradient(135deg, #064E3B 0%, #047857 100%);
+  border-color: #064E3B;
+  color: #FFFFFF;
+  box-shadow: 0 4px 12px rgba(6, 78, 59, 0.3);
+}
+
+.month-grid-btn .m-name {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #1E293B;
+}
+
+.month-grid-btn.active .m-name {
+  color: #FFFFFF;
+}
+
+.month-grid-btn .m-badge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  line-height: 1.2;
+}
+
+.month-grid-btn .m-badge.signed {
+  background: #ECFDF5;
+  color: #047857;
+  border: 1px solid #A7F3D0;
+}
+
+.month-grid-btn.active .m-badge.signed {
+  background: rgba(255, 255, 255, 0.2);
+  color: #A7F3D0;
+  border-color: transparent;
+}
+
+.month-grid-btn .m-badge.pending {
+  background: #FEF3C7;
+  color: #92400E;
+  border: 1px solid #FCD34D;
+}
+
+.month-grid-btn.active .m-badge.pending {
+  background: rgba(255, 255, 255, 0.2);
+  color: #FDE68A;
+  border-color: transparent;
+}
+
+.month-grid-btn .m-badge.records {
+  background: #EFF6FF;
+  color: #1D4ED8;
+  border: 1px solid #BFDBFE;
+}
+
+.month-grid-btn.active .m-badge.records {
+  background: rgba(255, 255, 255, 0.2);
+  color: #BFDBFE;
+  border-color: transparent;
+}
+
+.month-grid-btn .m-badge.empty {
+  background: #F8FAFC;
+  color: #94A3B8;
+  border: 1px solid #E2E8F0;
+}
+
+.month-grid-btn.active .m-badge.empty {
+  background: rgba(255, 255, 255, 0.15);
+  color: #E2E8F0;
+  border-color: transparent;
+}
+
 
