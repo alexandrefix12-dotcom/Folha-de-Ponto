@@ -3357,7 +3357,7 @@ Obrigado!`;
 }
 
 // Abre o modal de envio de WhatsApp com mensagem pré-formatada e link
-function openSendSignatureModal(targetEmpId = '') {
+async function openSendSignatureModal(targetEmpId = '') {
   const emp = targetEmpId ? (employeesDB.find(e => e.id === targetEmpId) || getCurrentEmployee()) : getCurrentEmployee();
   if (!emp) {
     alert('Selecione um colaborador primeiro.');
@@ -3366,6 +3366,45 @@ function openSendSignatureModal(targetEmpId = '') {
 
   currentSigTargetEmpId = emp.id;
   currentSigTargetMonthKey = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
+  const padMonthKey = currentSigTargetMonthKey;
+  const altMonthKey = `${currentYear}-${parseInt(currentMonth, 10)}`;
+
+  // Sempre que solicitar uma assinatura, restaura o status e limpa qualquer assinatura anterior para permitir nova assinatura
+  if (emp.signatures) {
+    delete emp.signatures[currentSigTargetMonthKey];
+    delete emp.signatures[altMonthKey];
+    delete emp.signatures[padMonthKey];
+    Object.keys(emp.signatures).forEach(k => {
+      if (k === currentSigTargetMonthKey || k === altMonthKey || k === padMonthKey || k.startsWith(padMonthKey)) {
+        delete emp.signatures[k];
+      }
+    });
+  }
+  delete emp.digitalSignature;
+  emp.digitalSignature = null;
+
+  if (emp.days && Array.isArray(emp.days)) {
+    emp.days.forEach(d => { if (d) d.signed = false; });
+  }
+  if (emp.timesheets) {
+    if (emp.timesheets[currentSigTargetMonthKey]) emp.timesheets[currentSigTargetMonthKey].forEach(d => { if (d) d.signed = false; });
+    if (emp.timesheets[altMonthKey]) emp.timesheets[altMonthKey].forEach(d => { if (d) d.signed = false; });
+    if (emp.timesheets[padMonthKey]) emp.timesheets[padMonthKey].forEach(d => { if (d) d.signed = false; });
+  }
+
+  saveEmployeesToLocalStorage();
+
+  if (window.supabaseService && window.supabaseService.isConfigured()) {
+    try {
+      window.supabaseService.deleteEmployeeSignature(emp.id, currentSigTargetMonthKey, emp.cpf || '', emp.name || '');
+      window.supabaseService.saveFullTimesheet(emp.id, currentSigTargetMonthKey, emp.days, emp.cpf || '');
+    } catch (e) {}
+  }
+
+  updateHeroSignatureBadge(emp);
+  renderTimesheetTable();
+  renderEmployeesAdminTable();
+  updateSidebarBadges();
 
   const monthName = MONTH_NAMES[currentMonth - 1];
 

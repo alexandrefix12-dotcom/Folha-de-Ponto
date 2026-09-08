@@ -503,19 +503,24 @@
         </div>
       </div>
 
-      <!-- Card de Assinatura Já Realizada (se aplicável - Bloqueado sem opção de re-assinar) -->
+      <!-- Card de Assinatura Já Realizada (com opção de solicitar/fazer nova assinatura) -->
       <div id="already-signed-card" class="card" style="display: none; background: #F0FDF4; border: 1.5px solid #86EFAC;">
-        <div style="display: flex; align-items: center; gap: 12px;">
-          <div style="width: 42px; height: 42px; border-radius: 50%; background: #DCFCE7; color: #166534; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; flex-shrink: 0; font-weight: 800;">
-            ✓
-          </div>
-          <div style="flex: 1;">
-            <strong style="color: #166534; font-size: 0.95rem; display: block;">Folha de Ponto Assinada & Homologada</strong>
-            <span style="font-size: 0.78rem; color: #15803D;" id="already-signed-date">Assinado digitalmente em: --</span>
-            <div style="margin-top: 4px; font-size: 0.72rem; color: #047857; display: flex; align-items: center; gap: 4px;">
-              <span>🔒 Documento homologado e assinado com validade jurídica CLT.</span>
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
+          <div style="display: flex; align-items: center; gap: 12px; flex: 1; min-width: 220px;">
+            <div style="width: 42px; height: 42px; border-radius: 50%; background: #DCFCE7; color: #166534; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; flex-shrink: 0; font-weight: 800;">
+              ✓
+            </div>
+            <div>
+              <strong style="color: #166534; font-size: 0.95rem; display: block;">Folha de Ponto Assinada & Homologada</strong>
+              <span style="font-size: 0.78rem; color: #15803D;" id="already-signed-date">Assinado digitalmente em: --</span>
+              <div style="margin-top: 4px; font-size: 0.72rem; color: #047857; display: flex; align-items: center; gap: 4px;">
+                <span>🔒 Documento homologado e assinado com validade jurídica CLT.</span>
+              </div>
             </div>
           </div>
+          <button type="button" id="btn-portal-resign" onclick="handlePortalReSign()" style="background: #FFFFFF; border: 1.5px solid #059669; color: #065F46; padding: 8px 14px; border-radius: 8px; font-size: 0.82rem; font-weight: 800; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.2s;">
+            ✍️ Fazer Nova Assinatura
+          </button>
         </div>
       </div>
 
@@ -681,10 +686,15 @@
       // 2. Se o Supabase está configurado, busca colaborador e os apontamentos atualizados do mês
       if (window.supabaseService && window.supabaseService.isConfigured()) {
         try {
-          if (!currentEmp) {
-            const remoteEmployees = await window.supabaseService.loadEmployees();
-            if (Array.isArray(remoteEmployees)) {
-              currentEmp = remoteEmployees.find(e => e.id === empId || (e.cpf && e.cpf.replace(/\D/g, '') === empId.replace(/\D/g, '')));
+          const remoteEmployees = await window.supabaseService.loadEmployees();
+          if (Array.isArray(remoteEmployees) && remoteEmployees.length > 0) {
+            const remoteMatch = remoteEmployees.find(e => e.id === empId || (e.cpf && e.cpf.replace(/\D/g, '') === empId.replace(/\D/g, '')));
+            if (remoteMatch) {
+              currentEmp = {
+                ...(currentEmp || {}),
+                ...remoteMatch,
+                signatures: remoteMatch.signatures !== undefined ? remoteMatch.signatures : (currentEmp?.signatures || {})
+              };
             }
           }
 
@@ -714,6 +724,68 @@
       }
 
       renderPortalUI();
+    }
+
+    async function handlePortalReSign() {
+      if (!confirm('Deseja cancelar a assinatura anterior e fazer uma nova assinatura nesta folha de ponto?')) {
+        return;
+      }
+
+      const [year, month] = targetMonthKey.split('-');
+      const altMonthKey = `${year}-${parseInt(month, 10)}`;
+      const padMonthKey = `${year}-${String(month).padStart(2, '0')}`;
+
+      // 1. Limpa localmente
+      if (currentEmp) {
+        if (currentEmp.signatures) {
+          delete currentEmp.signatures[targetMonthKey];
+          delete currentEmp.signatures[padMonthKey];
+          delete currentEmp.signatures[altMonthKey];
+          Object.keys(currentEmp.signatures).forEach(k => {
+            if (k === targetMonthKey || k === altMonthKey || k === padMonthKey || k.startsWith(padMonthKey)) {
+              delete currentEmp.signatures[k];
+            }
+          });
+        }
+        delete currentEmp.digitalSignature;
+        currentEmp.digitalSignature = null;
+      }
+
+      try {
+        let employees = [];
+        const raw = localStorage.getItem(LOCAL_STORAGE_EMPLOYEES_KEY);
+        if (raw) employees = JSON.parse(raw) || [];
+        const idx = employees.findIndex(e => e.id === currentEmp?.id || (e.cpf && e.cpf.replace(/\D/g, '') === currentEmp?.cpf?.replace(/\D/g, '')));
+        if (idx !== -1) {
+          if (employees[idx].signatures) {
+            delete employees[idx].signatures[targetMonthKey];
+            delete employees[idx].signatures[padMonthKey];
+            delete employees[idx].signatures[altMonthKey];
+            Object.keys(employees[idx].signatures).forEach(k => {
+              if (k === targetMonthKey || k === altMonthKey || k === padMonthKey || k.startsWith(padMonthKey)) {
+                delete employees[idx].signatures[k];
+              }
+            });
+          }
+          delete employees[idx].digitalSignature;
+          employees[idx].digitalSignature = null;
+          localStorage.setItem(LOCAL_STORAGE_EMPLOYEES_KEY, JSON.stringify(employees));
+        }
+      } catch (e) {}
+
+      // 2. Limpa no Supabase
+      if (window.supabaseService && window.supabaseService.isConfigured() && currentEmp) {
+        try {
+          await window.supabaseService.deleteEmployeeSignature(currentEmp.id, targetMonthKey, currentEmp.cpf || '', currentEmp.name || '');
+        } catch (e) {}
+      }
+
+      // 3. Mostra área de assinatura
+      document.getElementById('already-signed-card').style.display = 'none';
+      document.getElementById('signature-action-card').style.display = 'block';
+      document.getElementById('success-view-card').style.display = 'none';
+      clearPortalCanvas();
+      initCanvas();
     }
 
     function renderPortalUI() {
