@@ -252,15 +252,67 @@ async function initApp() {
   });
   window.addEventListener('focus', () => {
     reloadEmployeesFromStorage();
+    syncWithSupabaseRealtime();
   });
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') {
       reloadEmployeesFromStorage();
+      syncWithSupabaseRealtime();
     }
   });
+
+  // Polling a cada 8 segundos para capturar assinaturas vindas do celular em tempo real
+  setInterval(() => {
+    syncWithSupabaseRealtime();
+  }, 8000);
 }
 
-// Recarrega em tempo real os funcionários e assinaturas gravadas
+// Sincroniza assinaturas e folhas salvas diretamente no Supabase em tempo real
+async function syncWithSupabaseRealtime() {
+  if (!window.supabaseService || !window.supabaseService.isConfigured()) return;
+  try {
+    const remoteEmployees = await window.supabaseService.loadEmployees();
+    if (!Array.isArray(remoteEmployees) || remoteEmployees.length === 0) return;
+
+    const monthKey = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
+    let newlySignedNames = [];
+
+    remoteEmployees.forEach(remote => {
+      const target = employeesDB.find(e => e.id === remote.id || (e.cpf && remote.cpf && e.cpf.replace(/\D/g, '') === remote.cpf.replace(/\D/g, '')));
+      if (target) {
+        const wasSigned = Boolean((target.signatures && target.signatures[monthKey]) || target.digitalSignature);
+        const nowSigned = Boolean((remote.signatures && remote.signatures[monthKey]) || remote.digitalSignature);
+
+        if (!wasSigned && nowSigned) {
+          newlySignedNames.push(remote.name);
+        }
+
+        target.signatures = remote.signatures || target.signatures || {};
+        target.digitalSignature = remote.digitalSignature || target.digitalSignature || null;
+        if (remote.timesheets && remote.timesheets[monthKey]) {
+          target.timesheets = { ...(target.timesheets || {}), ...remote.timesheets };
+          target.days = target.timesheets[monthKey];
+        }
+      }
+    });
+
+    if (newlySignedNames.length > 0) {
+      saveEmployeesToLocalStorage();
+      const currentEmp = getCurrentEmployee();
+      if (currentEmp) {
+        updateHeroSignatureBadge(currentEmp);
+        renderTimesheetTable();
+        renderEmployeesAdminTable();
+        updateSidebarBadges();
+      }
+      showToast(`✍️ Nova assinatura confirmada: ${newlySignedNames.join(', ')}!`);
+    }
+  } catch (err) {
+    console.warn('Erro ao verificar novas assinaturas no Supabase:', err);
+  }
+}
+
+// Recarrega em tempo real os funcionários e assinaturas gravadas no LocalStorage
 function reloadEmployeesFromStorage() {
   try {
     const raw = localStorage.getItem(LOCAL_STORAGE_EMPLOYEES_KEY);

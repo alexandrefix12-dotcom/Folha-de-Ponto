@@ -21,9 +21,32 @@ CREATE POLICY "Permitir tudo em funcionarios"
     USING (true)
     WITH CHECK (true);
 
--- 4. Adicionar colunas de situação contratual e departamento (caso deseje salvar diretamente nas colunas do banco):
+-- 4. Adicionar colunas de situação contratual, departamento e assinaturas digitais:
 ALTER TABLE public.funcionarios ADD COLUMN IF NOT EXISTS situacao TEXT DEFAULT 'ativo';
 ALTER TABLE public.funcionarios ADD COLUMN IF NOT EXISTS status_category TEXT DEFAULT 'ativo';
 ALTER TABLE public.funcionarios ADD COLUMN IF NOT EXISTS departamento TEXT;
 ALTER TABLE public.funcionarios ADD COLUMN IF NOT EXISTS admissao TEXT DEFAULT '01/01/2024';
 ALTER TABLE public.funcionarios ADD COLUMN IF NOT EXISTS matricula TEXT;
+ALTER TABLE public.funcionarios ADD COLUMN IF NOT EXISTS telefone TEXT;
+ALTER TABLE public.funcionarios ADD COLUMN IF NOT EXISTS whatsapp TEXT;
+ALTER TABLE public.funcionarios ADD COLUMN IF NOT EXISTS assinaturas JSONB DEFAULT '{}'::jsonb;
+ALTER TABLE public.funcionarios ADD COLUMN IF NOT EXISTS timesheets JSONB DEFAULT '{}'::jsonb;
+
+-- 5. Tabela opcional para histórico mensal de folhas de ponto
+CREATE TABLE IF NOT EXISTS public.folha_pontos (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    funcionario_id TEXT NOT NULL,
+    mes_ano TEXT NOT NULL,
+    registros JSONB DEFAULT '[]'::jsonb,
+    assinatura JSONB,
+    assinatura_empresa JSONB,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    UNIQUE (funcionario_id, mes_ano)
+);
+
+ALTER TABLE public.folha_pontos ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Permitir tudo em folha_pontos" ON public.folha_pontos;
+CREATE POLICY "Permitir tudo em folha_pontos"
+    ON public.folha_pontos FOR ALL
+    USING (true)
+    WITH CHECK (true);

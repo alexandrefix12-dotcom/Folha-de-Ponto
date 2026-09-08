@@ -1079,9 +1079,13 @@
         console.warn('Erro ao salvar no localStorage:', e);
       }
 
-      // Sincroniza com Supabase se configurado
+      // Sincroniza com Supabase em Tempo Real
       if (window.supabaseService && window.supabaseService.isConfigured()) {
         try {
+          // 1. Salva a assinatura digital no perfil do colaborador no Supabase
+          await window.supabaseService.saveEmployeeSignature(currentEmp.id, targetMonthKey, signatureObj);
+
+          // 2. Salva os registros diários marcados como assinados
           const days = (currentEmp.timesheets && currentEmp.timesheets[targetMonthKey]) || currentEmp.days || [];
           days.forEach(d => { if (d) d.signed = true; });
           await window.supabaseService.saveFullTimesheet(currentEmp.id, targetMonthKey, days);

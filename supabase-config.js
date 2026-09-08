@@ -45,13 +45,99 @@ function getSupabaseClient() {
   return supabaseClient;
 }
 
-// 1. Carregar colaboradores da tabela "funcionarios" (nome, cargo, cpf)
+// Helper para converter item do banco em objeto funcionário completo
+function mapRowToEmployee(item, index = 0) {
+  const initials = getInitials(item.nome || item.name);
+  const color = AVATAR_COLORS[index % AVATAR_COLORS.length];
+  const nome = item.nome || item.name || 'Sem Nome';
+  const cargo = item.cargo || item.role || 'Geral';
+  const cpf = item.cpf || '000.000.000-00';
+  const id = String(item.id || item.nome?.toLowerCase().replace(/\s+/g, '-') || `emp-${index}`);
+  
+  const rawStatus = (item.situacao || item.status_category || item.statusCategory || 'ativo').toLowerCase().trim();
+  let statusCat = 'ativo';
+  if (rawStatus.includes('demit') || rawStatus.includes('deslig')) {
+    statusCat = 'demitido';
+  } else if (rawStatus.includes('afast') || rawStatus.includes('inss') || rawStatus.includes('licen')) {
+    statusCat = 'afastado';
+  } else if (rawStatus.includes('feri')) {
+    statusCat = 'ferias';
+  }
+
+  let pillLabel = '🟢 Ativo';
+  let pillClass = 'regular';
+  let tagLabel = 'Ativo';
+  let tagClass = 'green';
+
+  if (statusCat === 'afastado') {
+    pillLabel = '🟠 Afastado (INSS)';
+    pillClass = 'warning';
+    tagLabel = 'Afastado';
+    tagClass = 'orange';
+  } else if (statusCat === 'demitido') {
+    pillLabel = '🔴 Demitido / Desligado';
+    pillClass = 'danger';
+    tagLabel = 'Demitido';
+    tagClass = 'red';
+  } else if (statusCat === 'ferias') {
+    pillLabel = '🌴 Em Férias';
+    pillClass = 'blue';
+    tagLabel = 'Férias';
+    tagClass = 'blue';
+  }
+
+  // Parse signatures
+  let signatures = {};
+  if (item.assinaturas && typeof item.assinaturas === 'object') {
+    signatures = item.assinaturas;
+  } else if (item.signatures && typeof item.signatures === 'object') {
+    signatures = item.signatures;
+  } else if (typeof item.assinaturas === 'string') {
+    try { signatures = JSON.parse(item.assinaturas); } catch (e) {}
+  } else if (typeof item.signatures === 'string') {
+    try { signatures = JSON.parse(item.signatures); } catch (e) {}
+  }
+
+  // Parse timesheets
+  let timesheets = {};
+  if (item.timesheets && typeof item.timesheets === 'object') {
+    timesheets = item.timesheets;
+  } else if (typeof item.timesheets === 'string') {
+    try { timesheets = JSON.parse(item.timesheets); } catch (e) {}
+  }
+
+  return {
+    id: id,
+    name: nome,
+    initials: initials,
+    color: color,
+    role: cargo,
+    shortRole: cargo,
+    dept: item.departamento || item.dept || 'Operacional',
+    fullDept: `Departamento - ${item.departamento || item.dept || cargo}`,
+    admission: item.admissao || item.admission || '01/01/2024',
+    cpf: cpf,
+    whatsapp: item.whatsapp || item.telefone || item.celular || '',
+    pis: item.pis || '000.00000.00-0',
+    matricula: item.matricula || String(index + 1).padStart(4, '0'),
+    statusTag: tagLabel,
+    statusTagClass: tagClass,
+    statusCategory: statusCat,
+    statusPillLabel: pillLabel,
+    statusPillClass: pillClass,
+    signatures: signatures,
+    digitalSignature: item.digital_signature || item.digitalSignature || null,
+    timesheets: timesheets,
+    days: []
+  };
+}
+
+// 1. Carregar colaboradores da tabela "funcionarios" (nome, cargo, cpf, assinaturas)
 async function loadEmployeesFromSupabase() {
   const client = getSupabaseClient();
   if (!client) return null;
 
   try {
-    // Tenta carregar da tabela "funcionarios"
     const { data: rows, error } = await client
       .from('funcionarios')
       .select('*')
@@ -66,71 +152,35 @@ async function loadEmployeesFromSupabase() {
       return [];
     }
 
-    // Mapeia os dados da tabela (nome, cargo, cpf, situacao) para a folha de ponto
-    return rows.map((item, index) => {
-      const initials = getInitials(item.nome || item.name);
-      const color = AVATAR_COLORS[index % AVATAR_COLORS.length];
-      const nome = item.nome || item.name || 'Sem Nome';
-      const cargo = item.cargo || item.role || 'Geral';
-      const cpf = item.cpf || '000.000.000-00';
-      const id = String(item.id || item.nome?.toLowerCase().replace(/\s+/g, '-') || `emp-${index}`);
-      
-      const rawStatus = (item.situacao || item.status_category || item.statusCategory || 'ativo').toLowerCase().trim();
-      let statusCat = 'ativo';
-      if (rawStatus.includes('demit') || rawStatus.includes('deslig')) {
-        statusCat = 'demitido';
-      } else if (rawStatus.includes('afast') || rawStatus.includes('inss') || rawStatus.includes('licen')) {
-        statusCat = 'afastado';
-      } else if (rawStatus.includes('feri')) {
-        statusCat = 'ferias';
-      }
-
-      let pillLabel = '🟢 Ativo';
-      let pillClass = 'regular';
-      let tagLabel = 'Ativo';
-      let tagClass = 'green';
-
-      if (statusCat === 'afastado') {
-        pillLabel = '🟠 Afastado (INSS)';
-        pillClass = 'warning';
-        tagLabel = 'Afastado';
-        tagClass = 'orange';
-      } else if (statusCat === 'demitido') {
-        pillLabel = '🔴 Demitido / Desligado';
-        pillClass = 'danger';
-        tagLabel = 'Demitido';
-        tagClass = 'red';
-      } else if (statusCat === 'ferias') {
-        pillLabel = '🌴 Em Férias';
-        pillClass = 'blue';
-        tagLabel = 'Férias';
-        tagClass = 'blue';
-      }
-
-      return {
-        id: id,
-        name: nome,
-        initials: initials,
-        color: color,
-        role: cargo,
-        shortRole: cargo,
-        dept: item.departamento || item.dept || 'Operacional',
-        fullDept: `Departamento - ${item.departamento || item.dept || cargo}`,
-        admission: item.admissao || item.admission || '01/01/2024',
-        cpf: cpf,
-        whatsapp: item.whatsapp || item.telefone || item.celular || '',
-        pis: item.pis || '000.00000.00-0',
-        matricula: item.matricula || String(index + 1).padStart(4, '0'),
-        statusTag: tagLabel,
-        statusTagClass: tagClass,
-        statusCategory: statusCat,
-        statusPillLabel: pillLabel,
-        statusPillClass: pillClass,
-        days: []
-      };
-    });
+    return rows.map((item, index) => mapRowToEmployee(item, index));
   } catch (err) {
     console.error('Exceção ao carregar do Supabase:', err);
+    return null;
+  }
+}
+
+// 1b. Carregar um único colaborador por ID ou CPF
+async function loadEmployeeByIdFromSupabase(idOrCpf) {
+  const client = getSupabaseClient();
+  if (!client || !idOrCpf) return null;
+
+  try {
+    let query = client.from('funcionarios').select('*');
+    const cleanCpf = String(idOrCpf).replace(/\D/g, '');
+    
+    if (typeof idOrCpf === 'string' && idOrCpf.length === 36 && idOrCpf.includes('-')) {
+      query = query.eq('id', idOrCpf);
+    } else if (cleanCpf && cleanCpf.length === 11) {
+      query = query.eq('cpf', idOrCpf);
+    } else {
+      query = query.or(`id.eq.${idOrCpf},cpf.eq.${idOrCpf}`);
+    }
+
+    const { data, error } = await query.maybeSingle();
+    if (error || !data) return null;
+    return mapRowToEmployee(data, 0);
+  } catch (err) {
+    console.warn('Erro ao carregar colaborador por ID:', err);
     return null;
   }
 }
@@ -141,28 +191,18 @@ async function cadastrarFuncionarioNoSupabase(nome, cargo, cpf, whatsapp = '', s
   if (!client) return null;
 
   try {
-    // 1. Tenta prioritariamente com coluna 'telefone'
     const r1 = await client
       .from('funcionarios')
-      .insert([{ nome, cargo, cpf, telefone: whatsapp }])
+      .insert([{ nome, cargo, cpf, telefone: whatsapp, situacao }])
       .select();
     if (!r1.error && r1.data && r1.data.length > 0) return r1.data;
 
-    // 2. Tenta com coluna 'whatsapp'
     const r2 = await client
       .from('funcionarios')
       .insert([{ nome, cargo, cpf, whatsapp: whatsapp }])
       .select();
     if (!r2.error && r2.data && r2.data.length > 0) return r2.data;
 
-    // 3. Tenta com telefone e situacao
-    const r3 = await client
-      .from('funcionarios')
-      .insert([{ nome, cargo, cpf, telefone: whatsapp, situacao }])
-      .select();
-    if (!r3.error && r3.data && r3.data.length > 0) return r3.data;
-
-    // 4. Fallback básico
     const fallback = await client
       .from('funcionarios')
       .insert([{ nome, cargo, cpf }])
@@ -196,25 +236,17 @@ async function atualizarFuncionarioNoSupabase(idOrCpf, updates) {
       }
     };
 
-    // Tentativa 1: atualiza prioritariamente com coluna 'telefone'
-    const p1 = { nome: nomeVal, cargo: cargoVal, cpf: cpfVal, telefone: whatsVal };
+    const p1 = { nome: nomeVal, cargo: cargoVal, cpf: cpfVal, telefone: whatsVal, situacao: situacaoVal };
     const res1 = await applyFilter(client.from('funcionarios').update(p1)).select();
     if (!res1.error && res1.data && res1.data.length > 0) return res1.data;
 
-    // Tentativa 2: atualiza com coluna 'whatsapp'
     const p2 = { nome: nomeVal, cargo: cargoVal, cpf: cpfVal, whatsapp: whatsVal };
     const res2 = await applyFilter(client.from('funcionarios').update(p2)).select();
     if (!res2.error && res2.data && res2.data.length > 0) return res2.data;
 
-    // Tentativa 3: atualiza completo com telefone e situacao
-    const p3 = { nome: nomeVal, cargo: cargoVal, cpf: cpfVal, telefone: whatsVal, situacao: situacaoVal };
+    const p3 = { nome: nomeVal, cargo: cargoVal, cpf: cpfVal };
     const res3 = await applyFilter(client.from('funcionarios').update(p3)).select();
-    if (!res3.error && res3.data && res3.data.length > 0) return res3.data;
-
-    // Tentativa 4: fallback básico
-    const p4 = { nome: nomeVal, cargo: cargoVal, cpf: cpfVal };
-    const res4 = await applyFilter(client.from('funcionarios').update(p4)).select();
-    return res4.data;
+    return res3.data;
   } catch (err) {
     console.warn('Exceção ao atualizar no Supabase:', err);
     return null;
@@ -245,7 +277,59 @@ async function saveFullTimesheetToSupabase(empId, monthKey, days) {
   }
 }
 
-// 5. Excluir funcionário no Supabase (por ID ou CPF)
+// 5. Salvar Assinatura Digital do Funcionário em Tempo Real
+async function saveEmployeeSignatureToSupabase(empId, monthKey, signatureObj) {
+  const client = getSupabaseClient();
+  if (!client || !empId) return false;
+
+  try {
+    // 1. Busca as assinaturas atuais do funcionário
+    let currentSignatures = {};
+    const applyFilter = (q) => {
+      if (typeof empId === 'string' && empId.length === 36 && empId.includes('-')) {
+        return q.eq('id', empId);
+      }
+      return q.or(`id.eq.${empId},cpf.eq.${empId}`);
+    };
+
+    const { data: empRows } = await applyFilter(client.from('funcionarios').select('id, assinaturas, signatures'));
+    if (empRows && empRows.length > 0) {
+      const raw = empRows[0].assinaturas || empRows[0].signatures;
+      if (raw) {
+        currentSignatures = typeof raw === 'string' ? JSON.parse(raw) : { ...raw };
+      }
+    }
+
+    currentSignatures[monthKey] = signatureObj;
+
+    // 2. Atualiza a coluna assinaturas / signatures no funcionario
+    let updated = false;
+    const r1 = await applyFilter(client.from('funcionarios').update({ assinaturas: currentSignatures }));
+    if (!r1.error) updated = true;
+
+    if (!updated) {
+      const r2 = await applyFilter(client.from('funcionarios').update({ signatures: currentSignatures }));
+      if (!r2.error) updated = true;
+    }
+
+    // 3. Salva também na tabela folha_pontos se existir
+    try {
+      await client.from('folha_pontos').upsert({
+        funcionario_id: empId,
+        mes_ano: monthKey,
+        assinatura: signatureObj,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'funcionario_id,mes_ano' });
+    } catch (e) {}
+
+    return true;
+  } catch (err) {
+    console.warn('Erro ao gravar assinatura no Supabase:', err);
+    return false;
+  }
+}
+
+// 6. Excluir funcionário no Supabase (por ID ou CPF)
 async function excluirFuncionarioNoSupabase(idOrCpf) {
   const client = getSupabaseClient();
   if (!client) return null;
@@ -271,8 +355,10 @@ window.supabaseService = {
   isConfigured: isSupabaseConfigured,
   getClient: getSupabaseClient,
   loadEmployees: loadEmployeesFromSupabase,
+  loadEmployeeById: loadEmployeeByIdFromSupabase,
   cadastrarFuncionario: cadastrarFuncionarioNoSupabase,
   atualizarFuncionario: atualizarFuncionarioNoSupabase,
   saveFullTimesheet: saveFullTimesheetToSupabase,
+  saveEmployeeSignature: saveEmployeeSignatureToSupabase,
   excluirFuncionario: excluirFuncionarioNoSupabase
 };
