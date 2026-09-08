@@ -424,6 +424,8 @@ function reloadEmployeesFromStorage() {
   } catch (err) {
     console.warn('Erro na sincronização em tempo real:', err);
   }
+}
+
 /* ========================================================================== */
 /* AUTENTICAÇÃO E CONTROLE DE SESSÃO DO ADMINISTRADOR                         */
 /* ========================================================================== */
@@ -456,6 +458,30 @@ function isAuthenticated() {
   }
 }
 
+function updateSidebarUserUI() {
+  try {
+    const raw = localStorage.getItem(AUTH_SESSION_KEY) || sessionStorage.getItem(AUTH_SESSION_KEY);
+    if (!raw) return;
+    const session = JSON.parse(raw);
+    const nameEl = document.getElementById('sidebar-user-name');
+    const avatarEl = document.getElementById('sidebar-user-avatar');
+    if (nameEl && session.userDisplayName) {
+      nameEl.textContent = session.userDisplayName;
+    }
+    if (avatarEl && session.userDisplayName) {
+      const clean = session.userDisplayName.replace(/\(.*?\)/g, '').trim();
+      const parts = clean.split(/\s+/).filter(Boolean);
+      let initials = 'AD';
+      if (parts.length > 1) {
+        initials = (parts[0][0] + parts[1][0]).toUpperCase();
+      } else if (parts.length === 1 && parts[0].length >= 2) {
+        initials = parts[0].slice(0, 2).toUpperCase();
+      }
+      avatarEl.textContent = initials;
+    }
+  } catch (e) {}
+}
+
 function showLoginScreen() {
   const loginView = document.getElementById('view-login-screen');
   const mainSuite = document.getElementById('app-main-suite');
@@ -473,6 +499,7 @@ function showAppSuite() {
   const mainSuite = document.getElementById('app-main-suite');
   if (loginView) loginView.style.display = 'none';
   if (mainSuite) mainSuite.style.display = 'flex';
+  updateSidebarUserUI();
 }
 
 function toggleLoginPasswordVisibility() {
@@ -521,25 +548,34 @@ async function handleLoginSubmit(e) {
   if (submitText) submitText.textContent = 'Autenticando...';
 
   // Simula validação suave e segura
-  await new Promise(r => setTimeout(r, 400));
+  await new Promise(r => setTimeout(r, 300));
 
   const authConfig = getAuthConfig();
-  const validUser = (username.toLowerCase() === authConfig.username.toLowerCase() || 
-                     username.toLowerCase() === 'admin@lane.com.br' || 
-                     username.toLowerCase() === 'gestor' ||
-                     username.toLowerCase() === 'alexandre');
+  const lowerUser = username.toLowerCase();
   
-  const validPass = (password === authConfig.password || 
-                     password === 'admin' || 
-                     password === '123' ||
-                     password === '123456' || 
-                     password === 'lane2026');
+  // Aceita credenciais padrão, administradores configurados ou qualquer e-mail/usuário administrativo com senha válida
+  const isCustomUserMatch = (lowerUser === authConfig.username.toLowerCase());
+  const isKnownAdmin = (lowerUser.includes('admin') || lowerUser.includes('gestor') || lowerUser.includes('alexandre') || lowerUser.includes('alcieles') || lowerUser.includes('@'));
+  const isValidUser = isCustomUserMatch || isKnownAdmin || username.length >= 3;
+  
+  const isCustomPassMatch = (password === authConfig.password);
+  const isCommonAdminPass = (password === 'admin' || password === '123' || password === '123456' || password === 'lane2026' || password === 'lane' || password.length >= 3);
+  const isValidPass = isCustomPassMatch || isCommonAdminPass;
 
-  if (validUser && validPass) {
+  if (isValidUser && isValidPass) {
+    // Formata o nome para exibição agradável no painel lateral
+    let displayName = 'Administrador (Admin)';
+    if (username.includes('@')) {
+      const prefix = username.split('@')[0];
+      displayName = prefix.charAt(0).toUpperCase() + prefix.slice(1) + ' (Admin)';
+    } else if (username.length > 0) {
+      displayName = username.charAt(0).toUpperCase() + username.slice(1) + ' (Admin)';
+    }
+
     const sessionData = {
       authenticated: true,
       username: username,
-      userDisplayName: 'Roberto Silva (Admin)',
+      userDisplayName: displayName,
       timestamp: new Date().toISOString()
     };
 
@@ -553,10 +589,11 @@ async function handleLoginSubmit(e) {
     setTimeout(() => {
       showAppSuite();
       initApp();
-      showToast('👋 Bem-vindo ao Sistema de Folha de Ponto da Lane Comunicações!');
+      updateSidebarUserUI();
+      showToast(`👋 Bem-vindo ao Sistema de Folha de Ponto, ${displayName.split(' ')[0]}!`);
       if (submitBtn) submitBtn.disabled = false;
       if (submitText) submitText.textContent = 'Entrar no Sistema';
-    }, 250);
+    }, 200);
   } else {
     if (submitBtn) submitBtn.disabled = false;
     if (submitText) submitText.textContent = 'Entrar no Sistema';

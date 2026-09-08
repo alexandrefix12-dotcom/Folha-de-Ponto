@@ -2903,11 +2903,12 @@ body {
   color: #94A3B8;
   pointer-events: none;
   transition: color 0.2s;
+  z-index: 2;
 }
 
 .login-input-wrapper input {
   width: 100%;
-  padding: 12px 14px 12px 42px;
+  padding: 12px 42px 12px 42px;
   font-size: 0.92rem;
   font-family: inherit;
   color: #0F172A;
@@ -2916,6 +2917,8 @@ body {
   border-radius: 10px;
   outline: none;
   transition: all 0.2s ease;
+  position: relative;
+  z-index: 1;
 }
 
 .login-input-wrapper input:focus {
@@ -2932,21 +2935,25 @@ body {
 .login-toggle-password {
   position: absolute;
   right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
   background: none;
   border: none;
-  color: #94A3B8;
+  color: #64748B;
   padding: 6px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 6px;
-  transition: color 0.2s;
+  transition: all 0.2s;
+  z-index: 10;
+  pointer-events: auto;
 }
 
 .login-toggle-password:hover {
   color: #064E3B;
-  background: #F1F5F9;
+  background: #E2E8F0;
 }
 
 .login-options-row {
