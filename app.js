@@ -115,7 +115,7 @@ function getCurrentEmployee() {
   return employeesDB.find(e => e.id === currentEmployeeId) || employeesDB[0];
 }
 
-const LOCAL_STORAGE_EMPLOYEES_KEY = 'lane_comunicacoes_employees_db_v5';
+const LOCAL_STORAGE_EMPLOYEES_KEY = 'lane_comunicacoes_employees_db_v6';
 
 // ==========================================================================
 // Base de 20 Funcionários de Simulação com Horários Variados / Testes
@@ -131,8 +131,7 @@ const SIMULATED_EMPLOYEES_SEED = [
     admission: '15/01/2023',
     color: 'green',
     statusCategory: 'ativo',
-    signed: true,
-    shift: { e1: '08:00', s1: '12:00', e2: '13:00', s2: '17:00' }
+    signed: true
   },
   {
     name: 'Beatriz Helena Silveira',
@@ -144,8 +143,7 @@ const SIMULATED_EMPLOYEES_SEED = [
     admission: '10/03/2022',
     color: 'blue',
     statusCategory: 'ativo',
-    signed: true,
-    shift: { e1: '08:30', s1: '12:30', e2: '13:30', s2: '17:30' }
+    signed: true
   },
   {
     name: 'Carlos Eduardo Moreira',
@@ -157,8 +155,7 @@ const SIMULATED_EMPLOYEES_SEED = [
     admission: '01/08/2021',
     color: 'purple',
     statusCategory: 'ativo',
-    signed: false,
-    shift: { e1: '07:00', s1: '11:00', e2: '12:00', s2: '16:00' }
+    signed: false
   },
   {
     name: 'Daniela Cristina Rocha',
@@ -170,8 +167,7 @@ const SIMULATED_EMPLOYEES_SEED = [
     admission: '20/05/2023',
     color: 'orange',
     statusCategory: 'ativo',
-    signed: false,
-    shift: { e1: '08:00', s1: '12:00', e2: '13:00', s2: '17:00' }
+    signed: false
   },
   {
     name: 'Eduardo Ramos Ferreira',
@@ -183,8 +179,7 @@ const SIMULATED_EMPLOYEES_SEED = [
     admission: '12/09/2022',
     color: 'blue',
     statusCategory: 'ativo',
-    signed: true,
-    shift: { e1: '09:00', s1: '13:00', e2: '14:00', s2: '18:00' }
+    signed: true
   },
   {
     name: 'Fernanda Lima Barbosa',
@@ -196,8 +191,7 @@ const SIMULATED_EMPLOYEES_SEED = [
     admission: '03/02/2021',
     color: 'purple',
     statusCategory: 'ativo',
-    signed: false,
-    shift: { e1: '08:00', s1: '12:00', e2: '13:00', s2: '17:00' }
+    signed: false
   },
   {
     name: 'Gabriel Santana Ribeiro',
@@ -209,8 +203,7 @@ const SIMULATED_EMPLOYEES_SEED = [
     admission: '14/11/2023',
     color: 'green',
     statusCategory: 'ativo',
-    signed: true,
-    shift: { e1: '07:30', s1: '11:30', e2: '12:30', s2: '16:30' }
+    signed: true
   },
   {
     name: 'Heloísa Guimarães Castro',
@@ -222,8 +215,7 @@ const SIMULATED_EMPLOYEES_SEED = [
     admission: '01/04/2023',
     color: 'orange',
     statusCategory: 'ativo',
-    signed: false,
-    shift: { e1: '09:00', s1: '12:30', e2: '13:30', s2: '18:00' }
+    signed: false
   },
   {
     name: 'Igor Vinícius Nascimento',
@@ -235,8 +227,7 @@ const SIMULATED_EMPLOYEES_SEED = [
     admission: '18/06/2022',
     color: 'green',
     statusCategory: 'ativo',
-    signed: true,
-    shift: { e1: '06:30', s1: '11:30', e2: '12:30', s2: '15:30' }
+    signed: true
   },
   {
     name: 'Juliana Mendes Martins',
@@ -248,8 +239,7 @@ const SIMULATED_EMPLOYEES_SEED = [
     admission: '05/01/2022',
     color: 'blue',
     statusCategory: 'ativo',
-    signed: false,
-    shift: { e1: '08:30', s1: '12:30', e2: '13:30', s2: '17:30' }
+    signed: false
   },
   {
     name: 'Lucas Fernandes Azevedo',
@@ -261,8 +251,7 @@ const SIMULATED_EMPLOYEES_SEED = [
     admission: '22/08/2023',
     color: 'purple',
     statusCategory: 'ativo',
-    signed: true,
-    shift: { e1: '08:00', s1: '12:00', e2: '13:00', s2: '17:00' }
+    signed: true
   },
   {
     name: 'Mariana Duarte Albuquerque',
@@ -274,8 +263,7 @@ const SIMULATED_EMPLOYEES_SEED = [
     admission: '10/10/2022',
     color: 'orange',
     statusCategory: 'ativo',
-    signed: false,
-    shift: { e1: '09:30', s1: '13:30', e2: '14:30', s2: '18:30' }
+    signed: false
   },
   {
     name: 'Nelson Rodrigo Tavares',
@@ -287,8 +275,7 @@ const SIMULATED_EMPLOYEES_SEED = [
     admission: '01/02/2024',
     color: 'green',
     statusCategory: 'ativo',
-    signed: false,
-    shift: { e1: '10:00', s1: '14:00', e2: '15:00', s2: '19:00' }
+    signed: false
   },
   {
     name: 'Patrícia Rezende Fontes',
@@ -300,8 +287,7 @@ const SIMULATED_EMPLOYEES_SEED = [
     admission: '15/07/2021',
     color: 'blue',
     statusCategory: 'ativo',
-    signed: true,
-    shift: { e1: '08:00', s1: '12:00', e2: '13:00', s2: '17:00' }
+    signed: true
   },
   {
     name: 'Rafael Costa Valente',
@@ -313,8 +299,7 @@ const SIMULATED_EMPLOYEES_SEED = [
     admission: '03/05/2023',
     color: 'purple',
     statusCategory: 'ativo',
-    signed: false,
-    shift: { e1: '08:00', s1: '12:00', e2: '13:00', s2: '17:00' }
+    signed: false
   },
   {
     name: 'Sabrina Esteves Correa',
@@ -326,8 +311,7 @@ const SIMULATED_EMPLOYEES_SEED = [
     admission: '19/09/2022',
     color: 'orange',
     statusCategory: 'ativo',
-    signed: true,
-    shift: { e1: '08:30', s1: '12:30', e2: '13:30', s2: '17:30' }
+    signed: true
   },
   {
     name: 'Thiago Henrique Peixoto',
@@ -339,8 +323,7 @@ const SIMULATED_EMPLOYEES_SEED = [
     admission: '08/03/2023',
     color: 'green',
     statusCategory: 'ativo',
-    signed: false,
-    shift: { e1: '07:00', s1: '11:00', e2: '12:00', s2: '16:00' }
+    signed: false
   },
   {
     name: 'Vanessa Toledo Pires',
@@ -355,8 +338,7 @@ const SIMULATED_EMPLOYEES_SEED = [
     vacationDays: 30,
     vacationStart: '2026-09-01',
     vacationEnd: '2026-09-30',
-    signed: true,
-    shift: { e1: '08:00', s1: '12:00', e2: '13:00', s2: '17:00' }
+    signed: true
   },
   {
     name: 'Wagner Antunes Medeiros',
@@ -368,8 +350,7 @@ const SIMULATED_EMPLOYEES_SEED = [
     admission: '14/02/2022',
     color: 'orange',
     statusCategory: 'afastado',
-    signed: true,
-    shift: { e1: '08:00', s1: '12:00', e2: '13:00', s2: '17:00' }
+    signed: true
   },
   {
     name: 'Yasmin Beatriz Cardoso',
@@ -381,8 +362,7 @@ const SIMULATED_EMPLOYEES_SEED = [
     admission: '02/06/2022',
     color: 'red',
     statusCategory: 'demitido',
-    signed: false,
-    shift: { e1: '08:30', s1: '12:30', e2: '13:30', s2: '17:30' }
+    signed: false
   }
 ];
 
@@ -390,12 +370,6 @@ function generateSimulatedTimesheet(year, month, empSeed, empId) {
   const dows = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
   const numDays = new Date(year, month, 0).getDate();
   const list = [];
-  const shift = empSeed.shift || { e1: '08:00', s1: '12:00', e2: '13:00', s2: '17:00' };
-
-  const now = new Date();
-  const todayYear = now.getFullYear();
-  const todayMonth = now.getMonth() + 1;
-  const todayDate = now.getDate();
 
   function addMinutes(timeStr, mins) {
     if (!timeStr) return '';
@@ -408,9 +382,18 @@ function generateSimulatedTimesheet(year, month, empSeed, empId) {
     return `${String(resH).padStart(2, '0')}:${String(resM).padStart(2, '0')}`;
   }
 
-  function getJitter(day, idx) {
-    const seed = ((empSeed.name || '').charCodeAt(0) * 17 + day * 13 + idx * 7) % 100;
-    return (seed % 9) - 4; // -4 a +4 minutos de variação natural
+  // Gera variações realistas em torno do horário 08 às 12 e 14 às 18
+  function getRandomVariation(day, slotIndex) {
+    const pseudoSeed = (((empSeed.name || '').charCodeAt(0) * 37 + day * 19 + slotIndex * 11) % 100);
+    if (slotIndex === 1) return (pseudoSeed % 11) - 5; // Entrada ~07:55 a 08:05
+    if (slotIndex === 2) return (pseudoSeed % 7) - 3;  // Saída Almoço ~11:57 a 12:03
+    if (slotIndex === 3) return (pseudoSeed % 9) - 4;  // Retorno Almoço ~13:56 a 14:04
+    if (slotIndex === 4) {
+      // Saída ~17:58 a 18:25 (com algumas horas extras pontuais)
+      const isExtra = (day % 3 === 0);
+      return isExtra ? (15 + (pseudoSeed % 20)) : ((pseudoSeed % 7) - 2);
+    }
+    return 0;
   }
 
   for (let day = 1; day <= numDays; day++) {
@@ -418,9 +401,6 @@ function generateSimulatedTimesheet(year, month, empSeed, empId) {
     const dowIndex = date.getDay();
     const dow = dows[dowIndex];
     const holidayKey = `${day}-${month}`;
-    const isPastOrToday = (year < todayYear) || 
-                          (year === todayYear && month < todayMonth) || 
-                          (year === todayYear && month === todayMonth && day <= todayDate);
 
     if (empSeed.statusCategory === 'ferias') {
       list.push({
@@ -468,36 +448,25 @@ function generateSimulatedTimesheet(year, month, empSeed, empId) {
         signed: true
       });
     } else {
-      if (isPastOrToday) {
-        const j1 = getJitter(day, 1);
-        const j2 = getJitter(day, 2);
-        const j3 = getJitter(day, 3);
-        const overtimeBonus = (day % 3 === 0) ? (15 + (day % 4) * 10) : 0;
-        const j4 = getJitter(day, 4) + overtimeBonus;
+      // Dia útil regular (Segunda a Sexta): Horário base 08 às 12 e 14 às 18 com jitter aleatório
+      const v1 = getRandomVariation(day, 1);
+      const v2 = getRandomVariation(day, 2);
+      const v3 = getRandomVariation(day, 3);
+      const v4 = getRandomVariation(day, 4);
 
-        const e1 = addMinutes(shift.e1, j1);
-        const s1 = addMinutes(shift.s1, j2);
-        const e2 = addMinutes(shift.e2, j3);
-        const s2 = addMinutes(shift.s2, j4);
+      const e1 = addMinutes('08:00', v1);
+      const s1 = addMinutes('12:00', v2);
+      const e2 = addMinutes('14:00', v3);
+      const s2 = addMinutes('18:00', v4);
 
-        list.push({
-          day, dow,
-          e1, s1, e2, s2,
-          status: 'presenca',
-          statusLabel: 'Presença',
-          just: '',
-          signed: true
-        });
-      } else {
-        list.push({
-          day, dow,
-          e1: '', s1: '', e2: '', s2: '',
-          status: 'presenca',
-          statusLabel: 'Presença',
-          just: '',
-          signed: false
-        });
-      }
+      list.push({
+        day, dow,
+        e1, s1, e2, s2,
+        status: 'presenca',
+        statusLabel: 'Presença',
+        just: '',
+        signed: true
+      });
     }
   }
   return list;
@@ -640,6 +609,7 @@ function saveEmployeesToLocalStorage() {
 function loadEmployeesFromLocalStorage() {
   try {
     // Limpa versões anteriores de simulação/mock
+    localStorage.removeItem('lane_comunicacoes_employees_db_v5');
     localStorage.removeItem('lane_comunicacoes_employees_db_v4');
     localStorage.removeItem('lane_comunicacoes_employees_db_v3');
     localStorage.removeItem('lane_comunicacoes_employees_db_v2');
