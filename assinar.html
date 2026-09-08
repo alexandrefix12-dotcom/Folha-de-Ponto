@@ -503,24 +503,19 @@
         </div>
       </div>
 
-      <!-- Card de Assinatura Já Realizada (com opção de solicitar/fazer nova assinatura) -->
+      <!-- Card de Assinatura Já Realizada (Bloqueado) -->
       <div id="already-signed-card" class="card" style="display: none; background: #F0FDF4; border: 1.5px solid #86EFAC;">
-        <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
-          <div style="display: flex; align-items: center; gap: 12px; flex: 1; min-width: 220px;">
-            <div style="width: 42px; height: 42px; border-radius: 50%; background: #DCFCE7; color: #166534; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; flex-shrink: 0; font-weight: 800;">
-              ✓
-            </div>
-            <div>
-              <strong style="color: #166534; font-size: 0.95rem; display: block;">Folha de Ponto Assinada & Homologada</strong>
-              <span style="font-size: 0.78rem; color: #15803D;" id="already-signed-date">Assinado digitalmente em: --</span>
-              <div style="margin-top: 4px; font-size: 0.72rem; color: #047857; display: flex; align-items: center; gap: 4px;">
-                <span>🔒 Documento homologado e assinado com validade jurídica CLT.</span>
-              </div>
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <div style="width: 42px; height: 42px; border-radius: 50%; background: #DCFCE7; color: #166534; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; flex-shrink: 0; font-weight: 800;">
+            ✓
+          </div>
+          <div>
+            <strong style="color: #166534; font-size: 0.95rem; display: block;">Folha de Ponto Assinada & Homologada</strong>
+            <span style="font-size: 0.78rem; color: #15803D;" id="already-signed-date">Assinado digitalmente em: --</span>
+            <div style="margin-top: 4px; font-size: 0.72rem; color: #047857; display: flex; align-items: center; gap: 4px;">
+              <span>🔒 Documento homologado e assinado com validade jurídica CLT.</span>
             </div>
           </div>
-          <button type="button" id="btn-portal-resign" onclick="handlePortalReSign()" style="background: #FFFFFF; border: 1.5px solid #059669; color: #065F46; padding: 8px 14px; border-radius: 8px; font-size: 0.82rem; font-weight: 800; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.2s;">
-            ✍️ Fazer Nova Assinatura
-          </button>
         </div>
       </div>
 
