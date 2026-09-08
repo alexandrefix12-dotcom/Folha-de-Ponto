@@ -233,7 +233,8 @@ async function initApp() {
 
         dbEmployees.forEach(remoteEmp => {
           const localMatch = localCopy.find(l => l.id === remoteEmp.id || (l.cpf && remoteEmp.cpf && l.cpf.replace(/\D/g, '') === remoteEmp.cpf.replace(/\D/g, '')));
-          const mergedTimesheets = localMatch ? { ...(localMatch.timesheets || {}), ...(remoteEmp.timesheets || {}) } : (remoteEmp.timesheets || {});
+          // Prioriza as edições e anexos mais recentes salvos localmente
+          const mergedTimesheets = localMatch ? { ...(remoteEmp.timesheets || {}), ...(localMatch.timesheets || {}) } : (remoteEmp.timesheets || {});
           
           if (!mergedTimesheets[monthKey]) {
             mergedTimesheets[monthKey] = generateCurrentMonthData(currentYear, currentMonth, remoteEmp.id);
@@ -3544,27 +3545,78 @@ function updateJustTypeSelection(type) {
   }
 }
 
-function handleJustificationFileSelected(event) {
+// Comprime imagens enviadas para evitar estouro de cota do LocalStorage e agilizar sincronização
+function compressImageFile(file, maxDimension = 1200, quality = 0.78) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+        if (width > maxDimension || height > maxDimension) {
+          if (width > height) {
+            height = Math.round((height * maxDimension) / width);
+            width = maxDimension;
+          } else {
+            width = Math.round((width * maxDimension) / height);
+            height = maxDimension;
+          }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        const compressedBase64 = canvas.toDataURL('image/jpeg', quality);
+        resolve({
+          data: compressedBase64,
+          name: file.name,
+          type: 'image/jpeg',
+          size: formatBytes(Math.round((compressedBase64.length * 3) / 4))
+        });
+      };
+      img.onerror = () => {
+        resolve({
+          data: e.target.result,
+          name: file.name,
+          type: file.type || 'image/jpeg',
+          size: formatBytes(file.size)
+        });
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+async function handleJustificationFileSelected(event) {
   const file = event.target?.files?.[0];
   if (!file) return;
 
-  if (file.size > 15 * 1024 * 1024) {
-    alert('O arquivo selecionado é muito grande. Por favor, envie uma foto ou PDF de até 15MB.');
+  if (file.size > 20 * 1024 * 1024) {
+    alert('O arquivo selecionado é muito grande. Por favor, envie uma foto ou PDF de até 20MB.');
     event.target.value = '';
     return;
   }
 
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    currentJustAttachment = {
-      data: e.target.result,
-      name: file.name,
-      type: file.type || 'application/octet-stream',
-      size: formatBytes(file.size)
-    };
+  if (file.type && file.type.startsWith('image/')) {
+    const compressed = await compressImageFile(file, 1200, 0.78);
+    currentJustAttachment = compressed;
     renderJustificationAttachmentPreview(currentJustAttachment);
-  };
-  reader.readAsDataURL(file);
+  } else {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      currentJustAttachment = {
+        data: e.target.result,
+        name: file.name,
+        type: file.type || 'application/pdf',
+        size: formatBytes(file.size)
+      };
+      renderJustificationAttachmentPreview(currentJustAttachment);
+    };
+    reader.readAsDataURL(file);
+  }
 }
 
 function renderJustificationAttachmentPreview(att) {
@@ -3602,7 +3654,7 @@ function removeJustificationAttachment() {
   if (dropzone) dropzone.style.display = 'block';
 }
 
-function handleSaveJustification(event) {
+async function handleSaveJustification(event) {
   if (event) event.preventDefault();
 
   const dayIdxInput = document.getElementById('just-day-index');
@@ -3649,13 +3701,14 @@ function handleSaveJustification(event) {
 
   saveEmployeesToLocalStorage();
   if (window.supabaseService && window.supabaseService.isConfigured() && typeof window.supabaseService.saveFullTimesheet === 'function') {
-    window.supabaseService.saveFullTimesheet(emp.id, monthKey, emp.days).catch(err => console.warn(err));
+    await window.supabaseService.saveFullTimesheet(emp.id, monthKey, emp.days, emp.cpf || '').catch(err => console.warn(err));
   }
 
   closeJustificationModal();
   renderTimesheetTable();
   recalculateAllTimes();
   renderEmployeesAdminTable();
+  showToast('📎 Comprovante e justificativa salvos com sucesso!');
 }
 
 function openCurrentAttachmentViewer() {
