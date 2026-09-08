@@ -315,10 +315,10 @@ async function initApp() {
     }
   });
 
-  // Polling a cada 8 segundos para capturar assinaturas vindas do celular em tempo real
+  // Polling a cada 3 segundos para capturar assinaturas vindas do celular em tempo real
   setInterval(() => {
     syncWithSupabaseRealtime();
-  }, 8000);
+  }, 3000);
 }
 
 // Sincroniza assinaturas e folhas salvas diretamente no Supabase em tempo real
@@ -334,7 +334,19 @@ async function syncWithSupabaseRealtime() {
     let stateChanged = false;
 
     remoteEmployees.forEach(remote => {
-      const target = employeesDB.find(e => e.id === remote.id || (e.cpf && remote.cpf && e.cpf.replace(/\D/g, '') === remote.cpf.replace(/\D/g, '')));
+      const cleanRemoteCpf = remote.cpf ? String(remote.cpf).replace(/\D/g, '') : '';
+      const target = employeesDB.find(e => {
+        const cleanLocalCpf = e.cpf ? String(e.cpf).replace(/\D/g, '') : '';
+        if (e.id === remote.id) return true;
+        if (cleanRemoteCpf && cleanLocalCpf && cleanRemoteCpf === cleanLocalCpf) return true;
+        if (e.name && remote.name) {
+          const n1 = e.name.toLowerCase().trim();
+          const n2 = remote.name.toLowerCase().trim();
+          if (n1 === n2 || n1.includes(n2) || n2.includes(n1)) return true;
+        }
+        return false;
+      });
+
       if (target) {
         const wasSigned = Boolean(target.signatures && (target.signatures[padMonthKey] || target.signatures[altMonthKey]));
         const nowSigned = Boolean(remote.signatures && (remote.signatures[padMonthKey] || remote.signatures[altMonthKey]));

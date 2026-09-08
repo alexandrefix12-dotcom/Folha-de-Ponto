@@ -398,7 +398,7 @@ async function saveEmployeeSignatureToSupabase(empId, monthKey, signatureObj, cp
     const padMonthKey = monthKey.replace(/-(\d)$/, '-0$1');
     const altMonthKey = monthKey.replace(/-0(\d)$/, '-$1');
 
-    let query = client.from('funcionarios').select('id, nome, cpf, assinaturas, signatures');
+    let query = client.from('funcionarios').select('*');
     if (isUUID(cleanId)) {
       query = query.eq('id', cleanId);
     } else if (cleanCpf && cleanCpf.length === 11) {
@@ -413,8 +413,8 @@ async function saveEmployeeSignatureToSupabase(empId, monthKey, signatureObj, cp
       query = query.ilike('nome', `%${cleanId.replace(/-/g, ' ')}%`);
     }
 
-    const { data: empRows } = await query;
-    if (empRows && empRows.length > 0) {
+    const { data: empRows, error: empQueryErr } = await query;
+    if (!empQueryErr && empRows && empRows.length > 0) {
       for (const item of empRows) {
         let currentSignatures = {};
         const raw = item.assinaturas || item.signatures;
@@ -424,10 +424,14 @@ async function saveEmployeeSignatureToSupabase(empId, monthKey, signatureObj, cp
         currentSignatures[padMonthKey] = signatureObj;
         currentSignatures[altMonthKey] = signatureObj;
         currentSignatures[monthKey] = signatureObj;
-        await client.from('funcionarios').update({ 
-          assinaturas: currentSignatures, 
-          signatures: currentSignatures 
-        }).eq('id', item.id);
+
+        try {
+          await client.from('funcionarios').update({ 
+            assinaturas: currentSignatures 
+          }).eq('id', item.id);
+        } catch (e) {
+          console.warn('Erro ao atualizar assinaturas em funcionarios:', e);
+        }
       }
     }
 
@@ -460,7 +464,7 @@ async function deleteEmployeeSignatureFromSupabase(empId, monthKey, cpf = '', na
     const padMonthKey = monthKey.replace(/-(\d)$/, '-0$1');
 
     // 1. Localiza o funcionário na tabela funcionarios
-    let query = client.from('funcionarios').select('id, nome, cpf, assinaturas, signatures');
+    let query = client.from('funcionarios').select('*');
     if (isUUID(cleanId)) {
       query = query.eq('id', cleanId);
     } else if (cleanCpf && cleanCpf.length === 11) {
@@ -495,12 +499,13 @@ async function deleteEmployeeSignatureFromSupabase(empId, monthKey, cpf = '', na
           sigs = {};
         }
 
-        await client.from('funcionarios').update({ 
-          assinaturas: sigs, 
-          signatures: sigs,
-          digital_signature: null,
-          digitalSignature: null
-        }).eq('id', item.id);
+        try {
+          await client.from('funcionarios').update({ 
+            assinaturas: sigs 
+          }).eq('id', item.id);
+        } catch (e) {
+          console.warn('Erro ao limpar assinaturas em funcionarios:', e);
+        }
       }
     }
 

@@ -1258,12 +1258,23 @@
       if (window.supabaseService && window.supabaseService.isConfigured()) {
         try {
           // 1. Salva a assinatura digital no perfil do colaborador no Supabase
-          await window.supabaseService.saveEmployeeSignature(currentEmp.id, targetMonthKey, signatureObj);
+          await window.supabaseService.saveEmployeeSignature(
+            currentEmp.id, 
+            targetMonthKey, 
+            signatureObj, 
+            currentEmp.cpf || '', 
+            currentEmp.name || ''
+          );
 
           // 2. Salva os registros diários marcados como assinados
           const days = (currentEmp.timesheets && currentEmp.timesheets[targetMonthKey]) || currentEmp.days || [];
           days.forEach(d => { if (d) d.signed = true; });
-          await window.supabaseService.saveFullTimesheet(currentEmp.id, targetMonthKey, days);
+          await window.supabaseService.saveFullTimesheet(
+            currentEmp.id, 
+            targetMonthKey, 
+            days, 
+            currentEmp.cpf || ''
+          );
         } catch (err) {
           console.warn('Erro ao sincronizar com Supabase:', err);
         }
