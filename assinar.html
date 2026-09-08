@@ -737,8 +737,8 @@
       renderTimesheetStatsAndTable(days, year, monthNum);
 
       // Verifica se já assinou
-      const existingSig = (currentEmp.signatures && currentEmp.signatures[targetMonthKey]) || currentEmp.digitalSignature;
-      if (existingSig) {
+      const existingSig = (currentEmp.signatures && currentEmp.signatures[targetMonthKey]);
+      if (existingSig && (existingSig.image || typeof existingSig === 'string')) {
         document.getElementById('already-signed-card').style.display = 'block';
         document.getElementById('already-signed-date').textContent = `Assinado digitalmente em: ${existingSig.signedAt || existingSig.dateOnly || 'Data registrada'}`;
         document.getElementById('signature-action-card').style.display = 'none';

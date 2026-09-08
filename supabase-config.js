@@ -383,18 +383,30 @@ async function loadTimesheetFromSupabase(empId, monthKey, cpf = '') {
   return null;
 }
 
+function isUUID(str) {
+  return typeof str === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str.trim());
+}
+
 // 5. Salvar Assinatura Digital do Funcionário em Tempo Real
-async function saveEmployeeSignatureToSupabase(empId, monthKey, signatureObj) {
+async function saveEmployeeSignatureToSupabase(empId, monthKey, signatureObj, cpf = '', name = '') {
   const client = getSupabaseClient();
   if (!client || !empId) return false;
 
   try {
     const cleanId = String(empId).trim();
+    const cleanCpf = cpf ? String(cpf).replace(/\D/g, '') : cleanId.replace(/\D/g, '');
+
     const applyFilter = (q) => {
-      if (cleanId.length === 36 && cleanId.includes('-')) {
+      if (isUUID(cleanId)) {
         return q.eq('id', cleanId);
       }
-      return q.or(`id.eq.${cleanId},cpf.eq.${cleanId}`);
+      if (cleanCpf && cleanCpf.length === 11) {
+        return q.or(`cpf.eq.${cpf},cpf.eq.${cleanCpf}`);
+      }
+      if (name) {
+        return q.ilike('nome', `%${name}%`);
+      }
+      return q.eq('cpf', cleanId);
     };
 
     let currentSignatures = {};
@@ -406,26 +418,15 @@ async function saveEmployeeSignatureToSupabase(empId, monthKey, signatureObj) {
         if (raw) {
           currentSignatures = typeof raw === 'string' ? JSON.parse(raw) : { ...raw };
         }
+        currentSignatures[monthKey] = signatureObj;
+        await client.from('funcionarios').update({ 
+          assinaturas: currentSignatures, 
+          signatures: currentSignatures 
+        }).eq('id', item.id);
       }
     } catch (e) {}
 
-    currentSignatures[monthKey] = signatureObj;
-
-    // 2. Atualiza a coluna assinaturas / signatures no funcionario
-    let updated = false;
-    try {
-      const r1 = await applyFilter(client.from('funcionarios').update({ assinaturas: currentSignatures }));
-      if (!r1.error && r1.status < 400) updated = true;
-    } catch (e) {}
-
-    if (!updated) {
-      try {
-        const r2 = await applyFilter(client.from('funcionarios').update({ signatures: currentSignatures }));
-        if (!r2.error && r2.status < 400) updated = true;
-      } catch (e) {}
-    }
-
-    // 3. Salva também na tabela folha_pontos se existir
+    // Salva também na tabela folha_pontos se existir
     try {
       await client.from('folha_pontos').upsert({
         funcionario_id: cleanId,
@@ -443,25 +444,28 @@ async function saveEmployeeSignatureToSupabase(empId, monthKey, signatureObj) {
 }
 
 // 5b. Excluir/Limpar Assinatura Digital do Funcionário no Supabase
-async function deleteEmployeeSignatureFromSupabase(empId, monthKey, cpf = '') {
+async function deleteEmployeeSignatureFromSupabase(empId, monthKey, cpf = '', name = '') {
   const client = getSupabaseClient();
   if (!client || !empId) return false;
 
   try {
     const cleanId = String(empId).trim();
-    const cleanCpf = cpf ? String(cpf).replace(/\D/g, '') : '';
+    const cleanCpf = cpf ? String(cpf).replace(/\D/g, '') : cleanId.replace(/\D/g, '');
 
     const applyFilter = (q) => {
-      if (cleanId.length === 36 && cleanId.includes('-')) {
+      if (isUUID(cleanId)) {
         return q.eq('id', cleanId);
       }
-      if (cleanCpf) {
-        return q.or(`id.eq.${cleanId},cpf.eq.${cpf},cpf.eq.${cleanCpf}`);
+      if (cleanCpf && cleanCpf.length === 11) {
+        return q.or(`cpf.eq.${cpf},cpf.eq.${cleanCpf}`);
       }
-      return q.or(`id.eq.${cleanId},cpf.eq.${cleanId}`);
+      if (name) {
+        return q.ilike('nome', `%${name}%`);
+      }
+      return q.eq('cpf', cleanId);
     };
 
-    // 1. Remove da tabela funcionarios (assinaturas / signatures)
+    // 1. Remove da tabela funcionarios (coluna assinaturas e signatures)
     try {
       const { data: empRows } = await applyFilter(client.from('funcionarios').select('id, assinaturas, signatures'));
       if (empRows && empRows.length > 0) {
@@ -470,10 +474,13 @@ async function deleteEmployeeSignatureFromSupabase(empId, monthKey, cpf = '') {
           if (typeof sigs === 'string') {
             try { sigs = JSON.parse(sigs); } catch (e) {}
           }
-          if (sigs[monthKey]) {
+          if (sigs && typeof sigs === 'object') {
             delete sigs[monthKey];
           }
-          await client.from('funcionarios').update({ assinaturas: sigs, signatures: sigs }).eq('id', item.id);
+          await client.from('funcionarios').update({ 
+            assinaturas: sigs, 
+            signatures: sigs 
+          }).eq('id', item.id);
         }
       }
     } catch (e) {
@@ -482,15 +489,18 @@ async function deleteEmployeeSignatureFromSupabase(empId, monthKey, cpf = '') {
 
     // 2. Remove/Nula na tabela folha_pontos
     try {
-      let fpQuery = client.from('folha_pontos').update({ assinatura: null, updated_at: new Date().toISOString() }).eq('mes_ano', monthKey);
-      if (cleanId.length === 36 && cleanId.includes('-')) {
-        fpQuery = fpQuery.eq('funcionario_id', cleanId);
-      } else if (cleanCpf) {
-        fpQuery = fpQuery.or(`funcionario_id.eq.${cleanId},funcionario_id.eq.${cleanCpf}`);
-      } else {
-        fpQuery = fpQuery.eq('funcionario_id', cleanId);
+      const targets = [cleanId];
+      if (cleanCpf && cleanCpf.length === 11) targets.push(cleanCpf);
+      if (cpf && !targets.includes(cpf)) targets.push(cpf);
+
+      for (const tId of targets) {
+        try {
+          await client.from('folha_pontos')
+            .update({ assinatura: null, updated_at: new Date().toISOString() })
+            .eq('funcionario_id', tId)
+            .eq('mes_ano', monthKey);
+        } catch (e) {}
       }
-      await fpQuery;
     } catch (e) {
       console.warn('Aviso ao anular assinatura em folha_pontos:', e);
     }
