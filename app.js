@@ -781,6 +781,35 @@ function selectEmployee(empIdOrName, navigateToTimesheet = false) {
   }
   emp.days = emp.timesheets[monthKey];
 
+  // Sincronização automática dos registros diários com o status contratual do colaborador
+  if (emp.statusCategory === 'afastado' && emp.days && Array.isArray(emp.days)) {
+    const hasWrongStatus = emp.days.some(d => d.status === 'ferias' || d.status === 'presenca' || !d.status);
+    if (hasWrongStatus) {
+      emp.days.forEach(item => {
+        item.status = 'atestado';
+        item.statusLabel = 'Afastado (INSS)';
+        item.just = 'Afastamento INSS / Licença Médica';
+        item.e1 = ''; item.s1 = ''; item.e2 = ''; item.s2 = '';
+        item.signed = true;
+      });
+      emp.timesheets[monthKey] = JSON.parse(JSON.stringify(emp.days));
+      saveEmployeesToLocalStorage();
+    }
+  } else if (emp.statusCategory === 'ferias' && emp.days && Array.isArray(emp.days)) {
+    const hasWrongStatus = emp.days.some(d => d.status !== 'ferias');
+    if (hasWrongStatus) {
+      emp.days.forEach(item => {
+        item.status = 'ferias';
+        item.statusLabel = 'Férias Regulamentares';
+        item.just = 'Férias Regulamentares';
+        item.e1 = ''; item.s1 = ''; item.e2 = ''; item.s2 = '';
+        item.signed = true;
+      });
+      emp.timesheets[monthKey] = JSON.parse(JSON.stringify(emp.days));
+      saveEmployeesToLocalStorage();
+    }
+  }
+
   // 1. Update Header tab text
   const tabLabel = document.getElementById('tab-emp-name');
   if (tabLabel) tabLabel.textContent = `Folha de Ponto (${emp.name})`;
@@ -1222,7 +1251,7 @@ function renderTimesheetTable() {
             <option value="presenca" ${(item.status === 'presenca' || !item.status) ? 'selected' : ''}>🟢 Presença</option>
             <option value="meio_periodo" ${item.status === 'meio_periodo' ? 'selected' : ''}>🟡 Meio Período (-4h)</option>
             <option value="falta" ${item.status === 'falta' ? 'selected' : ''}>🔴 Faltou</option>
-            <option value="atestado" ${item.status === 'atestado' ? 'selected' : ''}>🟠 Atestado</option>
+            <option value="atestado" ${(item.status === 'atestado' || item.status === 'afastado') ? 'selected' : ''}>🟠 Afastado (INSS)</option>
             <option value="justificada" ${item.status === 'justificada' ? 'selected' : ''}>🟡 Justificou</option>
             <option value="ferias" ${item.status === 'ferias' ? 'selected' : ''}>🌴 Férias</option>
             <option value="dsr" ${item.status === 'dsr' ? 'selected' : ''}>🟣 DSR / Folga</option>
@@ -2149,10 +2178,8 @@ async function handleSaveEditedEmployee(e) {
     if (emp.days && Array.isArray(emp.days)) {
       emp.days.forEach(item => {
         item.status = 'ferias';
-        item.e1 = '';
-        item.s1 = '';
-        item.e2 = '';
-        item.s2 = '';
+        item.statusLabel = 'Férias Regulamentares';
+        item.e1 = ''; item.s1 = ''; item.e2 = ''; item.s2 = '';
         item.signed = true;
         item.just = 'Férias Regulamentares';
       });
@@ -2162,10 +2189,8 @@ async function handleSaveEditedEmployee(e) {
         if (Array.isArray(emp.timesheets[k])) {
           emp.timesheets[k].forEach(item => {
             item.status = 'ferias';
-            item.e1 = '';
-            item.s1 = '';
-            item.e2 = '';
-            item.s2 = '';
+            item.statusLabel = 'Férias Regulamentares';
+            item.e1 = ''; item.s1 = ''; item.e2 = ''; item.s2 = '';
             item.signed = true;
             item.just = 'Férias Regulamentares';
           });
@@ -2173,33 +2198,70 @@ async function handleSaveEditedEmployee(e) {
       });
     }
   } else if (statusCategory === 'afastado') {
-    // Aplica Afastamento/Atestado em todos os dias
+    // Aplica Afastamento/INSS em todos os dias e timesheets
     if (emp.days && Array.isArray(emp.days)) {
       emp.days.forEach(item => {
         item.status = 'atestado';
-        item.e1 = '';
-        item.s1 = '';
-        item.e2 = '';
-        item.s2 = '';
+        item.statusLabel = 'Afastado (INSS)';
+        item.e1 = ''; item.s1 = ''; item.e2 = ''; item.s2 = '';
         item.signed = true;
         item.just = 'Afastamento INSS / Licença Médica';
       });
     }
-  } else if (statusCategory === 'ativo' && (prevStatusCategory === 'ferias' || prevStatusCategory === 'afastado')) {
+    if (emp.timesheets) {
+      Object.keys(emp.timesheets).forEach(k => {
+        if (Array.isArray(emp.timesheets[k])) {
+          emp.timesheets[k].forEach(item => {
+            item.status = 'atestado';
+            item.statusLabel = 'Afastado (INSS)';
+            item.e1 = ''; item.s1 = ''; item.e2 = ''; item.s2 = '';
+            item.signed = true;
+            item.just = 'Afastamento INSS / Licença Médica';
+          });
+        }
+      });
+    }
+  } else if (statusCategory === 'demitido' || statusCategory === 'desligado') {
+    if (emp.days && Array.isArray(emp.days)) {
+      emp.days.forEach(item => {
+        item.status = 'falta';
+        item.statusLabel = 'Demitido / Desligado';
+        item.e1 = ''; item.s1 = ''; item.e2 = ''; item.s2 = '';
+        item.signed = false;
+        item.just = 'Colaborador Desligado / Demitido';
+      });
+    }
+    if (emp.timesheets) {
+      Object.keys(emp.timesheets).forEach(k => {
+        if (Array.isArray(emp.timesheets[k])) {
+          emp.timesheets[k].forEach(item => {
+            item.status = 'falta';
+            item.statusLabel = 'Demitido / Desligado';
+            item.e1 = ''; item.s1 = ''; item.e2 = ''; item.s2 = '';
+            item.signed = false;
+            item.just = 'Colaborador Desligado / Demitido';
+          });
+        }
+      });
+    }
+  } else if (statusCategory === 'ativo' && (prevStatusCategory === 'ferias' || prevStatusCategory === 'afastado' || prevStatusCategory === 'demitido')) {
     // Retorno ao trabalho: restabelece a jornada normal nos dias úteis
     if (emp.days && Array.isArray(emp.days)) {
       emp.days.forEach(item => {
         const holidayKey = `${item.day}-${currentMonth}`;
         if (BRAZIL_HOLIDAYS[holidayKey]) {
           item.status = 'feriado';
+          item.statusLabel = 'Feriado';
           item.e1 = ''; item.s1 = ''; item.e2 = ''; item.s2 = '';
           item.just = BRAZIL_HOLIDAYS[holidayKey];
         } else if (item.dow === 'Sábado' || item.dow === 'Domingo') {
           item.status = 'dsr';
+          item.statusLabel = 'D.S.R.';
           item.e1 = ''; item.s1 = ''; item.e2 = ''; item.s2 = '';
           item.just = item.dow === 'Sábado' ? 'Acordo de Compensação Semanal' : 'Descanso Semanal Remunerado';
         } else {
           item.status = 'presenca';
+          item.statusLabel = 'Presença';
           item.e1 = ''; item.s1 = ''; item.e2 = ''; item.s2 = '';
           item.just = '';
         }
