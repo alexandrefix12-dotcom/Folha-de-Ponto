@@ -1439,10 +1439,7 @@ function renderTimesheetTable() {
             <option value="presenca" ${item.status === 'presenca' ? 'selected' : ''}>🟢 Presença</option>
             <option value="meio_periodo" ${item.status === 'meio_periodo' ? 'selected' : ''}>🟡 Meio Período (08h às 12h)</option>
             <option value="falta" ${item.status === 'falta' ? 'selected' : ''}>🔴 Faltou</option>
-            <option value="atestado" ${(item.status === 'atestado' || item.status === 'afastado') ? 'selected' : ''}>🟠 Afastado (INSS)</option>
-            <option value="demitido" ${(item.status === 'demitido' || item.status === 'desligado') ? 'selected' : ''}>🔴 Demitido / Desligado</option>
             <option value="justificada" ${item.status === 'justificada' ? 'selected' : ''}>🟡 Justificou</option>
-            <option value="ferias" ${item.status === 'ferias' ? 'selected' : ''}>🌴 Férias</option>
             <option value="dsr" ${item.status === 'dsr' ? 'selected' : ''}>🟣 DSR / Folga</option>
             <option value="feriado" ${item.status === 'feriado' ? 'selected' : ''}>🔵 Feriado</option>
           </select>
