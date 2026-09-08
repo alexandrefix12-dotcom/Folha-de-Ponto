@@ -34,6 +34,7 @@ function generateMonthData(year, month, empId = '') {
 
   let isFerias = false;
   let isAfastado = false;
+  let isDemitido = false;
   let targetEmp = null;
 
   try {
@@ -42,6 +43,7 @@ function generateMonthData(year, month, empId = '') {
       if (targetEmp) {
         isFerias = targetEmp.statusCategory === 'ferias';
         isAfastado = targetEmp.statusCategory === 'afastado';
+        isDemitido = (targetEmp.statusCategory === 'demitido' || targetEmp.statusCategory === 'desligado');
       }
     }
   } catch (err) {
@@ -71,9 +73,18 @@ function generateMonthData(year, month, empId = '') {
         day, dow,
         e1: '', s1: '', e2: '', s2: '',
         status: 'atestado',
-        statusLabel: 'Afastamento / INSS',
+        statusLabel: 'Afastado (INSS)',
         just: 'Afastamento INSS / Licença Médica',
         signed: true
+      });
+    } else if (isDemitido) {
+      list.push({
+        day, dow,
+        e1: '', s1: '', e2: '', s2: '',
+        status: 'demitido',
+        statusLabel: 'Demitido / Desligado',
+        just: 'Colaborador Desligado / Demitido',
+        signed: false
       });
     } else {
       // Padrão: Presença para todos os dias
@@ -783,14 +794,32 @@ function selectEmployee(empIdOrName, navigateToTimesheet = false) {
 
   // Sincronização automática dos registros diários com o status contratual do colaborador
   if (emp.statusCategory === 'afastado' && emp.days && Array.isArray(emp.days)) {
-    const hasWrongStatus = emp.days.some(d => d.status === 'ferias' || d.status === 'presenca' || !d.status);
+    const hasWrongStatus = emp.days.some(d => d.status === 'ferias' || (d.status === 'presenca' && !d.e1));
     if (hasWrongStatus) {
       emp.days.forEach(item => {
-        item.status = 'atestado';
-        item.statusLabel = 'Afastado (INSS)';
-        item.just = 'Afastamento INSS / Licença Médica';
-        item.e1 = ''; item.s1 = ''; item.e2 = ''; item.s2 = '';
-        item.signed = true;
+        if (!item.e1 || item.status === 'presenca' || item.status === 'ferias') {
+          item.status = 'atestado';
+          item.statusLabel = 'Afastado (INSS)';
+          item.just = item.just || 'Afastamento INSS / Licença Médica';
+          item.e1 = item.e1 || ''; item.s1 = item.s1 || ''; item.e2 = item.e2 || ''; item.s2 = item.s2 || '';
+          item.signed = true;
+        }
+      });
+      emp.timesheets[monthKey] = JSON.parse(JSON.stringify(emp.days));
+      saveEmployeesToLocalStorage();
+    }
+  } else if ((emp.statusCategory === 'demitido' || emp.statusCategory === 'desligado') && emp.days && Array.isArray(emp.days)) {
+    const hasWrongStatus = emp.days.some(d => (d.status === 'presenca' && (!d.e1 || !d.s2)) || d.status === 'ferias');
+    if (hasWrongStatus) {
+      emp.days.forEach(item => {
+        // Se o dia não possui expediente trabalhado completo ou está como presença vazia, marca como demitido/desligado
+        if ((item.status === 'presenca' && (!item.e1 || !item.s2)) || item.status === 'ferias') {
+          item.status = 'demitido';
+          item.statusLabel = 'Demitido / Desligado';
+          item.just = 'Colaborador Desligado / Demitido';
+          item.e1 = ''; item.s1 = ''; item.e2 = ''; item.s2 = '';
+          item.signed = false;
+        }
       });
       emp.timesheets[monthKey] = JSON.parse(JSON.stringify(emp.days));
       saveEmployeesToLocalStorage();
@@ -1113,7 +1142,7 @@ function minutesToTime(mins) {
 // Sábado: Jornada de 4h (240 min) — Horário da empresa: 08:00 às 12:00
 // Domingo: D.S.R. (Fechado)
 function calcDayMetrics(e1, s1, e2, s2, status, dow = '') {
-  if (status === 'dsr' || status === 'feriado' || status === 'ferias' || status === 'atestado' || status === 'justificada') {
+  if (status === 'dsr' || status === 'feriado' || status === 'ferias' || status === 'atestado' || status === 'afastado' || status === 'demitido' || status === 'desligado' || status === 'justificada') {
     return {
       workedMins: 0,
       balanceMins: 0,
@@ -1263,7 +1292,10 @@ function getStatusLabel(status) {
     'presenca': 'Presença',
     'meio_periodo': 'Meio Período',
     'falta': 'Faltou',
-    'atestado': 'Atestado',
+    'atestado': 'Afastado (INSS)',
+    'afastado': 'Afastado (INSS)',
+    'demitido': 'Demitido / Desligado',
+    'desligado': 'Demitido / Desligado',
     'justificada': 'Justificou',
     'ferias': 'Férias',
     'dsr': 'D.S.R.',
@@ -1300,14 +1332,14 @@ function renderTimesheetTable() {
     // Row classes
     if (item.status === 'dsr') tr.className = 'weekend-row';
     else if (item.status === 'feriado') tr.className = 'holiday-row';
-    else if (item.status === 'falta') tr.className = 'absence-row';
-    else if (item.status === 'atestado') tr.className = 'atestado-row';
+    else if (item.status === 'falta' || item.status === 'demitido' || item.status === 'desligado') tr.className = 'absence-row';
+    else if (item.status === 'atestado' || item.status === 'afastado') tr.className = 'atestado-row';
     else if (item.status === 'justificada') tr.className = 'justificada-row';
     else if (item.status === 'ferias') tr.className = 'ferias-row';
 
     const dayPad = String(item.day).padStart(2, '0');
     const monthPad = String(currentMonth).padStart(2, '0');
-    const isNonWorking = item.status === 'dsr' || item.status === 'feriado' || item.status === 'atestado' || item.status === 'falta' || item.status === 'ferias' || item.status === 'justificada';
+    const isNonWorking = item.status === 'dsr' || item.status === 'feriado' || item.status === 'atestado' || item.status === 'afastado' || item.status === 'demitido' || item.status === 'desligado' || item.status === 'falta' || item.status === 'ferias' || item.status === 'justificada';
     const metrics = calcDayMetrics(item.e1, item.s1, item.e2, item.s2, item.status, item.dow);
     const now = new Date();
     const todayYear = now.getFullYear();
@@ -1352,12 +1384,13 @@ function renderTimesheetTable() {
             <option value="meio_periodo" ${item.status === 'meio_periodo' ? 'selected' : ''}>🟡 Meio Período (-4h)</option>
             <option value="falta" ${item.status === 'falta' ? 'selected' : ''}>🔴 Faltou</option>
             <option value="atestado" ${(item.status === 'atestado' || item.status === 'afastado') ? 'selected' : ''}>🟠 Afastado (INSS)</option>
+            <option value="demitido" ${(item.status === 'demitido' || item.status === 'desligado') ? 'selected' : ''}>🔴 Demitido / Desligado</option>
             <option value="justificada" ${item.status === 'justificada' ? 'selected' : ''}>🟡 Justificou</option>
             <option value="ferias" ${item.status === 'ferias' ? 'selected' : ''}>🌴 Férias</option>
             <option value="dsr" ${item.status === 'dsr' ? 'selected' : ''}>🟣 DSR / Folga</option>
             <option value="feriado" ${item.status === 'feriado' ? 'selected' : ''}>🔵 Feriado</option>
           </select>
-          ${ (item.status === 'atestado' || item.status === 'justificada' || item.just || item.attachmentData) ? `
+          ${ (item.status === 'atestado' || item.status === 'afastado' || item.status === 'demitido' || item.status === 'desligado' || item.status === 'justificada' || item.just || item.attachmentData) ? `
             <button type="button" class="btn-just-chip ${item.attachmentData ? 'has-attachment' : (item.just ? 'has-text' : '')}" onclick="openJustificationModal(${index})" title="${item.just || 'Adicionar ou visualizar observação e comprovante'}">
               ${ item.attachmentData 
                  ? (item.attachmentType && item.attachmentType.includes('pdf') ? '📄 PDF Anexado' : '📷 Foto Anexada')
@@ -1881,9 +1914,16 @@ function changeDayStatus(index, newStatus) {
   if (newStatus === 'falta') {
     item.e1 = ''; item.s1 = ''; item.e2 = ''; item.s2 = '';
     item.signed = false;
+  } else if (newStatus === 'demitido') {
+    item.e1 = ''; item.s1 = ''; item.e2 = ''; item.s2 = '';
+    item.signed = false;
+    item.just = 'Colaborador Desligado / Demitido';
   } else if (newStatus === 'atestado' || newStatus === 'justificada') {
     item.e1 = ''; item.s1 = ''; item.e2 = ''; item.s2 = '';
     item.signed = true;
+    if (newStatus === 'atestado') {
+      item.just = item.just || 'Afastamento INSS / Licença Médica';
+    }
     renderTimesheetTable();
     recalculateAllTimes();
     renderEmployeesAdminTable();
