@@ -235,7 +235,8 @@ async function initApp() {
             statusTagClass: pillInfo.tagClass,
             statusPillLabel: pillInfo.label,
             statusPillClass: pillInfo.pillClass,
-            signatures: (localMatch && localMatch.signatures) || remoteEmp.signatures || {},
+            signatures: { ...(localMatch && localMatch.signatures ? localMatch.signatures : {}), ...(remoteEmp && remoteEmp.signatures ? remoteEmp.signatures : {}) },
+            digitalSignature: (localMatch && localMatch.digitalSignature) || (remoteEmp && remoteEmp.digitalSignature) || null,
             timesheets: mergedTimesheets,
             days: mergedTimesheets[monthKey]
           });

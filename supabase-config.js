@@ -296,39 +296,46 @@ async function saveEmployeeSignatureToSupabase(empId, monthKey, signatureObj) {
   if (!client || !empId) return false;
 
   try {
-    // 1. Busca as assinaturas atuais do funcionário
-    let currentSignatures = {};
+    const cleanId = String(empId).trim();
     const applyFilter = (q) => {
-      if (typeof empId === 'string' && empId.length === 36 && empId.includes('-')) {
-        return q.eq('id', empId);
+      if (cleanId.length === 36 && cleanId.includes('-')) {
+        return q.eq('id', cleanId);
       }
-      return q.or(`id.eq.${empId},cpf.eq.${empId}`);
+      return q.or(`id.eq.${cleanId},cpf.eq.${cleanId}`);
     };
 
-    const { data: empRows } = await applyFilter(client.from('funcionarios').select('id, assinaturas, signatures'));
-    if (empRows && empRows.length > 0) {
-      const raw = empRows[0].assinaturas || empRows[0].signatures;
-      if (raw) {
-        currentSignatures = typeof raw === 'string' ? JSON.parse(raw) : { ...raw };
+    let currentSignatures = {};
+    try {
+      const { data: empRows } = await applyFilter(client.from('funcionarios').select('*'));
+      if (empRows && empRows.length > 0) {
+        const item = empRows[0];
+        const raw = item.assinaturas || item.signatures;
+        if (raw) {
+          currentSignatures = typeof raw === 'string' ? JSON.parse(raw) : { ...raw };
+        }
       }
-    }
+    } catch (e) {}
 
     currentSignatures[monthKey] = signatureObj;
 
     // 2. Atualiza a coluna assinaturas / signatures no funcionario
     let updated = false;
-    const r1 = await applyFilter(client.from('funcionarios').update({ assinaturas: currentSignatures }));
-    if (!r1.error) updated = true;
+    try {
+      const r1 = await applyFilter(client.from('funcionarios').update({ assinaturas: currentSignatures }));
+      if (!r1.error && r1.status < 400) updated = true;
+    } catch (e) {}
 
     if (!updated) {
-      const r2 = await applyFilter(client.from('funcionarios').update({ signatures: currentSignatures }));
-      if (!r2.error) updated = true;
+      try {
+        const r2 = await applyFilter(client.from('funcionarios').update({ signatures: currentSignatures }));
+        if (!r2.error && r2.status < 400) updated = true;
+      } catch (e) {}
     }
 
     // 3. Salva também na tabela folha_pontos se existir
     try {
       await client.from('folha_pontos').upsert({
-        funcionario_id: empId,
+        funcionario_id: cleanId,
         mes_ano: monthKey,
         assinatura: signatureObj,
         updated_at: new Date().toISOString()
