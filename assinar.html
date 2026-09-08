@@ -503,22 +503,6 @@
         </div>
       </div>
 
-      <!-- Card de Assinatura Já Realizada (Bloqueado) -->
-      <div id="already-signed-card" class="card" style="display: none; background: #F0FDF4; border: 1.5px solid #86EFAC;">
-        <div style="display: flex; align-items: center; gap: 12px;">
-          <div style="width: 42px; height: 42px; border-radius: 50%; background: #DCFCE7; color: #166534; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; flex-shrink: 0; font-weight: 800;">
-            ✓
-          </div>
-          <div>
-            <strong style="color: #166534; font-size: 0.95rem; display: block;">Folha de Ponto Assinada & Homologada</strong>
-            <span style="font-size: 0.78rem; color: #15803D;" id="already-signed-date">Assinado digitalmente em: --</span>
-            <div style="margin-top: 4px; font-size: 0.72rem; color: #047857; display: flex; align-items: center; gap: 4px;">
-              <span>🔒 Documento homologado e assinado com validade jurídica CLT.</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
       <!-- Card: Campo de Assinatura Digital -->
       <div class="card" id="signature-action-card">
         <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -560,7 +544,7 @@
         </div>
       </div>
 
-      <!-- Card de Sucesso (Exibido após assinar) -->
+      <!-- Card de Confirmação / Homologação (Exibido quando a folha está assinada) -->
       <div id="success-view-card" class="success-card">
         <div class="success-icon">✓</div>
         <h2 style="font-size: 1.3rem; font-weight: 800; color: #064E3B; margin-bottom: 4px;">Assinatura Registrada com Sucesso!</h2>
@@ -573,7 +557,6 @@
           <div><strong>👤 Colaborador:</strong> <span id="receipt-emp-name">--</span></div>
           <div><strong>📄 CPF:</strong> <span id="receipt-emp-cpf" class="font-mono">--</span></div>
           <div><strong>📅 Data/Hora:</strong> <span id="receipt-timestamp" class="font-mono">--</span></div>
-          <div><strong>🔐 Protocolo Criptográfico:</strong> <span id="receipt-hash" class="font-mono" style="color: #047857; font-weight: 700;">--</span></div>
         </div>
 
         <div style="background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: 8px; padding: 10px; font-size: 0.78rem; color: #166534; margin-bottom: 16px;">
@@ -808,12 +791,16 @@
       const padMonthKey = `${year}-${String(month).padStart(2, '0')}`;
       const existingSig = (currentEmp.signatures && (currentEmp.signatures[targetMonthKey] || currentEmp.signatures[padMonthKey] || currentEmp.signatures[altMonthKey]));
       if (existingSig && (existingSig.image || typeof existingSig === 'string')) {
-        document.getElementById('already-signed-card').style.display = 'block';
-        document.getElementById('already-signed-date').textContent = `Assinado digitalmente em: ${existingSig.signedAt || existingSig.dateOnly || 'Data registrada'}`;
         document.getElementById('signature-action-card').style.display = 'none';
+        const successCard = document.getElementById('success-view-card');
+        document.getElementById('success-month-name').textContent = `${monthName} de ${year}`;
+        document.getElementById('receipt-emp-name').textContent = currentEmp.name;
+        document.getElementById('receipt-emp-cpf').textContent = currentEmp.cpf || '--';
+        document.getElementById('receipt-timestamp').textContent = existingSig.signedAt || existingSig.dateOnly || new Date().toLocaleString('pt-BR');
+        successCard.style.display = 'block';
       } else {
-        document.getElementById('already-signed-card').style.display = 'none';
         document.getElementById('signature-action-card').style.display = 'block';
+        document.getElementById('success-view-card').style.display = 'none';
       }
 
       initCanvas();
@@ -1275,23 +1262,16 @@
         }
       }
 
-      // Oculta área de desenhar assinatura definitivamente (sem opção de assinar novamente)
+      // Oculta área de desenhar assinatura
       document.getElementById('signature-action-card').style.display = 'none';
       
-      const alreadySignedCard = document.getElementById('already-signed-card');
-      if (alreadySignedCard) {
-        document.getElementById('already-signed-date').textContent = `Assinado digitalmente em: ${now.toLocaleString('pt-BR')}`;
-        alreadySignedCard.style.display = 'block';
-      }
-      
-      // Exibe tela de Sucesso / Recibo Criptográfico
+      // Exibe tela de Sucesso / Homologação
       const successCard = document.getElementById('success-view-card');
       const [y, m] = targetMonthKey.split('-');
       document.getElementById('success-month-name').textContent = `${MONTH_NAMES[parseInt(m,10)-1] || m} de ${y}`;
       document.getElementById('receipt-emp-name').textContent = currentEmp.name;
       document.getElementById('receipt-emp-cpf').textContent = currentEmp.cpf || '--';
       document.getElementById('receipt-timestamp').textContent = now.toLocaleString('pt-BR');
-      document.getElementById('receipt-hash').textContent = hash;
 
       successCard.style.display = 'block';
       successCard.scrollIntoView({ behavior: 'smooth' });
