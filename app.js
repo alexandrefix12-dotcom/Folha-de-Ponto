@@ -1016,7 +1016,7 @@ function renderTimesheetTable() {
       </td>
       <td style="text-align: center;">
         <div class="signature-check-cell">
-          <input type="checkbox" class="sig-checkbox" id="sig-${index}" data-index="${index}" ${(item.signed || Boolean(emp.signatures && emp.signatures[monthKey]) || Boolean(emp.digitalSignature)) ? 'checked' : ''} onchange="toggleSignature(${index}, this.checked)" title="${isFuture ? 'Disponível na data' : 'Marcar Assinatura'}" ${isFuture ? 'disabled' : ''}>
+          <input type="checkbox" class="sig-checkbox" id="sig-${index}" data-index="${index}" ${(item.signed || Boolean(emp.signatures && emp.signatures[monthKey])) ? 'checked' : ''} onchange="toggleSignature(${index}, this.checked)" title="${isFuture ? 'Disponível na data' : 'Marcar Assinatura'}" ${isFuture ? 'disabled' : ''}>
         </div>
       </td>
     `;
@@ -3279,15 +3279,15 @@ function updateHeroSignatureBadge(emp) {
   }
 
   const monthKey = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
-  const sig = (emp.signatures && emp.signatures[monthKey]) || emp.digitalSignature;
+  const sig = emp.signatures && emp.signatures[monthKey];
 
-  if (sig) {
+  if (sig && (sig.image || typeof sig === 'string')) {
     badgeEl.style.display = 'inline-flex';
     badgeEl.style.background = '#ECFDF5';
     badgeEl.style.color = '#047857';
     badgeEl.style.border = '1px solid #A7F3D0';
     badgeEl.style.cursor = 'pointer';
-    badgeEl.title = `Assinado digitalmente em ${sig.signedAt || sig.dateOnly || 'Data registrada'}. Clique para ver a assinatura.`;
+    badgeEl.title = `Assinado digitalmente em ${sig.signedAt || sig.dateOnly || 'Data registrada'}. Clique para gerenciar ou apagar.`;
     badgeEl.innerHTML = `✅ Assinada em ${sig.dateOnly || sig.signedAt?.split(' ')[0] || 'OK'}`;
     badgeEl.onclick = () => openDigitalSignatureModal(emp.id, monthKey);
   } else {
@@ -3674,7 +3674,7 @@ async function handleConfirmDigitalSignature() {
 
 // Apaga a Assinatura Digital do Colaborador e Salva (Local + Supabase)
 async function handleDeleteDigitalSignature() {
-  const emp = employeesDB.find(e => e.id === currentSigTargetEmpId);
+  const emp = employeesDB.find(e => e.id === currentSigTargetEmpId) || getCurrentEmployee();
   if (!emp) return;
 
   const monthKey = currentSigTargetMonthKey || `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
@@ -3686,36 +3686,49 @@ async function handleDeleteDigitalSignature() {
     return;
   }
 
-  if (!confirm(`Deseja realmente apagar a assinatura digital de ${emp.name} referente a este período? A folha voltará ao status pendente e será removida do sistema e do celular.`)) {
+  if (!confirm(`Deseja realmente apagar a assinatura digital de ${emp.name} referente a este período? A folha voltará ao status de "Assinatura Pendente" e será desmarcada no sistema e no celular.`)) {
     return;
   }
 
-  // Remove assinatura do mês e legado no objeto local
-  if (emp.signatures && emp.signatures[monthKey]) {
+  // 1. Remove assinatura do mês e legado no objeto local
+  if (emp.signatures) {
     delete emp.signatures[monthKey];
   }
   delete emp.digitalSignature;
+  emp.digitalSignature = null;
 
-  // Salvar no LocalStorage
+  // 2. Desmarca status de assinado nos dias do mês
+  if (emp.days && Array.isArray(emp.days)) {
+    emp.days.forEach(d => {
+      d.signed = false;
+    });
+  }
+  if (emp.timesheets && emp.timesheets[monthKey]) {
+    emp.timesheets[monthKey] = JSON.parse(JSON.stringify(emp.days));
+  }
+
+  // 3. Salvar no LocalStorage
   saveEmployeesToLocalStorage();
 
-  // Excluir e anular no Supabase imediatamente
+  // 4. Excluir e anular no Supabase imediatamente
   if (window.supabaseService && window.supabaseService.isConfigured()) {
     try {
       await window.supabaseService.deleteEmployeeSignature(emp.id, monthKey, emp.cpf || '');
+      await window.supabaseService.saveFullTimesheet(emp.id, monthKey, emp.days, emp.cpf || '');
       console.log(`🗑️ Assinatura de ${emp.name} excluída com sucesso do Supabase.`);
     } catch (err) {
       console.warn('Erro ao excluir assinatura no Supabase:', err);
     }
   }
 
-  // Atualiza Hero e Tabela
+  // 5. Atualiza Canvas, Hero Badge, Tabela e visualização
   clearSignatureCanvas();
   updateHeroSignatureBadge(emp);
   renderTimesheetTable();
+  renderEmployeesAdminTable();
 
   closeDigitalSignatureModal();
-  showToast(`🗑️ Assinatura digital de ${emp.name} apagada e salva com sucesso!`);
+  showToast(`🗑️ Assinatura de ${emp.name} apagada com sucesso! Status alterado para "Assinatura Pendente".`);
 }
 
 // Verifica se a página foi aberta com parâmetros de assinatura na URL (#assinar?emp=...&mes=...)
