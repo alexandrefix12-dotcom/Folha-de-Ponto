@@ -2639,19 +2639,47 @@ function generateSingleEmployeePrintView(emp) {
 // Print ONLY Current Employee Timesheet (1 Page PDF)
 function printCurrentEmployeeTimesheet() {
   const emp = getCurrentEmployee();
-  showToast(`📄 Gerando PDF da folha de ponto de ${emp.name}...`);
+  if (!emp) return;
+  const monthName = MONTH_NAMES[currentMonth - 1] || `${currentMonth}`;
+  const previousTitle = document.title;
+  
+  // Define o nome exato sugerido no diálogo de Salvar como PDF
+  document.title = `Folha de Ponto - ${emp.name} - ${monthName} de ${currentYear}`;
+  
+  showToast(`📄 Gerando PDF da folha de ponto de ${emp.name} (${monthName}/${currentYear})...`);
   generateSingleEmployeePrintView(emp);
+  
+  const restoreTitle = () => {
+    document.title = previousTitle;
+    window.removeEventListener('afterprint', restoreTitle);
+  };
+  window.addEventListener('afterprint', restoreTitle);
+  
   setTimeout(() => {
     window.print();
+    setTimeout(restoreTitle, 3000);
   }, 350);
 }
 
 // Print All Employees (Multi-page PDF)
 function printAllEmployeesTimesheets() {
-  showToast(`📄 Gerando PDF de todos os ${employeesDB.length} colaboradores (1 página por funcionário)...`);
+  const monthName = MONTH_NAMES[currentMonth - 1] || `${currentMonth}`;
+  const previousTitle = document.title;
+  
+  document.title = `Folhas de Ponto - Todos os Funcionários - ${monthName} de ${currentYear}`;
+  
+  showToast(`📄 Gerando PDF de todos os ${employeesDB.length} colaboradores (${monthName}/${currentYear})...`);
   generateAllEmployeesPrintView();
+  
+  const restoreTitle = () => {
+    document.title = previousTitle;
+    window.removeEventListener('afterprint', restoreTitle);
+  };
+  window.addEventListener('afterprint', restoreTitle);
+  
   setTimeout(() => {
     window.print();
+    setTimeout(restoreTitle, 3000);
   }, 400);
 }
 
