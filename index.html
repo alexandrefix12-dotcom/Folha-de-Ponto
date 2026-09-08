@@ -1014,9 +1014,37 @@
             Apagar Assinatura
           </button>
         </div>
-        <button type="button" class="btn-primary" onclick="handleConfirmCompanySignature()" style="background: #065F46; border-color: #047857; font-weight: 800; font-size: 0.92rem; padding: 10px 20px;">
+        <button type="button" class="btn-primary" onclick="askConfirmCompanySignature()" style="background: #065F46; border-color: #047857; font-weight: 800; font-size: 0.92rem; padding: 10px 20px;">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
           Confirmar Assinatura do Empregador
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de Confirmação: Assinatura do Empregador -->
+  <div class="modal-backdrop" id="modal-confirm-company-signature" style="display: none; z-index: 10060; align-items: center; justify-content: center;">
+    <div style="background: #FFFFFF; border-radius: 16px; max-width: 440px; width: 92vw; padding: 24px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4); text-align: center; border: 1px solid #E2E8F0;">
+      <div style="width: 56px; height: 56px; border-radius: 50%; background: #ECFDF5; color: #059669; font-size: 1.8rem; display: flex; align-items: center; justify-content: center; margin: 0 auto 14px;">
+        🏢
+      </div>
+      <h3 style="font-size: 1.2rem; font-weight: 800; color: #0F172A; margin: 0 0 8px;">Confirmar Assinatura da Empresa?</h3>
+      <p style="font-size: 0.86rem; color: #475569; line-height: 1.5; margin: 0 0 16px;">
+        Você está prestes a homologar e gravar a assinatura digital da empresa <strong id="confirm-comp-modal-name">LANE RO COMUNICAÇÕES LTDA</strong>.
+      </p>
+      
+      <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; padding: 12px; font-size: 0.78rem; color: #64748B; text-align: left; margin-bottom: 20px; display: flex; flex-direction: column; gap: 6px;">
+        <div>👤 <strong>Gestor / Responsável:</strong> <span id="confirm-comp-modal-manager">Roberto Silva (Admin)</span></div>
+        <div>📅 <strong>Data de Registro:</strong> <span id="confirm-comp-modal-date">--</span></div>
+        <div style="color: #047857; font-weight: 700; margin-top: 4px;">🔒 Esta assinatura será aplicada no rodapé de todas as folhas e exportações PDF.</div>
+      </div>
+
+      <div style="display: flex; gap: 10px;">
+        <button type="button" onclick="closeConfirmCompanySignatureModal()" style="flex: 1; padding: 12px; background: #F1F5F9; border: 1px solid #CBD5E1; color: #475569; font-weight: 700; border-radius: 10px; cursor: pointer; font-size: 0.88rem; transition: background 0.2s;">
+          Voltar e Revisar
+        </button>
+        <button type="button" id="btn-final-confirm-company-sig" onclick="executeConfirmedCompanySignature()" style="flex: 1.4; padding: 12px; background: #059669; border: 1px solid #047857; color: #FFFFFF; font-weight: 800; border-radius: 10px; cursor: pointer; font-size: 0.88rem; box-shadow: 0 4px 6px -1px rgba(5, 150, 105, 0.3); transition: background 0.2s;">
+          ✓ Sim, Confirmar
         </button>
       </div>
     </div>

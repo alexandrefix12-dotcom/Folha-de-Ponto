@@ -245,6 +245,15 @@ async function initApp() {
         saveEmployeesToLocalStorage();
         console.log(`✅ Base sincronizada com Supabase: ${employeesDB.length} funcionários.`);
       }
+
+      // Sincroniza Assinatura Digital do Empregador (Empresa) do Supabase
+      const remoteCompSig = await window.supabaseService.loadCompanySignature();
+      if (remoteCompSig) {
+        systemSettings.companySignature = remoteCompSig;
+        try {
+          localStorage.setItem(SYSTEM_SETTINGS_KEY, JSON.stringify(systemSettings));
+        } catch (e) {}
+      }
     } catch (err) {
       console.warn('⚠️ Usando base de dados local:', err);
     }
@@ -254,6 +263,7 @@ async function initApp() {
   populateQuickEmployeeSelect();
   renderEmployeesAdminTable();
   updateSidebarBadges();
+  updateCompanySignatureButtonState();
   
   const firstId = employeesDB[0]?.id || '';
   selectEmployee(firstId, false);
@@ -2705,6 +2715,8 @@ function applySystemSettingsToUI() {
 
   const sidebarUserName = document.querySelector('.sidebar-user .user-name');
   if (sidebarUserName) sidebarUserName.textContent = systemSettings.managerName || 'Roberto Silva (Admin)';
+
+  updateCompanySignatureButtonState();
 }
 
 function openSettingsModal() {
@@ -2783,7 +2795,7 @@ function setSettingsTab(tabName) {
   }
 }
 
-function saveSystemSettings() {
+async function saveSystemSettings() {
   const companyName = document.getElementById('setting-company-name')?.value.trim() || 'Lane RO Comunicações LTDA';
   const companyCnpj = document.getElementById('setting-company-cnpj')?.value.trim() || '43.557.034/0001-94';
   const managerName = document.getElementById('setting-manager-name')?.value.trim() || 'Roberto Silva (Admin)';
@@ -2826,7 +2838,14 @@ function saveSystemSettings() {
     console.warn(e);
   }
 
+  if (compSig && companySettingSigHasDrawn && window.supabaseService && window.supabaseService.isConfigured()) {
+    try {
+      await window.supabaseService.saveCompanySignature(compSig);
+    } catch (e) {}
+  }
+
   applySystemSettingsToUI();
+  updateCompanySignatureButtonState();
   closeSettingsModal();
   recalculateAllTimes();
   renderTimesheetTable();
@@ -3818,6 +3837,26 @@ function loadExistingCompanySigOnSettingCanvas(imgDataUrl) {
   img.src = imgDataUrl;
 }
 
+// Atualiza o estado visual do botão "Assinar Empresa" na interface
+function updateCompanySignatureButtonState() {
+  const btn = document.getElementById('btn-open-company-sig');
+  if (!btn) return;
+  const hasSig = !!(systemSettings && systemSettings.companySignature && (systemSettings.companySignature.image || typeof systemSettings.companySignature === 'string'));
+  if (hasSig) {
+    btn.innerHTML = '<span style="font-size: 1rem;">✅</span> Empresa Assinada';
+    btn.style.background = '#ECFDF5';
+    btn.style.borderColor = '#059669';
+    btn.style.color = '#065F46';
+    btn.title = 'Assinatura do Empregador ativa. Clique para gerenciar ou atualizar.';
+  } else {
+    btn.innerHTML = '<span style="font-size: 1rem;">✍️</span> Assinar Empresa';
+    btn.style.background = '#F0FDF4';
+    btn.style.borderColor = '#86EFAC';
+    btn.style.color = '#166534';
+    btn.title = 'Assinar esta folha digitalmente como Empregador / Gestor';
+  }
+}
+
 // Modal Direto de Assinatura do Empregador (acessado na tela de Folha de Ponto)
 function openCompanySignatureModal() {
   const monthName = MONTH_NAMES[currentMonth - 1];
@@ -3936,14 +3975,49 @@ function loadExistingCompanySigOnDirectCanvas(imgDataUrl) {
   img.src = imgDataUrl;
 }
 
-function handleConfirmCompanySignature() {
-  if (!companyDirectSigHasDrawn) {
+// Abre o modal de confirmação antes de gravar a assinatura da empresa
+function askConfirmCompanySignature() {
+  const hasExisting = !!(systemSettings && systemSettings.companySignature);
+  if (!companyDirectSigHasDrawn && !hasExisting) {
     alert('⚠️ Por favor, desenhe a assinatura do gestor antes de confirmar.');
     return;
   }
 
+  const nameEl = document.getElementById('confirm-comp-modal-name');
+  const managerEl = document.getElementById('confirm-comp-modal-manager');
+  const dateEl = document.getElementById('confirm-comp-modal-date');
+
+  if (nameEl) nameEl.textContent = systemSettings.companyName || 'LANE RO COMUNICAÇÕES LTDA';
+  if (managerEl) managerEl.textContent = systemSettings.managerName || 'Roberto Silva (Admin)';
+  if (dateEl) dateEl.textContent = new Date().toLocaleString('pt-BR');
+
+  const modal = document.getElementById('modal-confirm-company-signature');
+  if (modal) modal.style.display = 'flex';
+}
+
+function closeConfirmCompanySignatureModal() {
+  const modal = document.getElementById('modal-confirm-company-signature');
+  if (modal) modal.style.display = 'none';
+}
+
+// Executa a confirmação da assinatura da empresa com salvamento no Supabase e LocalStorage
+async function executeConfirmedCompanySignature() {
   const canvas = document.getElementById('company-direct-sig-canvas');
-  const dataUrl = canvas.toDataURL('image/png');
+  const hasExisting = !!(systemSettings && systemSettings.companySignature);
+  
+  let dataUrl = null;
+  if (companyDirectSigHasDrawn && canvas) {
+    dataUrl = canvas.toDataURL('image/png');
+  } else if (hasExisting) {
+    dataUrl = systemSettings.companySignature.image || systemSettings.companySignature;
+  }
+
+  if (!dataUrl) {
+    alert('⚠️ Por favor, desenhe a assinatura do gestor antes de confirmar.');
+    closeConfirmCompanySignatureModal();
+    return;
+  }
+
   const now = new Date();
   const managerName = systemSettings.managerName || 'Roberto Silva (Admin)';
 
@@ -3957,12 +4031,16 @@ function handleConfirmCompanySignature() {
 
   const applyAll = document.getElementById('company-sig-apply-all-checkbox')?.checked !== false;
 
-  // Salva no systemSettings
+  // 1. Salva no systemSettings e localStorage
   systemSettings.companySignature = companySigObj;
   systemSettings.autoApplyCompanySig = applyAll;
-  localStorage.setItem(SYSTEM_SETTINGS_KEY, JSON.stringify(systemSettings));
+  try {
+    localStorage.setItem(SYSTEM_SETTINGS_KEY, JSON.stringify(systemSettings));
+  } catch (e) {
+    console.warn(e);
+  }
 
-  // Salva também na folha do colaborador atual
+  // 2. Salva também na folha do colaborador atual
   const emp = getCurrentEmployee();
   const monthKey = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
   if (emp) {
@@ -3972,21 +4050,35 @@ function handleConfirmCompanySignature() {
     saveEmployeesToLocalStorage();
   }
 
+  // 3. Salva no Supabase se conectado
+  if (window.supabaseService && window.supabaseService.isConfigured()) {
+    try {
+      await window.supabaseService.saveCompanySignature(companySigObj);
+      console.log('✅ Assinatura da empresa gravada no Supabase.');
+    } catch (err) {
+      console.warn('Erro ao salvar assinatura da empresa no Supabase:', err);
+    }
+  }
+
+  updateCompanySignatureButtonState();
+  closeConfirmCompanySignatureModal();
   closeCompanySignatureModal();
-  showToast('✅ Assinatura Digital do Empregador (LANE RO COMUNICAÇÕES LTDA) gravada com sucesso!');
+  showToast('✅ Assinatura Digital do Empregador gravada com sucesso!');
 }
 
-// Apaga a Assinatura Digital da Empresa/Empregador e Salva
-function handleDeleteCompanySignature() {
-  if (!confirm('Deseja realmente apagar a assinatura digital da empresa cadastrada?')) {
+// Apaga a Assinatura Digital da Empresa/Empregador e Salva (Local + Supabase)
+async function handleDeleteCompanySignature() {
+  if (!confirm('Deseja realmente apagar a assinatura digital da empresa cadastrada? A assinatura será removida de todas as folhas e exportações PDF.')) {
     return;
   }
 
-  // Remove dos settings globais
+  // 1. Remove dos settings globais
   systemSettings.companySignature = null;
-  localStorage.setItem(SYSTEM_SETTINGS_KEY, JSON.stringify(systemSettings));
+  try {
+    localStorage.setItem(SYSTEM_SETTINGS_KEY, JSON.stringify(systemSettings));
+  } catch (e) {}
 
-  // Remove também da folha do colaborador atual se existir
+  // 2. Remove também da folha do colaborador atual se existir
   const emp = getCurrentEmployee();
   const monthKey = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
   if (emp && emp.signatures && emp.signatures[monthKey] && emp.signatures[monthKey].companySignature) {
@@ -3994,8 +4086,19 @@ function handleDeleteCompanySignature() {
     saveEmployeesToLocalStorage();
   }
 
+  // 3. Remove do Supabase se conectado
+  if (window.supabaseService && window.supabaseService.isConfigured()) {
+    try {
+      await window.supabaseService.deleteCompanySignature();
+      console.log('🗑️ Assinatura da empresa removida do Supabase.');
+    } catch (err) {
+      console.warn('Erro ao apagar assinatura da empresa no Supabase:', err);
+    }
+  }
+
   clearCompanyDirectSignatureCanvas();
+  updateCompanySignatureButtonState();
   closeCompanySignatureModal();
-  showToast('🗑️ Assinatura digital da empresa apagada e salva com sucesso!');
+  showToast('🗑️ Assinatura digital da empresa apagada com sucesso!');
 }
 

@@ -369,6 +369,59 @@ async function excluirFuncionarioNoSupabase(idOrCpf) {
   }
 }
 
+// 7. Salvar Assinatura Digital do Empregador (Empresa) no Supabase
+async function saveCompanySignatureToSupabase(companySigObj) {
+  const client = getSupabaseClient();
+  if (!client || !companySigObj) return false;
+
+  try {
+    await client.from('folha_pontos').upsert({
+      funcionario_id: 'empresa-padrao',
+      mes_ano: 'geral',
+      assinatura_empresa: companySigObj,
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'funcionario_id,mes_ano' });
+
+    return true;
+  } catch (err) {
+    console.warn('Erro ao gravar assinatura da empresa no Supabase:', err);
+    return false;
+  }
+}
+
+// 8. Carregar Assinatura Digital do Empregador (Empresa) do Supabase
+async function loadCompanySignatureFromSupabase() {
+  const client = getSupabaseClient();
+  if (!client) return null;
+
+  try {
+    const { data, error } = await client
+      .from('folha_pontos')
+      .select('assinatura_empresa')
+      .eq('funcionario_id', 'empresa-padrao')
+      .eq('mes_ano', 'geral')
+      .maybeSingle();
+
+    if (error || !data || !data.assinatura_empresa) return null;
+    return data.assinatura_empresa;
+  } catch (err) {
+    return null;
+  }
+}
+
+// 9. Excluir Assinatura Digital do Empregador (Empresa) do Supabase
+async function deleteCompanySignatureFromSupabase() {
+  const client = getSupabaseClient();
+  if (!client) return false;
+
+  try {
+    await client.from('folha_pontos').delete().eq('funcionario_id', 'empresa-padrao');
+    return true;
+  } catch (err) {
+    return false;
+  }
+}
+
 // Exportar globalmente
 window.supabaseService = {
   config: SUPABASE_CONFIG,
@@ -380,5 +433,8 @@ window.supabaseService = {
   atualizarFuncionario: atualizarFuncionarioNoSupabase,
   saveFullTimesheet: saveFullTimesheetToSupabase,
   saveEmployeeSignature: saveEmployeeSignatureToSupabase,
+  saveCompanySignature: saveCompanySignatureToSupabase,
+  loadCompanySignature: loadCompanySignatureFromSupabase,
+  deleteCompanySignature: deleteCompanySignatureFromSupabase,
   excluirFuncionario: excluirFuncionarioNoSupabase
 };
