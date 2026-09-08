@@ -401,12 +401,6 @@ async function syncWithSupabaseRealtime() {
         }
 
         target.digitalSignature = null;
-        if (remote.timesheets && (remote.timesheets[padMonthKey] || remote.timesheets[altMonthKey])) {
-          target.timesheets = { ...(target.timesheets || {}), ...remote.timesheets };
-          if (target.id === currentEmployeeId) {
-            target.days = target.timesheets[padMonthKey] || target.timesheets[altMonthKey] || target.days;
-          }
-        }
       }
     });
 
@@ -415,7 +409,6 @@ async function syncWithSupabaseRealtime() {
       const currentEmp = getCurrentEmployee();
       if (currentEmp) {
         updateHeroSignatureBadge(currentEmp);
-        renderTimesheetTable();
         renderEmployeesAdminTable();
         updateSidebarBadges();
       }
@@ -442,24 +435,21 @@ function reloadEmployeesFromStorage() {
     loaded.forEach(remote => {
       const target = employeesDB.find(e => e.id === remote.id || (e.cpf && remote.cpf && e.cpf.replace(/\D/g, '') === remote.cpf.replace(/\D/g, '')));
       if (target) {
-        if (JSON.stringify(target.signatures) !== JSON.stringify(remote.signatures) || target.digitalSignature !== remote.digitalSignature) {
+        if (JSON.stringify(target.signatures || {}) !== JSON.stringify(remote.signatures || {}) || target.digitalSignature !== remote.digitalSignature) {
           target.signatures = remote.signatures || {};
           target.digitalSignature = remote.digitalSignature || null;
           hasChanges = true;
         }
-        if (remote.timesheets && remote.timesheets[monthKey]) {
-          target.timesheets = remote.timesheets;
-          target.days = remote.timesheets[monthKey];
-        }
       }
     });
 
-    const currentEmp = getCurrentEmployee();
-    if (currentEmp) {
-      updateHeroSignatureBadge(currentEmp);
-      renderTimesheetTable();
-      renderEmployeesAdminTable();
-      updateSidebarBadges();
+    if (hasChanges) {
+      const currentEmp = getCurrentEmployee();
+      if (currentEmp) {
+        updateHeroSignatureBadge(currentEmp);
+        renderEmployeesAdminTable();
+        updateSidebarBadges();
+      }
     }
   } catch (err) {
     console.warn('Erro na sincronização em tempo real:', err);
