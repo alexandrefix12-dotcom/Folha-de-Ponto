@@ -193,13 +193,8 @@ async function cadastrarFuncionarioNoSupabase(nome, cargo, cpf, whatsapp = '', s
   try {
     const attempts = [
       { nome, cargo, cpf, situacao, status_category: situacao, departamento: dept, telefone: whatsapp, whatsapp: whatsapp },
-      { nome, cargo, cpf, situacao, status_category: situacao, departamento: dept, whatsapp: whatsapp },
-      { nome, cargo, cpf, situacao, telefone: whatsapp },
-      { nome, cargo, cpf, situacao, whatsapp: whatsapp },
+      { nome, cargo, cpf, situacao, status_category: situacao, departamento: dept },
       { nome, cargo, cpf, situacao },
-      { nome, cargo, cpf, status_category: situacao },
-      { nome, cargo, cpf, telefone: whatsapp },
-      { nome, cargo, cpf, whatsapp: whatsapp },
       { nome, cargo, cpf }
     ];
 
@@ -207,7 +202,16 @@ async function cadastrarFuncionarioNoSupabase(nome, cargo, cpf, whatsapp = '', s
       try {
         const res = await client.from('funcionarios').insert([payload]).select();
         if (!res.error && res.data && res.data.length > 0) return res.data;
-      } catch (e) {}
+        if (res.error) {
+          console.warn('Tentativa de insert Supabase retornou aviso/erro:', res.error.message);
+          // Se for erro de autenticação ou RLS, não adianta tentar variações de colunas
+          if (res.error.code === '42501' || res.error.code === 'PGRST301' || res.error.message?.includes('JWT') || res.error.message?.includes('apikey')) {
+            break;
+          }
+        }
+      } catch (e) {
+        console.warn('Exceção na inserção Supabase:', e);
+      }
     }
     return null;
   } catch (err) {
@@ -243,13 +247,8 @@ async function atualizarFuncionarioNoSupabase(idOrCpf, updates) {
 
     const attempts = [
       { nome: nomeVal, cargo: cargoVal, cpf: cpfVal, situacao: situacaoVal, status_category: situacaoVal, departamento: deptVal, matricula: matVal, admissao: admVal, telefone: whatsVal, whatsapp: whatsVal },
-      { nome: nomeVal, cargo: cargoVal, cpf: cpfVal, situacao: situacaoVal, status_category: situacaoVal, departamento: deptVal, whatsapp: whatsVal },
-      { nome: nomeVal, cargo: cargoVal, cpf: cpfVal, situacao: situacaoVal, telefone: whatsVal },
-      { nome: nomeVal, cargo: cargoVal, cpf: cpfVal, situacao: situacaoVal, whatsapp: whatsVal },
+      { nome: nomeVal, cargo: cargoVal, cpf: cpfVal, situacao: situacaoVal, status_category: situacaoVal, departamento: deptVal },
       { nome: nomeVal, cargo: cargoVal, cpf: cpfVal, situacao: situacaoVal },
-      { nome: nomeVal, cargo: cargoVal, cpf: cpfVal, status_category: situacaoVal },
-      { nome: nomeVal, cargo: cargoVal, cpf: cpfVal, telefone: whatsVal },
-      { nome: nomeVal, cargo: cargoVal, cpf: cpfVal, whatsapp: whatsVal },
       { nome: nomeVal, cargo: cargoVal, cpf: cpfVal }
     ];
 
@@ -257,6 +256,9 @@ async function atualizarFuncionarioNoSupabase(idOrCpf, updates) {
       try {
         const res = await applyFilter(client.from('funcionarios').update(payload)).select();
         if (!res.error && res.data && res.data.length > 0) return res.data;
+        if (res.error && (res.error.code === '42501' || res.error.code === 'PGRST301' || res.error.message?.includes('apikey'))) {
+          break;
+        }
       } catch (e) {}
     }
     return null;
@@ -543,20 +545,25 @@ async function deleteEmployeeSignatureFromSupabase(empId, monthKey, cpf = '', na
   }
 }
 
-// 6. Excluir funcionário no Supabase (por ID ou CPF)
-async function excluirFuncionarioNoSupabase(idOrCpf) {
+// 6. Excluir funcionário no Supabase (por ID, CPF ou Nome)
+async function excluirFuncionarioNoSupabase(idOrCpf, cpf = '', nome = '') {
   const client = getSupabaseClient();
-  if (!client) return null;
+  if (!client) return false;
 
   try {
-    let query = client.from('funcionarios').delete();
-    if (typeof idOrCpf === 'string' && idOrCpf.length === 36 && idOrCpf.includes('-')) {
-      query = query.eq('id', idOrCpf);
-    } else if (idOrCpf) {
-      query = query.eq('cpf', idOrCpf);
+    const isUUID = typeof idOrCpf === 'string' && idOrCpf.length === 36 && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrCpf);
+    const targetCpf = cpf || (typeof idOrCpf === 'string' && !isUUID ? idOrCpf : '');
+
+    if (isUUID) {
+      await client.from('funcionarios').delete().eq('id', idOrCpf);
     }
-    const { data, error } = await query;
-    return !error;
+    if (targetCpf) {
+      await client.from('funcionarios').delete().eq('cpf', targetCpf);
+    }
+    if (nome) {
+      await client.from('funcionarios').delete().eq('nome', nome);
+    }
+    return true;
   } catch (err) {
     console.warn('Erro ao excluir no Supabase:', err);
     return false;

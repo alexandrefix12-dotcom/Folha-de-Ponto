@@ -60,6 +60,7 @@ function generateMonthData(year, month, empId = '') {
     const isDayInVacation = targetEmp && targetEmp.vacationStart && targetEmp.vacationEnd && (curDateStr >= targetEmp.vacationStart && curDateStr <= targetEmp.vacationEnd);
     const isHoliday = Boolean(BRAZIL_HOLIDAYS[holidayKey]);
     const isSunday = (dowIndex === 0);
+    const isSaturday = (dowIndex === 6);
 
     if (isDayInVacation || (isFerias && (!targetEmp || !targetEmp.vacationStart))) {
       list.push({
@@ -397,18 +398,19 @@ async function initApp() {
   }, 3000);
 }
 
-// Sincroniza assinaturas e folhas salvas diretamente no Supabase em tempo real
+// Sincroniza funcionários, assinaturas e folhas salvas diretamente no Supabase em tempo real
 async function syncWithSupabaseRealtime() {
   if (!window.supabaseService || !window.supabaseService.isConfigured()) return;
   try {
     const remoteEmployees = await window.supabaseService.loadEmployees();
-    if (!Array.isArray(remoteEmployees) || remoteEmployees.length === 0) return;
+    if (!Array.isArray(remoteEmployees)) return;
 
     const padMonthKey = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
     const altMonthKey = `${currentYear}-${parseInt(currentMonth, 10)}`;
     let newlySignedNames = [];
     let stateChanged = false;
 
+    // 1. Atualizar ou adicionar colaboradores vindos do Supabase
     remoteEmployees.forEach(remote => {
       const cleanRemoteCpf = remote.cpf ? String(remote.cpf).replace(/\D/g, '') : '';
       const target = employeesDB.find(e => {
@@ -418,12 +420,19 @@ async function syncWithSupabaseRealtime() {
         if (e.name && remote.name) {
           const n1 = e.name.toLowerCase().trim();
           const n2 = remote.name.toLowerCase().trim();
-          if (n1 === n2 || n1.includes(n2) || n2.includes(n1)) return true;
+          if (n1 === n2) return true;
         }
         return false;
       });
 
       if (target) {
+        // Atualiza campos principais vindos do banco
+        if (target.name !== remote.name && remote.name) { target.name = remote.name; stateChanged = true; }
+        if (target.role !== remote.role && remote.role) { target.role = remote.role; stateChanged = true; }
+        if (target.dept !== remote.dept && remote.dept) { target.dept = remote.dept; target.fullDept = `Departamento - ${remote.dept}`; stateChanged = true; }
+        if (remote.cpf && target.cpf !== remote.cpf) { target.cpf = remote.cpf; stateChanged = true; }
+        if (remote.whatsapp && target.whatsapp !== remote.whatsapp) { target.whatsapp = remote.whatsapp; stateChanged = true; }
+
         const wasSigned = Boolean(target.signatures && (target.signatures[padMonthKey] || target.signatures[altMonthKey]));
         const nowSigned = Boolean(remote.signatures && (remote.signatures[padMonthKey] || remote.signatures[altMonthKey]));
 
@@ -437,23 +446,41 @@ async function syncWithSupabaseRealtime() {
         }
 
         target.digitalSignature = null;
+      } else {
+        // Novo colaborador cadastrado diretamente no Supabase
+        const monthKey = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
+        const newDays = generateCurrentMonthData(currentYear, currentMonth, remote.id);
+        const pillInfo = getStatusPillInfo(remote.statusCategory || 'ativo');
+        employeesDB.push({
+          ...remote,
+          statusCategory: remote.statusCategory || 'ativo',
+          statusTag: pillInfo.tagLabel,
+          statusTagClass: pillInfo.tagClass,
+          statusPillLabel: pillInfo.label,
+          statusPillClass: pillInfo.pillClass,
+          signatures: remote.signatures || {},
+          timesheets: remote.timesheets || { [monthKey]: newDays },
+          days: newDays
+        });
+        stateChanged = true;
       }
     });
 
     if (newlySignedNames.length > 0 || stateChanged) {
       saveEmployeesToLocalStorage();
+      populateQuickEmployeeSelect();
+      renderEmployeesAdminTable();
+      updateSidebarBadges();
       const currentEmp = getCurrentEmployee();
       if (currentEmp) {
         updateHeroSignatureBadge(currentEmp);
-        renderEmployeesAdminTable();
-        updateSidebarBadges();
       }
       if (newlySignedNames.length > 0) {
         showToast(`✍️ Nova assinatura confirmada: ${newlySignedNames.join(', ')}!`);
       }
     }
   } catch (err) {
-    console.warn('Erro ao verificar novas assinaturas no Supabase:', err);
+    console.warn('Erro ao verificar sincronização no Supabase:', err);
   }
 }
 
@@ -2523,7 +2550,7 @@ async function handleDeleteEmployeeFromModal() {
   // 1. Excluir no Supabase se configurado
   if (window.supabaseService && window.supabaseService.isConfigured() && typeof window.supabaseService.excluirFuncionario === 'function') {
     try {
-      await window.supabaseService.excluirFuncionario(emp.cpf || emp.id);
+      await window.supabaseService.excluirFuncionario(emp.id, emp.cpf || '', emp.name || '');
     } catch (err) {
       console.warn('Erro ao excluir no Supabase:', err);
     }
@@ -2816,7 +2843,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Handle Form Submission -> Insert into Supabase
 async function handleCreateEmployee(e) {
-  e.preventDefault();
+  if (e && typeof e.preventDefault === 'function') {
+    e.preventDefault();
+  }
 
   const nome = document.getElementById('emp-input-nome')?.value.trim();
   const cargo = document.getElementById('emp-input-cargo')?.value.trim();
@@ -2834,73 +2863,104 @@ async function handleCreateEmployee(e) {
     btnSubmit.innerHTML = `⏳ Salvando...`;
   }
 
-  let success = false;
+  try {
+    let success = false;
 
-  // 1. Inserir no Supabase se configurado
-  if (window.supabaseService && window.supabaseService.isConfigured()) {
-    const result = await window.supabaseService.cadastrarFuncionario(nome, cargo, cpf, whatsapp);
-    if (result && result.length > 0) {
-      success = true;
-    }
-  }
-
-  // 2. Se salvou ou fallback local, atualizar base em memória e UI
-  const newId = nome.toLowerCase().replace(/\s+/g, '-') + '-' + Math.floor(Math.random() * 1000);
-  const initials = nome.trim().split(/\s+/).map(p => p[0]).filter(Boolean).slice(0, 2).join('').toUpperCase() || 'FN';
-  const colors = ['green', 'blue', 'purple', 'orange', 'red'];
-  const color = colors[employeesDB.length % colors.length];
-
-  const newEmp = {
-    id: newId,
-    name: nome,
-    initials: initials,
-    color: color,
-    role: cargo,
-    shortRole: cargo,
-    dept: 'Operacional',
-    fullDept: `Departamento - ${cargo}`,
-    admission: new Date().toLocaleDateString('pt-BR'),
-    cpf: cpf,
-    whatsapp: whatsapp,
-    pis: '000.00000.00-0',
-    matricula: String(employeesDB.length + 1).padStart(4, '0'),
-    statusTag: 'Ativo',
-    statusTagClass: color,
-    statusCategory: 'ativo',
-    statusPillLabel: '🟢 Ativo',
-    statusPillClass: 'regular',
-    days: generateCurrentMonthData(currentYear, currentMonth, newId)
-  };
-
-  // Se o Supabase estiver conectado, recarrega a lista oficial do banco
-  if (window.supabaseService && window.supabaseService.isConfigured()) {
-    const dbEmployees = await window.supabaseService.loadEmployees();
-    if (dbEmployees && dbEmployees.length > 0) {
-      for (const emp of dbEmployees) {
-        if (!emp.days || emp.days.length === 0) {
-          emp.days = generateCurrentMonthData(currentYear, currentMonth, emp.id);
+    // 1. Inserir no Supabase se configurado (com timeout para nunca travar o usuário)
+    if (window.supabaseService && window.supabaseService.isConfigured()) {
+      try {
+        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 4000));
+        const insertPromise = window.supabaseService.cadastrarFuncionario(nome, cargo, cpf, whatsapp);
+        const result = await Promise.race([insertPromise, timeoutPromise]);
+        if (result && result.length > 0) {
+          success = true;
         }
-        if (!emp.whatsapp && emp.cpf && emp.cpf.replace(/\D/g, '') === cpf.replace(/\D/g, '')) {
-          emp.whatsapp = whatsapp;
-        }
+      } catch (err) {
+        console.warn('Aviso ao cadastrar no Supabase (seguindo com gravação local):', err);
       }
-      employeesDB.length = 0;
-      employeesDB.push(...dbEmployees);
-    } else {
-      employeesDB.push(newEmp);
     }
-  } else {
-    employeesDB.push(newEmp);
+
+    // 2. Criar objeto local do novo colaborador
+    const newId = nome.toLowerCase().replace(/\s+/g, '-') + '-' + Math.floor(Math.random() * 1000);
+    const initials = nome.trim().split(/\s+/).map(p => p[0]).filter(Boolean).slice(0, 2).join('').toUpperCase() || 'FN';
+    const colors = ['green', 'blue', 'purple', 'orange', 'red'];
+    const color = colors[employeesDB.length % colors.length];
+
+    const newEmp = {
+      id: newId,
+      name: nome,
+      initials: initials,
+      color: color,
+      role: cargo,
+      shortRole: cargo,
+      dept: 'Operacional',
+      fullDept: `Departamento - ${cargo}`,
+      admission: new Date().toLocaleDateString('pt-BR'),
+      cpf: cpf,
+      whatsapp: whatsapp,
+      pis: '000.00000.00-0',
+      matricula: String(employeesDB.length + 1).padStart(4, '0'),
+      statusTag: 'Ativo',
+      statusTagClass: color,
+      statusCategory: 'ativo',
+      statusPillLabel: '🟢 Ativo',
+      statusPillClass: 'regular',
+      days: generateCurrentMonthData(currentYear, currentMonth, newId)
+    };
+
+    // 3. Atualizar base de dados
+    let reloadedFromDb = false;
+    if (window.supabaseService && window.supabaseService.isConfigured() && success) {
+      try {
+        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 4000));
+        const dbEmployees = await Promise.race([window.supabaseService.loadEmployees(), timeoutPromise]);
+        if (dbEmployees && dbEmployees.length > 0) {
+          for (const emp of dbEmployees) {
+            if (!emp.days || emp.days.length === 0) {
+              emp.days = generateCurrentMonthData(currentYear, currentMonth, emp.id);
+            }
+            if (!emp.whatsapp && emp.cpf && emp.cpf.replace(/\D/g, '') === cpf.replace(/\D/g, '')) {
+              emp.whatsapp = whatsapp;
+            }
+          }
+          employeesDB.length = 0;
+          employeesDB.push(...dbEmployees);
+          reloadedFromDb = true;
+        }
+      } catch (err) {
+        console.warn('Erro ao recarregar lista do Supabase:', err);
+      }
+    }
+
+    if (!reloadedFromDb) {
+      const exists = employeesDB.some(e => e.id === newId || (e.cpf && e.cpf.replace(/\D/g, '') === cpf.replace(/\D/g, '')));
+      if (!exists) {
+        employeesDB.push(newEmp);
+      }
+    }
+
+    // 4. Salvar imediatamente no LocalStorage
+    saveEmployeesToLocalStorage();
+
+    // 5. Atualizar componentes da interface
+    populateQuickEmployeeSelect();
+    renderEmployeesAdminTable();
+    updateSidebarBadges();
+    closeNewEmployeeModal();
+
+    showToast(success 
+      ? `🎉 Colaborador ${nome} cadastrado e sincronizado com sucesso!`
+      : `✅ Colaborador ${nome} cadastrado com sucesso!`
+    );
+  } catch (err) {
+    console.error('Erro ao processar cadastro de colaborador:', err);
+    alert('⚠️ Ocorreu um erro ao salvar o colaborador: ' + (err.message || err));
+  } finally {
+    if (btnSubmit) {
+      btnSubmit.disabled = false;
+      btnSubmit.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg> Salvar`;
+    }
   }
-
-  // Atualizar componentes da interface e persistência
-  saveEmployeesToLocalStorage();
-  populateQuickEmployeeSelect();
-  renderEmployeesAdminTable();
-  updateAfastadosBadgeCounter();
-  closeNewEmployeeModal();
-
-  showToast(`🎉 Colaborador ${nome} cadastrado com sucesso no Supabase!`);
 }
 
 // Accountant Actions / Multi-Page Print

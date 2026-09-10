@@ -266,6 +266,9 @@
       height: 190px;
       display: block;
       cursor: crosshair;
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
     }
 
     .sig-placeholder-guide {
@@ -595,6 +598,19 @@
       'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
     ];
 
+    // Feriados Nacionais Brasileiros (dia-mês)
+    const BRAZIL_HOLIDAYS = {
+      '1-1': 'Confraternização Universal (Lei 10.607)',
+      '21-4': 'Tiradentes (Lei 10.607)',
+      '1-5': 'Dia Mundial do Trabalho (Lei 10.607)',
+      '7-9': 'Independência do Brasil (Lei 10.607)',
+      '12-10': 'Nossa Sra. Aparecida (Lei 6.802)',
+      '2-11': 'Finados (Lei 10.607)',
+      '15-11': 'Proclamação da República (Lei 10.607)',
+      '20-11': 'Dia da Consciência Negra (Lei 14.759)',
+      '25-12': 'Natal (Lei 10.607)'
+    };
+
     const LOCAL_STORAGE_EMPLOYEES_KEY = 'lane_comunicacoes_employees_db_v5';
 
     let currentEmp = null;
@@ -905,11 +921,12 @@
         const e2 = dayData.e2 || dayData.entry2 || '';
         const s2 = dayData.s2 || dayData.exit2 || '';
         
+        const holidayKey = `${day}-${month}`;
         let status = dayData.status;
         if (!status || status === 'empty' || status === 'none') {
           if (dateObj.getDay() === 0) {
             status = 'dsr';
-          } else if (BRAZIL_HOLIDAYS[holidayKey]) {
+          } else if (BRAZIL_HOLIDAYS && BRAZIL_HOLIDAYS[holidayKey]) {
             status = 'feriado';
           } else {
             status = isFuture ? 'aguardando' : '';
@@ -1090,25 +1107,51 @@
     }
 
     /* ====================================================================== */
-    /* Manipulação do Canvas de Assinatura (Touch + Mouse)                    */
+    /* Manipulação do Canvas de Assinatura (Touch + Mouse + Pointer)          */
     /* ====================================================================== */
     let canvas, ctx;
+    let canvasEventsBound = false;
+
+    function resizeCanvas() {
+      if (!canvas) return;
+      const rect = canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      const w = rect.width || canvas.clientWidth || 600;
+      const h = rect.height || canvas.clientHeight || 190;
+      
+      let tempImg = null;
+      if (sigHasDrawn && canvas.width > 0 && canvas.height > 0) {
+        try {
+          tempImg = canvas.toDataURL();
+        } catch(e) {}
+      }
+      
+      canvas.width = Math.round(w * dpr);
+      canvas.height = Math.round(h * dpr);
+      ctx = canvas.getContext('2d');
+      ctx.scale(dpr, dpr);
+      ctx.strokeStyle = '#000000';
+      ctx.lineWidth = 3.2;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      if (tempImg) {
+        const img = new Image();
+        img.onload = () => {
+          if (ctx) ctx.drawImage(img, 0, 0, w, h);
+        };
+        img.src = tempImg;
+      }
+    }
 
     function initCanvas() {
       canvas = document.getElementById('signature-canvas');
       if (!canvas) return;
 
-      ctx = canvas.getContext('2d');
-      const rect = canvas.getBoundingClientRect();
-      const dpr = window.devicePixelRatio || 1;
-      canvas.width = rect.width * dpr;
-      canvas.height = rect.height * dpr;
-      ctx.scale(dpr, dpr);
+      resizeCanvas();
 
-      ctx.strokeStyle = '#000000';
-      ctx.lineWidth = 3.2;
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
+      if (canvasEventsBound) return;
+      canvasEventsBound = true;
 
       function getPos(e) {
         const r = canvas.getBoundingClientRect();
@@ -1124,9 +1167,23 @@
         const pos = getPos(e);
         sigLastX = pos.x;
         sigLastY = pos.y;
-        document.getElementById('sig-placeholder-guide').style.opacity = '0.05';
-        document.getElementById('sig-status-indicator').textContent = '✍️ Desenhando...';
-        document.getElementById('sig-status-indicator').style.color = '#059669';
+
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 3.2;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, 1.6, 0, Math.PI * 2);
+        ctx.fillStyle = '#000000';
+        ctx.fill();
+
+        const placeholder = document.getElementById('sig-placeholder-guide');
+        if (placeholder) placeholder.style.opacity = '0.05';
+        const indicator = document.getElementById('sig-status-indicator');
+        if (indicator) {
+          indicator.textContent = '✍️ Desenhando...';
+          indicator.style.color = '#059669';
+        }
       }
 
       function draw(e) {
@@ -1150,31 +1207,60 @@
         if (!sigIsDrawing) return;
         sigIsDrawing = false;
         if (sigHasDrawn) {
-          document.getElementById('sig-status-indicator').textContent = '✅ Assinatura pronta';
-          document.getElementById('sig-status-indicator').style.color = '#047857';
+          const indicator = document.getElementById('sig-status-indicator');
+          if (indicator) {
+            indicator.textContent = '✅ Assinatura pronta';
+            indicator.style.color = '#047857';
+          }
         }
       }
 
-      // Mouse
-      canvas.addEventListener('mousedown', startDraw);
-      canvas.addEventListener('mousemove', draw);
-      canvas.addEventListener('mouseup', stopDraw);
-      canvas.addEventListener('mouseleave', stopDraw);
+      // Suporte a Pointer Events (nativamente cobre Mouse, Touch e Caneta)
+      if (window.PointerEvent) {
+        canvas.addEventListener('pointerdown', (e) => {
+          try { canvas.setPointerCapture(e.pointerId); } catch(err) {}
+          startDraw(e);
+        });
+        canvas.addEventListener('pointermove', draw);
+        canvas.addEventListener('pointerup', (e) => {
+          try { canvas.releasePointerCapture(e.pointerId); } catch(err) {}
+          stopDraw(e);
+        });
+        canvas.addEventListener('pointercancel', (e) => {
+          try { canvas.releasePointerCapture(e.pointerId); } catch(err) {}
+          stopDraw(e);
+        });
+      } else {
+        // Fallback Mouse
+        canvas.addEventListener('mousedown', startDraw);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', stopDraw);
+        canvas.addEventListener('mouseleave', stopDraw);
 
-      // Touch (Mobile)
-      canvas.addEventListener('touchstart', startDraw, { passive: false });
-      canvas.addEventListener('touchmove', draw, { passive: false });
-      canvas.addEventListener('touchend', stopDraw);
-      canvas.addEventListener('touchcancel', stopDraw);
+        // Fallback Touch
+        canvas.addEventListener('touchstart', startDraw, { passive: false });
+        canvas.addEventListener('touchmove', draw, { passive: false });
+        canvas.addEventListener('touchend', stopDraw);
+        canvas.addEventListener('touchcancel', stopDraw);
+      }
+
+      window.addEventListener('resize', () => {
+        resizeCanvas();
+      });
     }
 
     function clearPortalCanvas() {
       if (!canvas || !ctx) return;
+      const rect = canvas.getBoundingClientRect();
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       sigHasDrawn = false;
-      document.getElementById('sig-placeholder-guide').style.opacity = '1';
-      document.getElementById('sig-status-indicator').textContent = 'Aguardando assinatura';
-      document.getElementById('sig-status-indicator').style.color = '#D97706';
+      const placeholder = document.getElementById('sig-placeholder-guide');
+      if (placeholder) placeholder.style.opacity = '1';
+      const indicator = document.getElementById('sig-status-indicator');
+      if (indicator) {
+        indicator.textContent = 'Aguardando assinatura';
+        indicator.style.color = '#D97706';
+      }
     }
 
     /* ====================================================================== */
