@@ -191,7 +191,10 @@ function saveEmployeesToLocalStorage() {
         cpf: emp.cpf,
         whatsapp: emp.whatsapp || '',
         pis: emp.pis,
+        ctps: emp.ctps || emp.pis || '',
         matricula: emp.matricula,
+        deptCode: emp.deptCode || '300',
+        workSchedule: emp.workSchedule || null,
         statusTag: emp.statusTag,
         statusTagClass: emp.statusTagClass,
         statusCategory: emp.statusCategory,
@@ -326,7 +329,9 @@ async function initApp() {
             cpf: remoteEmp.cpf,
             whatsapp: (localMatch && localMatch.whatsapp) || remoteEmp.whatsapp || '',
             matricula: remoteEmp.matricula || (localMatch && localMatch.matricula) || '',
-            admission: remoteEmp.admission || (localMatch && localMatch.admission) || '01/01/2024',
+            admission: remoteEmp.admission || (localMatch && localMatch.admission) || '05/02/2022',
+            ctps: remoteEmp.ctps || (localMatch && localMatch.ctps) || (localMatch && localMatch.pis) || '',
+            deptCode: remoteEmp.deptCode || (localMatch && localMatch.deptCode) || '300',
             statusCategory: finalStatus,
             statusTag: pillInfo.tagLabel,
             statusTagClass: pillInfo.tagClass,
@@ -1557,6 +1562,7 @@ function renderTimesheetTable() {
         if (!emp.timesheets) emp.timesheets = {};
         emp.timesheets[monthKey] = JSON.parse(JSON.stringify(emp.days));
         saveEmployeesToLocalStorage();
+        debounceSaveSupabaseTimesheet(emp.id, monthKey, emp.days);
       }
       const status = emp?.days?.[idx]?.status || 'presenca';
       const dow = emp?.days?.[idx]?.dow || '';
@@ -1569,6 +1575,17 @@ function renderTimesheetTable() {
       recalculateAllTimes();
     });
   });
+}
+
+let _supabaseTimesheetSaveTimeout = null;
+function debounceSaveSupabaseTimesheet(empId, monthKey, days) {
+  if (!window.supabaseService || !window.supabaseService.isConfigured() || typeof window.supabaseService.saveFullTimesheet !== 'function') return;
+  clearTimeout(_supabaseTimesheetSaveTimeout);
+  _supabaseTimesheetSaveTimeout = setTimeout(() => {
+    window.supabaseService.saveFullTimesheet(empId, monthKey, days).catch(err => {
+      console.warn('Erro na sincronização automática com Supabase:', err);
+    });
+  }, 1000);
 }
 
 // Máscara inteligente para horários com inserção automática dos dois pontos (:)
@@ -2343,6 +2360,8 @@ function openEditEmployeeModal(empId) {
   const whatsappEl = document.getElementById('emp-edit-whatsapp');
   const matEl = document.getElementById('emp-edit-matricula');
   const admEl = document.getElementById('emp-edit-admission');
+  const ctpsEl = document.getElementById('emp-edit-ctps');
+  const deptCodeEl = document.getElementById('emp-edit-deptcode');
   const statusEl = document.getElementById('emp-edit-status');
 
   if (idEl) idEl.value = emp.id;
@@ -2353,6 +2372,8 @@ function openEditEmployeeModal(empId) {
   if (whatsappEl) whatsappEl.value = emp.whatsapp || '';
   if (matEl) matEl.value = emp.matricula || '';
   if (admEl) admEl.value = emp.admission || '';
+  if (ctpsEl) ctpsEl.value = emp.ctps || emp.pis || '';
+  if (deptCodeEl) deptCodeEl.value = emp.deptCode || '300';
   if (statusEl) statusEl.value = emp.statusCategory || 'ativo';
 
   const modal = document.getElementById('modal-edit-employee');
@@ -2375,8 +2396,10 @@ async function handleSaveEditedEmployee(e) {
   const dept = document.getElementById('emp-edit-dept')?.value.trim() || 'Geral';
   const cpf = document.getElementById('emp-edit-cpf')?.value.trim();
   const whatsapp = document.getElementById('emp-edit-whatsapp')?.value.trim();
-  const matricula = document.getElementById('emp-edit-matricula')?.value.trim() || emp.matricula;
-  const admission = document.getElementById('emp-edit-admission')?.value.trim() || emp.admission;
+  const matricula = document.getElementById('emp-edit-matricula')?.value.trim() || emp.matricula || '0010';
+  const admission = document.getElementById('emp-edit-admission')?.value.trim() || emp.admission || '05/02/2022';
+  const ctps = document.getElementById('emp-edit-ctps')?.value.trim() || emp.ctps || emp.pis || '';
+  const deptCode = document.getElementById('emp-edit-deptcode')?.value.trim() || emp.deptCode || '300';
   const statusCategory = document.getElementById('emp-edit-status')?.value || 'ativo';
 
   if (!nome || !cargo || !cpf || !whatsapp) {
@@ -2396,6 +2419,8 @@ async function handleSaveEditedEmployee(e) {
   emp.whatsapp = whatsapp;
   emp.matricula = matricula;
   emp.admission = admission;
+  emp.ctps = ctps;
+  emp.deptCode = deptCode;
   emp.statusCategory = statusCategory;
   emp.statusPillLabel = pillInfo.label;
   emp.statusPillClass = pillInfo.pillClass;
@@ -2886,6 +2911,10 @@ async function handleCreateEmployee(e) {
     const colors = ['green', 'blue', 'purple', 'orange', 'red'];
     const color = colors[employeesDB.length % colors.length];
 
+    const inputMatricula = document.getElementById('emp-input-matricula')?.value.trim() || String(employeesDB.length + 1).padStart(4, '0');
+    const inputAdmission = document.getElementById('emp-input-admission')?.value.trim() || new Date().toLocaleDateString('pt-BR');
+    const inputCtps = document.getElementById('emp-input-ctps')?.value.trim() || '';
+
     const newEmp = {
       id: newId,
       name: nome,
@@ -2895,11 +2924,13 @@ async function handleCreateEmployee(e) {
       shortRole: cargo,
       dept: 'Operacional',
       fullDept: `Departamento - ${cargo}`,
-      admission: new Date().toLocaleDateString('pt-BR'),
+      admission: inputAdmission,
       cpf: cpf,
       whatsapp: whatsapp,
-      pis: '000.00000.00-0',
-      matricula: String(employeesDB.length + 1).padStart(4, '0'),
+      pis: inputCtps || '000.00000.00-0',
+      ctps: inputCtps,
+      matricula: inputMatricula,
+      deptCode: '300',
       statusTag: 'Ativo',
       statusTagClass: color,
       statusCategory: 'ativo',
@@ -2968,7 +2999,7 @@ function generateDemonstrativoPDF() {
   printAllEmployeesTimesheets();
 }
 
-// Build Print Page HTML for a single employee
+// Build Print Page HTML for a single employee (Exact Reference: Modern Digital Green Timesheet)
 function buildEmployeePrintPageHtml(emp, pageNum = 1, totalPages = 1) {
   let totalPresencas = 0;
   let totalExtraMins = 0;
@@ -2992,28 +3023,81 @@ function buildEmployeePrintPageHtml(emp, pageNum = 1, totalPages = 1) {
 
   const netBalanceMins = totalExtraMins - totalAtrasoMins;
 
+  const dowAbbrMap = {
+    'Domingo': 'Dom',
+    'Segunda-feira': 'Seg',
+    'Terça-feira': 'Ter',
+    'Quarta-feira': 'Qua',
+    'Quinta-feira': 'Qui',
+    'Sexta-feira': 'Sex',
+    'Sábado': 'Sáb'
+  };
+
+  const monthPad = String(currentMonth).padStart(2, '0');
   let rowsHtml = '';
   if (emp.days && Array.isArray(emp.days)) {
     emp.days.forEach(item => {
       const dayPad = String(item.day).padStart(2, '0');
-      const monthPad = String(currentMonth).padStart(2, '0');
+      const abbr = dowAbbrMap[item.dow] || (item.dow ? item.dow.slice(0, 3) : '');
+      const isSunday = item.dow === 'Domingo' || abbr === 'Dom';
+      const isSaturday = item.dow === 'Sábado' || abbr === 'Sáb';
       const metrics = calcDayMetrics(item.e1, item.s1, item.e2, item.s2, item.status, item.dow);
+
+      let intervalFormatted = '--:--';
+      if (item.s1 && item.e2) {
+        intervalFormatted = `${item.s1} - ${item.e2}`;
+      } else if (item.s1) {
+        intervalFormatted = `${item.s1} - --:--`;
+      } else if (item.e2) {
+        intervalFormatted = `--:-- - ${item.e2}`;
+      }
+
       let rowBgClass = '';
-      if (item.status === 'dsr' || item.status === 'feriado') rowBgClass = 'print-weekend-row';
+      if (item.status === 'dsr' || item.status === 'feriado' || isSunday) rowBgClass = 'print-weekend-row';
       else if (item.status === 'falta') rowBgClass = 'print-falta-row';
       else if (item.status === 'atestado') rowBgClass = 'print-atestado-row';
-      else if (item.status === 'justificada') rowBgClass = 'print-justificada-row';
       else if (item.status === 'ferias') rowBgClass = 'print-ferias-row';
+
+      // Situação label & style
+      let statusLabel = 'Presença';
+      let statusClass = 'presenca';
+      if (item.status === 'dsr' || isSunday) {
+        statusLabel = 'D.S.R.';
+        statusClass = 'dsr';
+      } else if (item.status === 'meio_periodo' || (isSaturday && item.s1 === '12:00')) {
+        statusLabel = 'Meio Período';
+        statusClass = 'meio_periodo';
+      } else if (item.status === 'feriado') {
+        statusLabel = 'Feriado';
+        statusClass = 'feriado';
+      } else if (item.status === 'ferias') {
+        statusLabel = 'Férias';
+        statusClass = 'ferias';
+      } else if (item.status === 'atestado') {
+        statusLabel = 'Atestado';
+        statusClass = 'atestado';
+      } else if (item.status === 'falta') {
+        statusLabel = 'Falta';
+        statusClass = 'falta';
+      } else if (item.status === 'justificada') {
+        statusLabel = 'Justificada';
+        statusClass = 'justificada';
+      }
+
+      let rubricaDisplay = '—';
+      if (item.signed !== false && (item.e1 || item.s1 || item.e2 || item.s2 || item.status === 'dsr' || item.status === 'feriado' || item.status === 'meio_periodo' || item.status === 'ferias' || item.status === 'atestado')) {
+        rubricaDisplay = emp.initials || 'OK';
+      }
 
       rowsHtml += `
         <tr class="${rowBgClass}">
-          <td class="col-day"><strong>${dayPad}/${monthPad}</strong> <small>${item.dow.slice(0, 3)}</small></td>
+          <td class="col-day"><strong>${dayPad}/${monthPad}</strong> <small>${abbr}</small></td>
           <td class="col-time">${item.e1 || '--:--'}</td>
-          <td class="col-time">${(item.s1 && item.e2) ? `${item.s1} às ${item.e2}` : (item.s1 || item.e2 ? `${item.s1 || '--:--'} - ${item.e2 || '--:--'}` : '--:--')}</td>
+          <td class="col-time">${intervalFormatted}</td>
           <td class="col-time">${item.s2 || '--:--'}</td>
-          <td class="col-balance ${metrics.extraType}" style="text-align: center;">${metrics.formattedExtra}</td>
-          <td class="col-status" style="text-align: center;"><span class="print-badge ${item.status || 'presenca'}">${getStatusLabel(item.status)}</span></td>
-          <td class="col-sig" style="text-align: center;"><span class="print-sig-rubrica">${item.signed !== false ? emp.initials : '—'}</span></td>
+          <td class="col-balance ${metrics.extraType}">${metrics.formattedExtra || '00:00'}</td>
+          <td class="col-status"><span class="print-badge ${statusClass}">${statusLabel}</span></td>
+          <td class="col-sig"><span class="print-sig-rubrica">${rubricaDisplay}</span></td>
         </tr>
       `;
     });
@@ -3023,38 +3107,41 @@ function buildEmployeePrintPageHtml(emp, pageNum = 1, totalPages = 1) {
   const sigData = (emp.signatures && emp.signatures[monthKey]) || emp.digitalSignature;
   const companySigData = (typeof systemSettings !== 'undefined' && systemSettings.autoApplyCompanySig !== false && systemSettings.companySignature) || (emp.signatures && emp.signatures[monthKey]?.companySignature);
 
-  // Validação segura da imagem da assinatura do colaborador
   let empSigImg = null;
   if (sigData) {
-    if (typeof sigData === 'object' && sigData.image && typeof sigData.image === 'string' && (sigData.image.startsWith('data:image') || sigData.image.startsWith('http'))) {
-      empSigImg = sigData.image;
-    } else if (typeof sigData === 'string' && (sigData.startsWith('data:image') || sigData.startsWith('http'))) {
-      empSigImg = sigData;
+    let rawImg = (typeof sigData === 'object' && sigData.image) ? sigData.image : (typeof sigData === 'string' ? sigData : null);
+    if (rawImg && (rawImg.startsWith('data:image/png') || rawImg.startsWith('data:image/jpeg') || rawImg.startsWith('data:image/webp') || rawImg.startsWith('http')) && rawImg.length > 100) {
+      empSigImg = rawImg;
     }
   }
 
-  // Validação segura da imagem da assinatura da empresa
   let compSigImg = null;
   if (companySigData) {
-    if (typeof companySigData === 'object' && companySigData.image && typeof companySigData.image === 'string' && (companySigData.image.startsWith('data:image') || companySigData.image.startsWith('http'))) {
-      compSigImg = companySigData.image;
-    } else if (typeof companySigData === 'string' && (companySigData.startsWith('data:image') || companySigData.startsWith('http'))) {
-      compSigImg = companySigData;
+    let rawComp = (typeof companySigData === 'object' && companySigData.image) ? companySigData.image : (typeof companySigData === 'string' ? companySigData : null);
+    if (rawComp && (rawComp.startsWith('data:image/png') || rawComp.startsWith('data:image/jpeg') || rawComp.startsWith('data:image/webp') || rawComp.startsWith('http')) && rawComp.length > 100) {
+      compSigImg = rawComp;
     }
   }
+
+  const compName = (typeof systemSettings !== 'undefined' && systemSettings.companyName) ? systemSettings.companyName : 'Lane RO Comunicações LTDA';
+  const compAddr = (typeof systemSettings !== 'undefined' && systemSettings.companyAddress) ? systemSettings.companyAddress : 'Rua Winifred Avinel Wiles, 3286 - Lagoinha, Porto Velho - RO';
+  const compCnpj = (typeof systemSettings !== 'undefined' && systemSettings.companyCnpj) ? systemSettings.companyCnpj : '43.557.034/0001-94';
+  const compManager = (typeof systemSettings !== 'undefined' && systemSettings.managerName) ? systemSettings.managerName : 'Antônio Souza (Admin)';
+  const monthName = MONTH_NAMES[currentMonth - 1] || `${currentMonth}`;
 
   const page = document.createElement('div');
   page.className = 'print-page';
 
   page.innerHTML = `
+    <!-- Top Header: Logo + Company Info + Title + Competência -->
     <div class="print-doc-header">
       <div class="print-brand-row">
         <div class="print-brand-col-left">
-          <img src="logo-lane.jpg" alt="Logo Lane Comunicações" style="width: 44px; height: 44px; object-fit: cover; border-radius: 4px; border: 1px solid #CBD5E1;">
+          <img src="logo-lane.jpg" alt="Logo Lane Comunicações" class="print-brand-logo">
           <div class="print-brand">
-            <strong>${(typeof systemSettings !== 'undefined' && systemSettings.companyName) ? systemSettings.companyName : 'LANE RO COMUNICAÇÕES LTDA'}</strong>
-            <span>${(typeof systemSettings !== 'undefined' && systemSettings.companyAddress) ? systemSettings.companyAddress : 'RUA WINIFRED AVINEL WILES'}</span>
-            <span>CNPJ/CAEPF: ${(typeof systemSettings !== 'undefined' && systemSettings.companyCnpj) ? systemSettings.companyCnpj : '43.557.034/0001-94'}</span>
+            <strong>${compName}</strong>
+            <span>${compAddr}</span>
+            <span>CNPJ/CAEPF: ${compCnpj}</span>
           </div>
         </div>
         <div class="print-doc-title">
@@ -3062,37 +3149,39 @@ function buildEmployeePrintPageHtml(emp, pageNum = 1, totalPages = 1) {
         </div>
         <div class="print-page-num">
           <span>Página ${pageNum} de ${totalPages}</span>
-          <small>Competência: ${MONTH_NAMES[currentMonth - 1]}/${currentYear}</small>
+          <small>Competência: ${monthName}/${currentYear}</small>
         </div>
       </div>
 
+      <!-- Employee Information Card -->
       <div class="print-emp-card">
         <div class="print-emp-avatar ${emp.color || 'green'}">${emp.initials || 'FN'}</div>
         <div class="print-emp-info">
           <div class="print-emp-topline">
-            <h4>${emp.name}</h4>
+            <h4>${emp.name || '-'}</h4>
             <span class="print-tag">Matrícula: ${emp.matricula || '0001'}</span>
-            <span class="print-tag">${emp.statusTag || 'Ativo'}</span>
+            <span class="print-tag ${emp.statusCategory || 'ativo'}">${emp.statusTag || 'Ativo'}</span>
           </div>
           <div class="print-emp-details">
-            <span><strong>Cargo:</strong> ${emp.role}</span>
-            <span><strong>Departamento:</strong> ${emp.fullDept || emp.dept}</span>
-            <span><strong>CPF:</strong> ${emp.cpf}</span>
+            <span><strong>Cargo:</strong> ${emp.role || emp.shortRole || '-'}</span>
+            <span><strong>Departamento:</strong> ${emp.fullDept || emp.dept || '-'}</span>
+            <span><strong>CPF:</strong> ${emp.cpf || '-'}</span>
           </div>
         </div>
       </div>
     </div>
 
+    <!-- Timesheet Table -->
     <table class="print-table">
       <thead>
         <tr>
           <th style="width: 14%;">Dia / Data</th>
-          <th style="width: 12%;">Entrada</th>
+          <th style="width: 13%;">Entrada</th>
           <th style="width: 22%;">Intervalo Refeição</th>
-          <th style="width: 12%;">Saída</th>
-          <th style="width: 14%;">Horas Extras</th>
+          <th style="width: 13%;">Saída</th>
+          <th style="width: 13%;">Horas Extras</th>
           <th style="width: 13%;">Situação</th>
-          <th style="width: 13%;">Assinatura</th>
+          <th style="width: 12%;">Assinatura</th>
         </tr>
       </thead>
       <tbody>
@@ -3100,61 +3189,63 @@ function buildEmployeePrintPageHtml(emp, pageNum = 1, totalPages = 1) {
       </tbody>
     </table>
 
+    <!-- Summary Metrics Cards -->
     <div class="print-summary-grid">
       <div class="print-stat-item">
-        <span class="stat-lbl">Dias Trabalhados</span>
+        <span class="stat-lbl">DIAS TRABALHADOS</span>
         <strong class="stat-num">${totalPresencas} dias</strong>
         <small>${totalWorkedMins > 0 ? minutesToTime(totalWorkedMins) + 'h total' : '160h normais'}</small>
       </div>
       <div class="print-stat-item">
-        <span class="stat-lbl">Horas Extras</span>
+        <span class="stat-lbl">HORAS EXTRAS</span>
         <strong class="stat-num text-success">+${minutesToTime(totalExtraMins)}h</strong>
         <small>Acréscimo 50%/100%</small>
       </div>
       <div class="print-stat-item">
-        <span class="stat-lbl">Atrasos / Saídas</span>
+        <span class="stat-lbl">ATRASOS / SAÍDAS</span>
         <strong class="stat-num text-warning">-${minutesToTime(totalAtrasoMins)}h</strong>
         <small>Dentro banco</small>
       </div>
       <div class="print-stat-item">
-        <span class="stat-lbl">Saldo Banco Horas</span>
+        <span class="stat-lbl">SALDO BANCO HORAS</span>
         <strong class="stat-num">${netBalanceMins >= 0 ? '+' : ''}${minutesToTime(netBalanceMins)}h</strong>
-        <small>Saldo acumulado ${MONTH_NAMES[currentMonth - 1].slice(0, 3)}/${String(currentYear).slice(-2)}</small>
+        <small>Saldo acumulado ${monthName.slice(0, 3)}/${String(currentYear).slice(-2)}</small>
       </div>
       <div class="print-stat-item">
-        <span class="stat-lbl">Faltas Injustificadas</span>
+        <span class="stat-lbl">FALTAS INJUSTIFICADAS</span>
         <strong class="stat-num text-danger">${String(totalFaltas).padStart(2, '0')} dia</strong>
         <small>Desconto DSR</small>
       </div>
     </div>
 
+    <!-- Signatures Footer -->
     <div class="print-footer-signatures">
       <div class="print-sig-row">
         <div class="print-sig-box">
           ${empSigImg ? `
-            <div style="min-height: 46px; display: flex; align-items: flex-end; justify-content: center; margin-bottom: 2px;">
-              <img src="${empSigImg}" alt="" style="max-height: 44px; max-width: 180px; object-fit: contain; display: block; filter: contrast(1.2);" onerror="this.style.display='none'">
+            <div class="print-sig-img-container">
+              <img src="${empSigImg}" alt="" class="print-sig-img">
             </div>
             <div class="sig-line" style="margin-top: 2px !important;"></div>
           ` : `
-            <div class="sig-line" style="margin-top: 48px !important;"></div>
+            <div class="sig-line" style="margin-top: 36px !important;"></div>
           `}
-          <strong>${emp.name}</strong>
-          <span>Assinatura do Empregado — CPF: ${emp.cpf}</span>
-          <small>Data: ${sigData ? (sigData.dateOnly || sigData.signedAt?.split(' ')[0] || new Date().toLocaleDateString('pt-BR')) : `____/____/${currentYear}`}</small>
+          <strong>${emp.name || '-'}</strong>
+          <span>Assinatura do Empregado — CPF: ${emp.cpf || '-'}</span>
+          <small>Data: ${sigData?.dateOnly || sigData?.signedAt?.split(' ')[0] || `____/____/${currentYear}`}</small>
         </div>
         <div class="print-sig-box">
           ${compSigImg ? `
-            <div style="min-height: 46px; display: flex; align-items: flex-end; justify-content: center; margin-bottom: 2px;">
-              <img src="${compSigImg}" alt="" style="max-height: 44px; max-width: 180px; object-fit: contain; display: block; filter: contrast(1.2);" onerror="this.style.display='none'">
+            <div class="print-sig-img-container">
+              <img src="${compSigImg}" alt="" class="print-sig-img">
             </div>
             <div class="sig-line" style="margin-top: 2px !important;"></div>
           ` : `
-            <div class="sig-line" style="margin-top: 48px !important;"></div>
+            <div class="sig-line" style="margin-top: 36px !important;"></div>
           `}
-          <strong>${(typeof systemSettings !== 'undefined' && systemSettings.managerName) ? systemSettings.managerName : 'Antônio Sousa'} (Gestor)</strong>
-          <span>Pelo Empregador — ${(typeof systemSettings !== 'undefined' && systemSettings.companyName) ? systemSettings.companyName : 'LANE RO COMUNICAÇÕES LTDA'}</span>
-          <small>CNPJ/CAEPF: ${(typeof systemSettings !== 'undefined' && systemSettings.companyCnpj) ? systemSettings.companyCnpj : '43.557.034/0001-94'}</small>
+          <strong>${compManager} (Gestor)</strong>
+          <span>Pelo Empregador — ${compName}</span>
+          <small>CNPJ/CAEPF: ${compCnpj}</small>
         </div>
       </div>
     </div>
@@ -3163,8 +3254,41 @@ function buildEmployeePrintPageHtml(emp, pageNum = 1, totalPages = 1) {
   return page;
 }
 
+// Sincroniza em tempo real os inputs digitados na tabela da tela para o objeto do colaborador
+function syncDomTableToActiveEmployee() {
+  const emp = getCurrentEmployee();
+  if (!emp || !emp.days) return;
+  const rows = document.querySelectorAll('#timesheet-tbody tr');
+  if (!rows || rows.length === 0) return;
+  
+  rows.forEach((row, idx) => {
+    if (emp.days[idx]) {
+      const e1Input = row.querySelector('[data-field="e1"]');
+      const s1Input = row.querySelector('[data-field="s1"]');
+      const e2Input = row.querySelector('[data-field="e2"]');
+      const s2Input = row.querySelector('[data-field="s2"]');
+      const statusSelect = row.querySelector('.status-select');
+      const justInput = row.querySelector('.justification-input');
+      const sigCb = row.querySelector('.sig-checkbox');
+
+      if (e1Input) emp.days[idx].e1 = e1Input.value.trim();
+      if (s1Input) emp.days[idx].s1 = s1Input.value.trim();
+      if (e2Input) emp.days[idx].e2 = e2Input.value.trim();
+      if (s2Input) emp.days[idx].s2 = s2Input.value.trim();
+      if (statusSelect && statusSelect.value) emp.days[idx].status = statusSelect.value;
+      if (justInput) emp.days[idx].just = justInput.value.trim();
+      if (sigCb) emp.days[idx].signed = sigCb.checked;
+    }
+  });
+  const monthKey = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
+  if (!emp.timesheets) emp.timesheets = {};
+  emp.timesheets[monthKey] = JSON.parse(JSON.stringify(emp.days));
+  saveEmployeesToLocalStorage();
+}
+
 // Multi-Page Print Generation (1 Page per registered Employee)
 function generateAllEmployeesPrintView() {
+  syncDomTableToActiveEmployee();
   const container = document.getElementById('print-all-container');
   if (!container) return;
 
@@ -3177,6 +3301,7 @@ function generateAllEmployeesPrintView() {
 
 // Single Employee Print Generation (Only Current Employee)
 function generateSingleEmployeePrintView(emp) {
+  syncDomTableToActiveEmployee();
   const container = document.getElementById('print-all-container');
   if (!container) return;
 
@@ -3292,10 +3417,10 @@ function showToast(msg) {
 const SYSTEM_SETTINGS_KEY = 'lane_system_settings_v3';
 
 let systemSettings = {
-  companyName: 'Lane RO Comunicações LTDA',
+  companyName: 'LANE RO COMUNICACOES LTDA',
   companyCnpj: '43.557.034/0001-94',
   managerName: 'Antônio Sousa (Admin)',
-  companyAddress: 'Rua Winifred Avinel Wiles',
+  companyAddress: 'RUA WINIFRED AVINEL WILES , 3286, LAGOINHA , PORTO VELHO',
   workHoursWeekday: 480, // 8h diárias
   workHoursSaturday: 240, // 4h sábado
   toleranceMinutes: 10
@@ -3313,10 +3438,10 @@ function loadSystemSettings() {
       systemSettings.companyCnpj = '43.557.034/0001-94';
     }
     if (!systemSettings.companyName || systemSettings.companyName === 'Lane Comunicações' || systemSettings.companyName === 'LANE COMUNICAÇÕES') {
-      systemSettings.companyName = 'Lane RO Comunicações LTDA';
+      systemSettings.companyName = 'LANE RO COMUNICACOES LTDA';
     }
-    if (!systemSettings.companyAddress || systemSettings.companyAddress.includes('Paulista')) {
-      systemSettings.companyAddress = 'Rua Winifred Avinel Wiles';
+    if (!systemSettings.companyAddress || systemSettings.companyAddress.includes('Paulista') || systemSettings.companyAddress === 'Rua Winifred Avinel Wiles') {
+      systemSettings.companyAddress = 'RUA WINIFRED AVINEL WILES , 3286, LAGOINHA , PORTO VELHO';
     }
     if (!systemSettings.managerName || systemSettings.managerName.includes('Roberto')) {
       systemSettings.managerName = 'Antônio Sousa (Admin)';

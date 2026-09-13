@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="icon" type="image/jpeg" href="logo-lane.jpg">
-  <link rel="stylesheet" href="index.css">
+  <link rel="stylesheet" href="index.css?v=20260913_v5">
 </head>
 <body>
   <!-- ============================================================== -->
@@ -394,14 +394,33 @@
             <input type="text" id="emp-input-cargo" placeholder="Ex: Supervisor de Logística" required autocomplete="off">
           </div>
 
-          <div class="form-field">
-            <label for="emp-input-cpf">CPF <span class="required">*</span></label>
-            <input type="text" id="emp-input-cpf" placeholder="000.000.000-00" maxlength="14" required autocomplete="off">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div class="form-field">
+              <label for="emp-input-cpf">CPF <span class="required">*</span></label>
+              <input type="text" id="emp-input-cpf" placeholder="000.000.000-00" maxlength="14" required autocomplete="off">
+            </div>
+            
+            <div class="form-field">
+              <label for="emp-input-whatsapp">WhatsApp (Celular) <span class="required" style="color: #DC2626;">*</span></label>
+              <input type="text" id="emp-input-whatsapp" placeholder="(00) 00000-0000" maxlength="15" required autocomplete="off">
+            </div>
           </div>
-          
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div class="form-field">
+              <label for="emp-input-matricula">Matrícula</label>
+              <input type="text" id="emp-input-matricula" placeholder="Ex: 0010" autocomplete="off">
+            </div>
+
+            <div class="form-field">
+              <label for="emp-input-admission">Data de Admissão</label>
+              <input type="text" id="emp-input-admission" placeholder="DD/MM/AAAA" maxlength="10" autocomplete="off">
+            </div>
+          </div>
+
           <div class="form-field">
-            <label for="emp-input-whatsapp">WhatsApp (Celular) <span class="required" style="color: #DC2626;">*</span></label>
-            <input type="text" id="emp-input-whatsapp" placeholder="(00) 00000-0000" maxlength="15" required autocomplete="off">
+            <label for="emp-input-ctps">CTPS (Nº Série / UF)</label>
+            <input type="text" id="emp-input-ctps" placeholder="Ex: 00408992 1236 / RO" autocomplete="off">
           </div>
         </div>
 
@@ -468,12 +487,24 @@
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
             <div class="form-field">
               <label for="emp-edit-matricula" style="font-size: 0.82rem; font-weight: 600; color: #1E293B;">Matrícula</label>
-              <input type="text" id="emp-edit-matricula" placeholder="Ex: 0492" autocomplete="off" style="width: 100%; padding: 9px 12px; border: 1px solid #CBD5E1; border-radius: 6px; font-size: 0.88rem;">
+              <input type="text" id="emp-edit-matricula" placeholder="Ex: 0010" autocomplete="off" style="width: 100%; padding: 9px 12px; border: 1px solid #CBD5E1; border-radius: 6px; font-size: 0.88rem;">
             </div>
 
             <div class="form-field">
               <label for="emp-edit-admission" style="font-size: 0.82rem; font-weight: 600; color: #1E293B;">Data de Admissão</label>
               <input type="text" id="emp-edit-admission" placeholder="DD/MM/AAAA" maxlength="10" autocomplete="off" style="width: 100%; padding: 9px 12px; border: 1px solid #CBD5E1; border-radius: 6px; font-size: 0.88rem;">
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1.4fr 0.6fr; gap: 12px;">
+            <div class="form-field">
+              <label for="emp-edit-ctps" style="font-size: 0.82rem; font-weight: 600; color: #1E293B;">CTPS (Nº Série / UF)</label>
+              <input type="text" id="emp-edit-ctps" placeholder="Ex: 00408992 1236 / RO" autocomplete="off" style="width: 100%; padding: 9px 12px; border: 1px solid #CBD5E1; border-radius: 6px; font-size: 0.88rem;">
+            </div>
+
+            <div class="form-field">
+              <label for="emp-edit-deptcode" style="font-size: 0.82rem; font-weight: 600; color: #1E293B;">Cód. Setor</label>
+              <input type="text" id="emp-edit-deptcode" placeholder="Ex: 300" autocomplete="off" style="width: 100%; padding: 9px 12px; border: 1px solid #CBD5E1; border-radius: 6px; font-size: 0.88rem;">
             </div>
           </div>
 
@@ -1129,6 +1160,6 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>
 
-  <script src="app.js"></script>
+  <script src="app.js?v=20260913_v5"></script>
 </body>
 </html>
