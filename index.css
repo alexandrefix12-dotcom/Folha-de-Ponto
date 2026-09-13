@@ -2215,8 +2215,8 @@ body {
     display: flex !important;
     flex-direction: column !important;
     justify-content: flex-start !important;
-    font-size: 6.5pt !important;
-    line-height: 1.15 !important;
+    font-size: 7.5pt !important;
+    line-height: 1.2 !important;
   }
 
   .print-page:last-child {
@@ -2226,18 +2226,18 @@ body {
 
   /* Top Centered Title */
   .print-doc-title {
-    font-size: 11pt !important;
+    font-size: 13.5pt !important;
     font-weight: 800 !important;
     color: #006633 !important;
     text-align: center !important;
-    margin: 0 0 3px 0 !important;
-    letter-spacing: 0.5px !important;
+    margin: 0 0 2mm 0 !important;
+    letter-spacing: 0.8px !important;
     text-transform: uppercase !important;
   }
 
   /* Main Outer Envelope Box with Solid Green Border */
   .print-doc-envelope {
-    border: 1.2px solid #006633 !important;
+    border: 1.5px solid #006633 !important;
     box-sizing: border-box !important;
     width: 100% !important;
     background: #FFFFFF !important;
@@ -2248,37 +2248,37 @@ body {
     display: flex !important;
     justify-content: space-between !important;
     align-items: flex-start !important;
-    padding: 3px 6px !important;
-    border-bottom: 1px solid #006633 !important;
+    padding: 2.2mm 3.5mm !important;
+    border-bottom: 1.2px solid #006633 !important;
   }
 
   .print-comp-left {
     display: flex !important;
     flex-direction: column !important;
-    gap: 1px !important;
-    font-size: 6.2pt !important;
-    line-height: 1.15 !important;
+    gap: 0.8mm !important;
+    font-size: 7.2pt !important;
+    line-height: 1.2 !important;
   }
 
   .print-comp-name {
     font-weight: 800 !important;
-    font-size: 7.5pt !important;
+    font-size: 8.5pt !important;
     color: #000000 !important;
   }
 
   .print-comp-addr-row {
     display: flex !important;
-    gap: 60px !important;
-    font-size: 6.2pt !important;
+    gap: 25mm !important;
+    font-size: 7.2pt !important;
     color: #000000 !important;
   }
 
   .print-comp-addr-mid {
-    margin-left: 20px !important;
+    margin-left: 5mm !important;
   }
 
   .print-comp-cnpj {
-    font-size: 6.2pt !important;
+    font-size: 7.2pt !important;
     color: #000000 !important;
   }
 
@@ -2287,7 +2287,7 @@ body {
   }
 
   .print-comp-code {
-    font-size: 7.5pt !important;
+    font-size: 9pt !important;
     font-weight: 800 !important;
     color: #000000 !important;
   }
@@ -2297,59 +2297,61 @@ body {
     display: grid !important;
     grid-template-columns: 32% 68% !important;
     box-sizing: border-box !important;
-    border-bottom: 1px solid #006633 !important;
+    border-bottom: 1.2px solid #006633 !important;
   }
 
   .print-emp-col-left {
-    border-right: 1px solid #006633 !important;
-    padding: 3px 6px !important;
+    border-right: 1.2px solid #006633 !important;
+    padding: 2.5mm 3.5mm !important;
     display: flex !important;
     flex-direction: column !important;
     justify-content: space-between !important;
-    min-height: 52px !important;
+    min-height: 25mm !important;
+    box-sizing: border-box !important;
   }
 
   .print-emp-name {
-    font-size: 7.5pt !important;
+    font-size: 8.5pt !important;
     font-weight: 800 !important;
     color: #000000 !important;
-    line-height: 1.15 !important;
+    line-height: 1.2 !important;
   }
 
   .print-emp-sig-slot {
-    margin-top: 2px !important;
-    min-height: 26px !important;
+    margin-top: 1mm !important;
+    height: 14mm !important;
     display: flex !important;
     align-items: flex-end !important;
   }
 
   .print-emp-header-sig-img {
-    max-height: 24px !important;
-    max-width: 140px !important;
+    max-height: 13mm !important;
+    max-width: 55mm !important;
     object-fit: contain !important;
     background: transparent !important;
   }
 
   .print-emp-sig-blank {
-    height: 18px !important;
+    height: 12mm !important;
   }
 
   .print-emp-col-right {
-    padding: 2px 6px !important;
-    font-size: 6.2pt !important;
+    padding: 2mm 3.5mm !important;
+    font-size: 7.2pt !important;
     display: flex !important;
     flex-direction: column !important;
     justify-content: space-between !important;
+    box-sizing: border-box !important;
   }
 
   .print-emp-meta-row {
     display: flex !important;
     justify-content: space-between !important;
     align-items: center !important;
-    font-size: 6.2pt !important;
+    font-size: 7.2pt !important;
     border-bottom: 0.5px solid #CBD5E1 !important;
-    padding-bottom: 2px !important;
-    margin-bottom: 2px !important;
+    padding-bottom: 1.2mm !important;
+    margin-bottom: 1.2mm !important;
     color: #000000 !important;
   }
 
@@ -2359,13 +2361,14 @@ body {
 
   .print-emp-mat {
     font-weight: 800 !important;
+    font-size: 7.5pt !important;
   }
 
   .print-schedule-box {
     display: flex !important;
-    gap: 6px !important;
-    font-size: 5.6pt !important;
-    line-height: 1.15 !important;
+    gap: 4mm !important;
+    font-size: 6.6pt !important;
+    line-height: 1.3 !important;
     color: #000000 !important;
   }
 
@@ -2378,18 +2381,19 @@ body {
     flex: 1 !important;
     display: flex !important;
     flex-direction: column !important;
-    gap: 0px !important;
+    gap: 0.2mm !important;
   }
 
   .print-sched-row {
     display: flex !important;
-    gap: 2px !important;
+    gap: 1.5mm !important;
     white-space: nowrap !important;
   }
 
   .print-sched-row .sched-day {
-    width: 64px !important;
+    width: 22mm !important;
     display: inline-block !important;
+    font-weight: 600 !important;
   }
 
   /* 3. Main Table */
@@ -2399,9 +2403,9 @@ body {
     border-left: none !important;
     border-right: none !important;
     border-top: none !important;
-    border-bottom: 1px solid #006633 !important;
+    border-bottom: 1.2px solid #006633 !important;
     margin: 0 !important;
-    font-size: 6.4pt !important;
+    font-size: 7.5pt !important;
     table-layout: fixed !important;
     box-sizing: border-box !important;
   }
@@ -2409,12 +2413,12 @@ body {
   .print-table th {
     background-color: #FFFFFF !important;
     color: #000000 !important;
-    font-weight: 700 !important;
+    font-weight: 800 !important;
     border: 1px solid #006633 !important;
-    padding: 2px 2px !important;
+    padding: 1.6mm 1mm !important;
     text-align: center !important;
-    font-size: 6.6pt !important;
-    letter-spacing: 0.2px !important;
+    font-size: 7.8pt !important;
+    letter-spacing: 0.3px !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
@@ -2424,10 +2428,10 @@ body {
 
   .print-table td {
     border: 1px solid #006633 !important;
-    padding: 1.2px 2px !important;
+    padding: 0 1mm !important;
     text-align: center !important;
-    line-height: 1.15 !important;
-    height: 14px !important;
+    line-height: 5.4mm !important;
+    height: 5.4mm !important;
     color: #000000 !important;
     box-sizing: border-box !important;
   }
@@ -2437,8 +2441,8 @@ body {
 
   .print-table .col-dia {
     text-align: left !important;
-    padding-left: 4px !important;
-    font-size: 6.4pt !important;
+    padding-left: 2mm !important;
+    font-size: 7.5pt !important;
     white-space: nowrap !important;
   }
 
@@ -2450,13 +2454,13 @@ body {
   .print-table .col-sai,
   .print-table .col-int,
   .print-table .col-ext {
-    font-size: 6.4pt !important;
+    font-size: 7.5pt !important;
     font-family: Arial, sans-serif !important;
     text-align: center !important;
   }
 
   .print-table .col-ass {
-    font-size: 6.0pt !important;
+    font-size: 7.2pt !important;
     text-align: center !important;
   }
 
@@ -2464,13 +2468,13 @@ body {
   .print-bottom-container {
     border: none !important;
     display: grid !important;
-    grid-template-columns: 68% 32% !important;
+    grid-template-columns: 66% 34% !important;
     box-sizing: border-box !important;
     width: 100% !important;
   }
 
   .print-resumo-box {
-    border-right: 1px solid #006633 !important;
+    border-right: 1.2px solid #006633 !important;
     display: flex !important;
     flex-direction: column !important;
   }
@@ -2479,11 +2483,11 @@ body {
     background-color: #FFFFFF !important;
     color: #000000 !important;
     font-weight: 800 !important;
-    font-size: 7.2pt !important;
+    font-size: 8.5pt !important;
     text-align: center !important;
-    padding: 2px !important;
-    border-bottom: 1px solid #006633 !important;
-    letter-spacing: 0.3px !important;
+    padding: 1.8mm !important;
+    border-bottom: 1.2px solid #006633 !important;
+    letter-spacing: 0.5px !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
@@ -2491,16 +2495,16 @@ body {
   .print-resumo-grid {
     display: grid !important;
     grid-template-columns: 1fr 1fr !important;
-    gap: 4px !important;
-    padding: 3px 6px !important;
-    font-size: 5.8pt !important;
-    line-height: 1.35 !important;
+    gap: 3mm !important;
+    padding: 2.2mm 3.5mm !important;
+    font-size: 7.0pt !important;
+    line-height: 1.4 !important;
   }
 
   .resumo-subcol {
     display: flex !important;
     flex-direction: column !important;
-    gap: 1px !important;
+    gap: 1.2mm !important;
   }
 
   .resumo-item {
@@ -2515,15 +2519,15 @@ body {
   }
 
   .resumo-item .colon {
-    margin: 0 4px !important;
+    margin: 0 1.5mm !important;
   }
 
   .resumo-line-val {
     flex: 1 !important;
-    border-bottom: 0.8px solid #000000 !important;
-    height: 11px !important;
+    border-bottom: 1px solid #000000 !important;
+    height: 4.8mm !important;
     text-align: center !important;
-    font-size: 5.8pt !important;
+    font-size: 7.0pt !important;
     color: #000000 !important;
     font-weight: 700 !important;
   }
@@ -2532,14 +2536,14 @@ body {
     display: flex !important;
     flex-direction: column !important;
     justify-content: space-between !important;
-    padding: 3px 8px !important;
+    padding: 2.2mm 4mm !important;
     box-sizing: border-box !important;
   }
 
   .print-date-row {
-    font-size: 6.4pt !important;
+    font-size: 7.5pt !important;
     text-align: left !important;
-    margin-bottom: 2px !important;
+    margin-bottom: 1.5mm !important;
     color: #000000 !important;
   }
 
@@ -2548,12 +2552,12 @@ body {
     flex-direction: column !important;
     align-items: center !important;
     text-align: center !important;
-    margin-top: 1px !important;
+    margin-top: 1mm !important;
   }
 
   .print-sig-preview-space {
-    min-height: 20px !important;
-    max-height: 22px !important;
+    min-height: 8mm !important;
+    max-height: 10mm !important;
     display: flex !important;
     align-items: flex-end !important;
     justify-content: center !important;
@@ -2561,28 +2565,28 @@ body {
   }
 
   .print-footer-sig-img {
-    max-height: 20px !important;
-    max-width: 140px !important;
+    max-height: 9.5mm !important;
+    max-width: 45mm !important;
     object-fit: contain !important;
     background: transparent !important;
   }
 
   .print-sig-line {
-    width: 90% !important;
-    border-top: 0.8px solid #000000 !important;
-    margin: 1px 0 !important;
+    width: 95% !important;
+    border-top: 1px solid #000000 !important;
+    margin: 0.8mm 0 !important;
   }
 
   .print-sig-caption {
-    font-size: 6.0pt !important;
+    font-size: 7.2pt !important;
     color: #000000 !important;
   }
 
   /* 5. Micro Footer */
   .print-micro-footer {
-    font-size: 5.5pt !important;
+    font-size: 6.8pt !important;
     color: #000000 !important;
-    padding: 2px 4px !important;
+    padding: 1.5mm 2mm !important;
     text-align: left !important;
   }
 }
