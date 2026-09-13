@@ -107,21 +107,8 @@ function generateMonthData(year, month, empId = '') {
         just: '',
         signed: true
       });
-    } else if (isSaturday) {
-      // Sábado: Meio Período das 08:00 às 12:00 (Jornada de 4h, sem horas extras)
-      list.push({
-        day, dow,
-        e1: '08:00',
-        s1: '12:00',
-        e2: '',
-        s2: '',
-        status: 'meio_periodo',
-        statusLabel: 'Meio Período',
-        just: '',
-        signed: true
-      });
     } else {
-      // Padrão: sem nada selecionado (manual) para o usuário definir se teve presença
+      // Padrão: sem horários fixos automáticos — cada mês mantém exclusivamente o histórico inserido pelo usuário
       list.push({
         day, dow,
         e1: '', s1: '', e2: '', s2: '',
@@ -270,16 +257,6 @@ async function initApp() {
             d.just = '';
             d.attachmentData = null;
             d.attachmentType = null;
-            d.signed = true;
-          }
-          // Sábado é apenas meio período (08:00 às 12:00 = 4h jornada padrão, 0h extras)
-          if (d.dow === 'Sábado' && (d.s2 === '18:00' || d.status === 'presenca' || !d.status)) {
-            d.e1 = '08:00';
-            d.s1 = '12:00';
-            d.e2 = '';
-            d.s2 = '';
-            d.status = 'meio_periodo';
-            d.statusLabel = 'Meio Período';
             d.signed = true;
           }
         });
