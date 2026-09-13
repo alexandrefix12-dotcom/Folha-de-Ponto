@@ -3108,6 +3108,9 @@ function buildEmployeePrintPageHtml(emp, pageNum = 1, totalPages = 1) {
   const compCnpj = (typeof systemSettings !== 'undefined' && systemSettings.companyCnpj) ? systemSettings.companyCnpj : '43.557.034/0001-94';
   const monthNameUpper = (MONTH_NAMES[currentMonth - 1] || `${currentMonth}`).toUpperCase();
 
+  const lastDay = new Date(currentYear, currentMonth, 0).getDate();
+  const closingDateFormatted = (sigData && typeof sigData === 'object' && sigData.date) ? sigData.date : `${String(lastDay).padStart(2, '0')} / ${String(currentMonth).padStart(2, '0')} / ${currentYear}`;
+
   const now = new Date();
   const nowFormatted = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
 
@@ -3210,7 +3213,7 @@ function buildEmployeePrintPageHtml(emp, pageNum = 1, totalPages = 1) {
         <!-- Right: Assinaturas -->
         <div class="print-sigs-box">
           <div class="print-date-row">
-            Data: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+            Data: &nbsp;${closingDateFormatted}
           </div>
           <div class="print-sig-field">
             <div class="print-sig-preview-space">
