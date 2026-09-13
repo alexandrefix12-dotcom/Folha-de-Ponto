@@ -2999,13 +2999,14 @@ function generateDemonstrativoPDF() {
   printAllEmployeesTimesheets();
 }
 
-// Build Print Page HTML for a single employee (Exact Reference: Modern Digital Green Timesheet)
+// Build Print Page HTML for a single employee (Exact Reference: Official Green Envelope Timesheet)
 function buildEmployeePrintPageHtml(emp, pageNum = 1, totalPages = 1) {
   let totalPresencas = 0;
   let totalExtraMins = 0;
   let totalAtrasoMins = 0;
   let totalWorkedMins = 0;
   let totalFaltas = 0;
+  let totalFaltasJustificadas = 0;
 
   if (emp.days && Array.isArray(emp.days)) {
     emp.days.forEach(item => {
@@ -3017,11 +3018,11 @@ function buildEmployeePrintPageHtml(emp, pageNum = 1, totalPages = 1) {
         if (m.balanceMins < 0) totalAtrasoMins += Math.abs(m.balanceMins);
       } else if (item.status === 'falta') {
         totalFaltas++;
+      } else if (item.status === 'justificada' || item.status === 'atestado') {
+        totalFaltasJustificadas++;
       }
     });
   }
-
-  const netBalanceMins = totalExtraMins - totalAtrasoMins;
 
   const dowAbbrMap = {
     'Domingo': 'Dom',
@@ -3043,61 +3044,41 @@ function buildEmployeePrintPageHtml(emp, pageNum = 1, totalPages = 1) {
       const isSaturday = item.dow === 'Sábado' || abbr === 'Sáb';
       const metrics = calcDayMetrics(item.e1, item.s1, item.e2, item.s2, item.status, item.dow);
 
-      let intervalFormatted = '--:--';
+      let intervalFormatted = 'à';
       if (item.s1 && item.e2) {
-        intervalFormatted = `${item.s1} - ${item.e2}`;
+        intervalFormatted = `${item.s1} à ${item.e2}`;
       } else if (item.s1) {
-        intervalFormatted = `${item.s1} - --:--`;
+        intervalFormatted = `${item.s1} à`;
       } else if (item.e2) {
-        intervalFormatted = `--:-- - ${item.e2}`;
+        intervalFormatted = `à ${item.e2}`;
       }
 
-      let rowBgClass = '';
-      if (item.status === 'dsr' || item.status === 'feriado' || isSunday) rowBgClass = 'print-weekend-row';
-      else if (item.status === 'falta') rowBgClass = 'print-falta-row';
-      else if (item.status === 'atestado') rowBgClass = 'print-atestado-row';
-      else if (item.status === 'ferias') rowBgClass = 'print-ferias-row';
-
-      // Situação label & style
-      let statusLabel = 'Presença';
-      let statusClass = 'presenca';
-      if (item.status === 'dsr' || isSunday) {
-        statusLabel = 'D.S.R.';
-        statusClass = 'dsr';
-      } else if (item.status === 'meio_periodo' || (isSaturday && item.s1 === '12:00')) {
-        statusLabel = 'Meio Período';
-        statusClass = 'meio_periodo';
-      } else if (item.status === 'feriado') {
-        statusLabel = 'Feriado';
-        statusClass = 'feriado';
-      } else if (item.status === 'ferias') {
-        statusLabel = 'Férias';
-        statusClass = 'ferias';
-      } else if (item.status === 'atestado') {
-        statusLabel = 'Atestado';
-        statusClass = 'atestado';
-      } else if (item.status === 'falta') {
-        statusLabel = 'Falta';
-        statusClass = 'falta';
-      } else if (item.status === 'justificada') {
-        statusLabel = 'Justificada';
-        statusClass = 'justificada';
+      let extraFormatted = 'à';
+      if (item.status === 'presenca' && metrics.balanceMins > 0) {
+        extraFormatted = `+${minutesToTime(metrics.balanceMins)}`;
+      } else if (item.status === 'presenca' && metrics.balanceMins < 0) {
+        extraFormatted = `-${minutesToTime(Math.abs(metrics.balanceMins))}`;
+      } else if (item.status === 'presenca' && (item.e1 || item.s1)) {
+        extraFormatted = '00:00';
       }
 
-      let rubricaDisplay = '—';
+      let rubricaDisplay = '';
       if (item.signed !== false && (item.e1 || item.s1 || item.e2 || item.s2 || item.status === 'dsr' || item.status === 'feriado' || item.status === 'meio_periodo' || item.status === 'ferias' || item.status === 'atestado')) {
-        rubricaDisplay = emp.initials || 'OK';
+        rubricaDisplay = emp.initials || '';
       }
+
+      const dayDisplay = isSunday 
+        ? `${dayPad} <strong>Dom</strong>` 
+        : `${dayPad} ${abbr}`;
 
       rowsHtml += `
-        <tr class="${rowBgClass}">
-          <td class="col-day"><strong>${dayPad}/${monthPad}</strong> <small>${abbr}</small></td>
-          <td class="col-time">${item.e1 || '--:--'}</td>
-          <td class="col-time">${intervalFormatted}</td>
-          <td class="col-time">${item.s2 || '--:--'}</td>
-          <td class="col-balance ${metrics.extraType}">${metrics.formattedExtra || '00:00'}</td>
-          <td class="col-status"><span class="print-badge ${statusClass}">${statusLabel}</span></td>
-          <td class="col-sig"><span class="print-sig-rubrica">${rubricaDisplay}</span></td>
+        <tr class="${isSunday ? 'print-row-dom' : ''}">
+          <td class="col-dia">${dayDisplay}</td>
+          <td class="col-ent">${item.e1 || ''}</td>
+          <td class="col-int">${intervalFormatted}</td>
+          <td class="col-sai">${item.s2 || item.s1 || ''}</td>
+          <td class="col-ext">${extraFormatted}</td>
+          <td class="col-ass">${rubricaDisplay}</td>
         </tr>
       `;
     });
@@ -3123,131 +3104,135 @@ function buildEmployeePrintPageHtml(emp, pageNum = 1, totalPages = 1) {
     }
   }
 
-  const compName = (typeof systemSettings !== 'undefined' && systemSettings.companyName) ? systemSettings.companyName : 'Lane RO Comunicações LTDA';
-  const compAddr = (typeof systemSettings !== 'undefined' && systemSettings.companyAddress) ? systemSettings.companyAddress : 'Rua Winifred Avinel Wiles, 3286 - Lagoinha, Porto Velho - RO';
+  const compName = (typeof systemSettings !== 'undefined' && systemSettings.companyName) ? systemSettings.companyName : 'LANE RO COMUNICAÇÕES LTDA';
   const compCnpj = (typeof systemSettings !== 'undefined' && systemSettings.companyCnpj) ? systemSettings.companyCnpj : '43.557.034/0001-94';
-  const compManager = (typeof systemSettings !== 'undefined' && systemSettings.managerName) ? systemSettings.managerName : 'Antônio Souza (Admin)';
-  const monthName = MONTH_NAMES[currentMonth - 1] || `${currentMonth}`;
+  const monthNameUpper = (MONTH_NAMES[currentMonth - 1] || `${currentMonth}`).toUpperCase();
+
+  const now = new Date();
+  const nowFormatted = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
 
   const page = document.createElement('div');
   page.className = 'print-page';
 
   page.innerHTML = `
-    <!-- Top Header: Logo + Company Info + Title + Competência -->
-    <div class="print-doc-header">
-      <div class="print-brand-row">
-        <div class="print-brand-col-left">
-          <img src="logo-lane.jpg" alt="Logo Lane Comunicações" class="print-brand-logo">
-          <div class="print-brand">
-            <strong>${compName}</strong>
-            <span>${compAddr}</span>
-            <span>CNPJ/CAEPF: ${compCnpj}</span>
+    <!-- Top Centered Document Title -->
+    <div class="print-doc-title">
+      FOLHA DE PONTO ( ${monthNameUpper} / ${currentYear} )
+    </div>
+
+    <!-- Main Outer Envelope Container (Green Border) -->
+    <div class="print-doc-envelope">
+      
+      <!-- 1. Header: Empresa -->
+      <div class="print-comp-header">
+        <div class="print-comp-left">
+          <div class="print-comp-name">${compName}</div>
+          <div class="print-comp-addr-row">
+            <span>RUA WINIFRED AVINEL WILES</span>
+            <span class="print-comp-addr-mid">3286, LAGOINHA, PORTO VELHO</span>
           </div>
+          <div class="print-comp-cnpj">CNPJ/CAEPF: ${compCnpj}</div>
         </div>
-        <div class="print-doc-title">
-          <h3>FOLHA DE PONTO INDIVIDUAL DE TRABALHO</h3>
-        </div>
-        <div class="print-page-num">
-          <span>Página ${pageNum} de ${totalPages}</span>
-          <small>Competência: ${monthName}/${currentYear}</small>
+        <div class="print-comp-right">
+          <span class="print-comp-code">${emp.code || '300'}</span>
         </div>
       </div>
 
-      <!-- Employee Information Card -->
-      <div class="print-emp-card">
-        <div class="print-emp-avatar ${emp.color || 'green'}">${emp.initials || 'FN'}</div>
-        <div class="print-emp-info">
-          <div class="print-emp-topline">
-            <h4>${emp.name || '-'}</h4>
-            <span class="print-tag">Matrícula: ${emp.matricula || '0001'}</span>
-            <span class="print-tag ${emp.statusCategory || 'ativo'}">${emp.statusTag || 'Ativo'}</span>
+      <!-- 2. Header: Funcionário & Horário -->
+      <div class="print-emp-header">
+        <div class="print-emp-col-left">
+          <div class="print-emp-name">${(emp.name || '-').toUpperCase()}</div>
+          <div class="print-emp-sig-slot">
+            ${empSigImg ? `<img src="${empSigImg}" alt="Assinatura" class="print-emp-header-sig-img">` : '<div class="print-emp-sig-blank"></div>'}
           </div>
-          <div class="print-emp-details">
-            <span><strong>Cargo:</strong> ${emp.role || emp.shortRole || '-'}</span>
-            <span><strong>Departamento:</strong> ${emp.fullDept || emp.dept || '-'}</span>
-            <span><strong>CPF:</strong> ${emp.cpf || '-'}</span>
+        </div>
+        <div class="print-emp-col-right">
+          <div class="print-emp-meta-row">
+            <span>Admi: <strong>${emp.admi || emp.admissionDate || '05/02/2022'}</strong></span>
+            <span>CTPS: <strong>${emp.ctps || '00408992 1236 / RO'}</strong></span>
+            <span>FUNÇÃO: <strong>${(emp.role || emp.funcao || 'BACK OFF - AUX ADM').toUpperCase()}</strong></span>
+            <span class="print-emp-mat"><strong>${emp.matricula || '0010'}</strong></span>
+          </div>
+          <div class="print-schedule-box">
+            <span class="print-sched-title">HORÁRIO</span>
+            <div class="print-sched-list">
+              <div class="print-sched-row"><span class="sched-day">Segunda-Feira</span><span class="sched-times">ENT.: 06:00 - INT.: 12:00 a 14:00 - SAI.: 18:00</span></div>
+              <div class="print-sched-row"><span class="sched-day">Terça-Feira</span><span class="sched-times">ENT.: 06:00 - INT.: 12:00 a 14:00 - SAI.: 18:00</span></div>
+              <div class="print-sched-row"><span class="sched-day">Quarta-Feira</span><span class="sched-times">ENT.: 06:00 - INT.: 12:00 a 14:00 - SAI.: 18:00</span></div>
+              <div class="print-sched-row"><span class="sched-day">Quinta-Feira</span><span class="sched-times">ENT.: 06:00 - INT.: 12:00 a 14:00 - SAI.: 18:00</span></div>
+              <div class="print-sched-row"><span class="sched-day">Sexta-Feira</span><span class="sched-times">ENT.: 06:00 - INT.: 12:00 a 14:00 - SAI.: 18:00</span></div>
+              <div class="print-sched-row"><span class="sched-day">Sábado</span><span class="sched-times">ENT.: 06:00 - INT.: 12:00 a &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- SAI.: -</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. Timesheet Table -->
+      <table class="print-table">
+        <thead>
+          <tr>
+            <th style="width: 10%;">DIA</th>
+            <th style="width: 14%;">ENTRADA</th>
+            <th style="width: 19%;">INTERVALO REFEIÇÃO</th>
+            <th style="width: 14%;">SAÍDA</th>
+            <th style="width: 17%;">HORAS EXTRAS</th>
+            <th style="width: 26%;">ASSINATURA</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rowsHtml}
+        </tbody>
+      </table>
+
+      <!-- 4. Resumo de Frequência & Assinaturas Box -->
+      <div class="print-bottom-container">
+        <!-- Left: Resumo de Frequência -->
+        <div class="print-resumo-box">
+          <div class="print-resumo-header">RESUMO DE FREQUÊNCIA</div>
+          <div class="print-resumo-grid">
+            <div class="resumo-subcol">
+              <div class="resumo-item"><span>Nº de faltas justificadas</span><span class="colon">:</span><div class="resumo-line-val">${totalFaltasJustificadas > 0 ? totalFaltasJustificadas : ''}</div></div>
+              <div class="resumo-item"><span>Nº de faltas não justificadas</span><span class="colon">:</span><div class="resumo-line-val">${totalFaltas > 0 ? totalFaltas : ''}</div></div>
+              <div class="resumo-item"><span>Atrasos</span><span class="colon">:</span><div class="resumo-line-val">${totalAtrasoMins > 0 ? minutesToTime(totalAtrasoMins) + 'h' : ''}</div></div>
+              <div class="resumo-item"><span>Atrasos não Justificados</span><span class="colon">:</span><div class="resumo-line-val"></div></div>
+              <div class="resumo-item"><span>Nº de Vale Refeição</span><span class="colon">:</span><div class="resumo-line-val">${totalPresencas > 0 ? totalPresencas : ''}</div></div>
+            </div>
+            <div class="resumo-subcol">
+              <div class="resumo-item"><span>Nº de Cesta Básica</span><span class="colon">:</span><div class="resumo-line-val"></div></div>
+              <div class="resumo-item"><span>Nº de Vale Transporte</span><span class="colon">:</span><div class="resumo-line-val"></div></div>
+              <div class="resumo-item"><span>Nº de Horas Extras</span><span class="colon">:</span><div class="resumo-line-val">${totalExtraMins > 0 ? minutesToTime(totalExtraMins) + 'h' : ''}</div></div>
+              <div class="resumo-item"><span>Nº de Horas Extras</span><span class="colon">:</span><div class="resumo-line-val"></div></div>
+              <div class="resumo-item"><span>Nº de Adicional Noturno</span><span class="colon">:</span><div class="resumo-line-val"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Assinaturas -->
+        <div class="print-sigs-box">
+          <div class="print-date-row">
+            Data: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+          </div>
+          <div class="print-sig-field">
+            <div class="print-sig-preview-space">
+              ${empSigImg ? `<img src="${empSigImg}" class="print-footer-sig-img" alt="Assinatura do Funcionário">` : ''}
+            </div>
+            <div class="print-sig-line"></div>
+            <div class="print-sig-caption">Assinatura do Funcionário</div>
+          </div>
+          <div class="print-sig-field">
+            <div class="print-sig-preview-space">
+              ${compSigImg ? `<img src="${compSigImg}" class="print-footer-sig-img" alt="Assinatura da Chefia">` : ''}
+            </div>
+            <div class="print-sig-line"></div>
+            <div class="print-sig-caption">Assinatura da Chefia</div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Timesheet Table -->
-    <table class="print-table">
-      <thead>
-        <tr>
-          <th style="width: 14%;">Dia / Data</th>
-          <th style="width: 13%;">Entrada</th>
-          <th style="width: 22%;">Intervalo Refeição</th>
-          <th style="width: 13%;">Saída</th>
-          <th style="width: 13%;">Horas Extras</th>
-          <th style="width: 13%;">Situação</th>
-          <th style="width: 12%;">Assinatura</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${rowsHtml}
-      </tbody>
-    </table>
-
-    <!-- Summary Metrics Cards -->
-    <div class="print-summary-grid">
-      <div class="print-stat-item">
-        <span class="stat-lbl">DIAS TRABALHADOS</span>
-        <strong class="stat-num">${totalPresencas} dias</strong>
-        <small>${totalWorkedMins > 0 ? minutesToTime(totalWorkedMins) + 'h total' : '160h normais'}</small>
-      </div>
-      <div class="print-stat-item">
-        <span class="stat-lbl">HORAS EXTRAS</span>
-        <strong class="stat-num text-success">+${minutesToTime(totalExtraMins)}h</strong>
-        <small>Acréscimo 50%/100%</small>
-      </div>
-      <div class="print-stat-item">
-        <span class="stat-lbl">ATRASOS / SAÍDAS</span>
-        <strong class="stat-num text-warning">-${minutesToTime(totalAtrasoMins)}h</strong>
-        <small>Dentro banco</small>
-      </div>
-      <div class="print-stat-item">
-        <span class="stat-lbl">SALDO BANCO HORAS</span>
-        <strong class="stat-num">${netBalanceMins >= 0 ? '+' : ''}${minutesToTime(netBalanceMins)}h</strong>
-        <small>Saldo acumulado ${monthName.slice(0, 3)}/${String(currentYear).slice(-2)}</small>
-      </div>
-      <div class="print-stat-item">
-        <span class="stat-lbl">FALTAS INJUSTIFICADAS</span>
-        <strong class="stat-num text-danger">${String(totalFaltas).padStart(2, '0')} dia</strong>
-        <small>Desconto DSR</small>
-      </div>
-    </div>
-
-    <!-- Signatures Footer -->
-    <div class="print-footer-signatures">
-      <div class="print-sig-row">
-        <div class="print-sig-box">
-          ${empSigImg ? `
-            <div class="print-sig-img-container">
-              <img src="${empSigImg}" alt="" class="print-sig-img">
-            </div>
-            <div class="sig-line" style="margin-top: 2px !important;"></div>
-          ` : `
-            <div class="sig-line" style="margin-top: 36px !important;"></div>
-          `}
-          <strong>${emp.name || '-'}</strong>
-          <span>Assinatura do Empregado — CPF: ${emp.cpf || '-'}</span>
-          <small>Data: ${sigData?.dateOnly || sigData?.signedAt?.split(' ')[0] || `____/____/${currentYear}`}</small>
-        </div>
-        <div class="print-sig-box">
-          ${compSigImg ? `
-            <div class="print-sig-img-container">
-              <img src="${compSigImg}" alt="" class="print-sig-img">
-            </div>
-            <div class="sig-line" style="margin-top: 2px !important;"></div>
-          ` : `
-            <div class="sig-line" style="margin-top: 36px !important;"></div>
-          `}
-          <strong>${compManager} (Gestor)</strong>
-          <span>Pelo Empregador — ${compName}</span>
-          <small>CNPJ/CAEPF: ${compCnpj}</small>
-        </div>
-      </div>
+    <!-- 5. Micro Footer -->
+    <div class="print-micro-footer">
+      ${compName} ${nowFormatted}
     </div>
   `;
 
