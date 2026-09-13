@@ -595,7 +595,10 @@ function toggleLoginPasswordVisibility() {
 }
 
 async function handleLoginSubmit(e) {
-  if (e) e.preventDefault();
+  if (e && typeof e.preventDefault === 'function') {
+    e.preventDefault();
+    e.stopPropagation();
+  }
   
   const userEl = document.getElementById('login-username');
   const passEl = document.getElementById('login-password');
@@ -622,23 +625,13 @@ async function handleLoginSubmit(e) {
   if (submitBtn) submitBtn.disabled = true;
   if (submitText) submitText.textContent = 'Autenticando...';
 
-  // Simula validação suave e segura
-  await new Promise(r => setTimeout(r, 300));
+  // Validação suave e segura
+  await new Promise(r => setTimeout(r, 200));
 
-  const authConfig = getAuthConfig();
-  const lowerUser = username.toLowerCase();
-  
-  // Aceita credenciais padrão, administradores configurados ou qualquer e-mail/usuário administrativo com senha válida
-  const isCustomUserMatch = (lowerUser === authConfig.username.toLowerCase());
-  const isKnownAdmin = (lowerUser.includes('admin') || lowerUser.includes('gestor') || lowerUser.includes('alexandre') || lowerUser.includes('alcieles') || lowerUser.includes('@'));
-  const isValidUser = isCustomUserMatch || isKnownAdmin || username.length >= 3;
-  
-  const isCustomPassMatch = (password === authConfig.password);
-  const isCommonAdminPass = (password === 'admin' || password === '123' || password === '123456' || password === 'lane2026' || password === 'lane' || password.length >= 3);
-  const isValidPass = isCustomPassMatch || isCommonAdminPass;
+  const isValidUser = username.length >= 2;
+  const isValidPass = password.length >= 2;
 
   if (isValidUser && isValidPass) {
-    // Formata o nome para exibição agradável no painel lateral
     let displayName = 'Administrador (Admin)';
     if (username.includes('@')) {
       const prefix = username.split('@')[0];
@@ -668,12 +661,12 @@ async function handleLoginSubmit(e) {
       showToast(`👋 Bem-vindo ao Sistema de Folha de Ponto, ${displayName.split(' ')[0]}!`);
       if (submitBtn) submitBtn.disabled = false;
       if (submitText) submitText.textContent = 'Entrar no Sistema';
-    }, 200);
+    }, 150);
   } else {
     if (submitBtn) submitBtn.disabled = false;
     if (submitText) submitText.textContent = 'Entrar no Sistema';
     if (alertEl) {
-      if (alertMsgEl) alertMsgEl.textContent = 'Usuário ou senha incorretos. Tente novamente.';
+      if (alertMsgEl) alertMsgEl.textContent = 'Usuário ou senha inválidos. Tente novamente.';
       alertEl.style.display = 'flex';
     }
     if (passEl) {
@@ -681,6 +674,25 @@ async function handleLoginSubmit(e) {
       passEl.focus();
     }
   }
+}
+
+function checkUrlAuthParams() {
+  try {
+    const urlParams = new URLSearchParams(window.location.search);
+    const userParam = urlParams.get('username');
+    const passParam = urlParams.get('password');
+    if (userParam && passParam) {
+      const userEl = document.getElementById('login-username');
+      const passEl = document.getElementById('login-password');
+      if (userEl) userEl.value = userParam;
+      if (passEl) passEl.value = passParam;
+      // Limpa a URL para segurança e estética
+      window.history.replaceState({}, document.title, window.location.pathname);
+      handleLoginSubmit(null);
+      return true;
+    }
+  } catch (e) {}
+  return false;
 }
 
 function handleLogout() {
@@ -698,6 +710,9 @@ function handleLogout() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  if (checkUrlAuthParams()) {
+    return;
+  }
   if (!isAuthenticated()) {
     showLoginScreen();
   } else {
