@@ -3008,8 +3008,11 @@ function buildEmployeePrintPageHtml(emp, pageNum = 1, totalPages = 1) {
   let totalFaltas = 0;
   let totalFaltasJustificadas = 0;
 
-  if (emp.days && Array.isArray(emp.days)) {
-    emp.days.forEach(item => {
+  const monthKey = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
+  const empDays = (emp.timesheets && emp.timesheets[monthKey]) || emp.days || generateMonthData(currentYear, currentMonth, emp.id);
+
+  if (empDays && Array.isArray(empDays)) {
+    empDays.forEach(item => {
       if (item.status === 'presenca' && (item.e1 || item.s1 || item.e2 || item.s2)) {
         totalPresencas++;
         const m = calcDayMetrics(item.e1, item.s1, item.e2, item.s2, item.status, item.dow);
@@ -3036,8 +3039,8 @@ function buildEmployeePrintPageHtml(emp, pageNum = 1, totalPages = 1) {
 
   const monthPad = String(currentMonth).padStart(2, '0');
   let rowsHtml = '';
-  if (emp.days && Array.isArray(emp.days)) {
-    emp.days.forEach(item => {
+  if (empDays && Array.isArray(empDays)) {
+    empDays.forEach(item => {
       const dayPad = String(item.day).padStart(2, '0');
       const abbr = dowAbbrMap[item.dow] || (item.dow ? item.dow.slice(0, 3) : '');
       const isSunday = item.dow === 'Domingo' || abbr === 'Dom';
