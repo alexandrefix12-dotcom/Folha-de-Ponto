@@ -3369,10 +3369,13 @@ async function generateEmployeePdfBlob(emp, monthKey) {
 
   const page = buildEmployeePrintPageHtml(emp, 1, 1);
   const wrapper = document.createElement('div');
+  wrapper.className = 'pdf-render-standalone';
   wrapper.style.position = 'fixed';
   wrapper.style.left = '-9999px';
   wrapper.style.top = '0';
   wrapper.style.width = '210mm';
+  wrapper.style.boxSizing = 'border-box';
+  wrapper.style.padding = '4mm 6mm';
   wrapper.style.background = '#ffffff';
   wrapper.appendChild(page);
   document.body.appendChild(wrapper);
@@ -3380,14 +3383,21 @@ async function generateEmployeePdfBlob(emp, monthKey) {
   try {
     const cleanName = (emp.name || 'colaborador').replace(/\s+/g, '_');
     const opt = {
-      margin: 0,
+      margin: [0, 0, 0, 0],
       filename: `${cleanName}_${monthKey}.pdf`,
       image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true, letterRendering: true, logging: false },
+      html2canvas: { 
+        scale: 2, 
+        useCORS: true, 
+        letterRendering: true, 
+        logging: false,
+        backgroundColor: '#FFFFFF',
+        width: 794
+      },
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
 
-    const pdfBlob = await html2pdf().set(opt).from(page).output('blob');
+    const pdfBlob = await html2pdf().set(opt).from(wrapper).output('blob');
     return pdfBlob;
   } catch (err) {
     console.warn('Erro na conversão para PDF Blob:', err);
