@@ -685,6 +685,114 @@ async function signOutFromSupabase() {
   }
 }
 
+// 12. Upload do PDF da Folha de Ponto para o Supabase Storage e atualização de pdf_path em folha_pontos
+async function uploadTimesheetPDFToSupabase(empId, monthKey, pdfBlobOrBase64, empName = '') {
+  const client = getSupabaseClient();
+  if (!client || !empId || !pdfBlobOrBase64) return null;
+
+  try {
+    const cleanId = String(empId).trim();
+    
+    // Normalização de mes_ano (ex: '2026-09' -> ano = '2026', mes = '09')
+    let year = new Date().getFullYear();
+    let monthPad = '01';
+
+    if (monthKey && monthKey.includes('-')) {
+      const parts = monthKey.split('-');
+      if (parts[0].length === 4) {
+        year = parts[0];
+        monthPad = String(parts[1]).padStart(2, '0');
+      } else {
+        monthPad = String(parts[0]).padStart(2, '0');
+        year = parts[1];
+      }
+    } else if (monthKey && monthKey.includes('/')) {
+      const parts = monthKey.split('/');
+      monthPad = String(parts[0]).padStart(2, '0');
+      year = parts[1];
+    }
+
+    const storagePath = `${cleanId}/${year}/${monthPad}-${year}.pdf`;
+    
+    let fileBody = pdfBlobOrBase64;
+    if (typeof pdfBlobOrBase64 === 'string' && pdfBlobOrBase64.startsWith('data:application/pdf;base64,')) {
+      const byteCharacters = atob(pdfBlobOrBase64.split(',')[1]);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      fileBody = new Blob([byteArray], { type: 'application/pdf' });
+    }
+
+    console.log(`📄 Enviando PDF para o Supabase Storage: folhas-ponto/${storagePath}`);
+
+    const { data: uploadData, error: uploadError } = await client.storage
+      .from('folhas-ponto')
+      .upload(storagePath, fileBody, {
+        contentType: 'application/pdf',
+        upsert: true
+      });
+
+    if (uploadError) {
+      console.warn('Aviso no upload do PDF ao Storage:', uploadError.message);
+    }
+
+    // Obter URL pública
+    const { data: publicUrlData } = client.storage
+      .from('folhas-ponto')
+      .getPublicUrl(storagePath);
+
+    const pdfUrl = publicUrlData?.publicUrl || storagePath;
+    console.log('✅ PDF salvo com sucesso no Storage:', pdfUrl);
+
+    // Atualiza a coluna pdf_path em folha_pontos correspondente
+    const monthFormats = [
+      `${year}-${monthPad}`,
+      `${monthPad}/${year}`,
+      `${monthPad}-${year}`,
+      monthKey
+    ].filter((v, i, a) => a.indexOf(v) === i);
+
+    for (const mKey of monthFormats) {
+      try {
+        await client
+          .from('folha_pontos')
+          .update({
+            pdf_path: pdfUrl,
+            updated_at: new Date().toISOString()
+          })
+          .eq('funcionario_id', cleanId)
+          .eq('mes_ano', mKey);
+      } catch (e) {}
+    }
+
+    return {
+      success: true,
+      storagePath: storagePath,
+      pdfUrl: pdfUrl
+    };
+  } catch (err) {
+    console.error('Exceção ao fazer upload do PDF no Supabase:', err);
+    return null;
+  }
+}
+
+// 13. Obter URL para visualização do PDF
+function getTimesheetPDFUrl(pdfPath) {
+  if (!pdfPath) return null;
+  if (pdfPath.startsWith('http://') || pdfPath.startsWith('https://')) {
+    return pdfPath;
+  }
+  const client = getSupabaseClient();
+  if (client) {
+    const cleanPath = pdfPath.replace(/^folhas-ponto\//, '');
+    const { data } = client.storage.from('folhas-ponto').getPublicUrl(cleanPath);
+    return data?.publicUrl || pdfPath;
+  }
+  return pdfPath;
+}
+
 // Exportar globalmente
 window.supabaseService = {
   config: SUPABASE_CONFIG,
@@ -703,6 +811,9 @@ window.supabaseService = {
   saveCompanySignature: saveCompanySignatureToSupabase,
   loadCompanySignature: loadCompanySignatureFromSupabase,
   deleteCompanySignature: deleteCompanySignatureFromSupabase,
-  excluirFuncionario: excluirFuncionarioNoSupabase
+  excluirFuncionario: excluirFuncionarioNoSupabase,
+  uploadTimesheetPDF: uploadTimesheetPDFToSupabase,
+  getTimesheetPDFUrl: getTimesheetPDFUrl
 };
+
 

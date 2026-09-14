@@ -3360,6 +3360,62 @@ function generateAllEmployeesPrintView() {
   });
 }
 
+// Geração de Blob PDF individual via html2pdf com layout oficial
+async function generateEmployeePdfBlob(emp, monthKey) {
+  if (typeof html2pdf === 'undefined') {
+    console.warn('Biblioteca html2pdf não disponível.');
+    return null;
+  }
+
+  const page = buildEmployeePrintPageHtml(emp, 1, 1);
+  const wrapper = document.createElement('div');
+  wrapper.style.position = 'fixed';
+  wrapper.style.left = '-9999px';
+  wrapper.style.top = '0';
+  wrapper.style.width = '210mm';
+  wrapper.style.background = '#ffffff';
+  wrapper.appendChild(page);
+  document.body.appendChild(wrapper);
+
+  try {
+    const cleanName = (emp.name || 'colaborador').replace(/\s+/g, '_');
+    const opt = {
+      margin: 0,
+      filename: `${cleanName}_${monthKey}.pdf`,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true, letterRendering: true, logging: false },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+
+    const pdfBlob = await html2pdf().set(opt).from(page).output('blob');
+    return pdfBlob;
+  } catch (err) {
+    console.warn('Erro na conversão para PDF Blob:', err);
+    return null;
+  } finally {
+    if (wrapper.parentNode) {
+      wrapper.parentNode.removeChild(wrapper);
+    }
+  }
+}
+
+// Salva e envia PDF individual para o Supabase Storage e atualiza pdf_path
+async function saveAndUploadSingleEmployeePDF(emp, monthKey) {
+  if (!emp || !window.supabaseService || typeof window.supabaseService.uploadTimesheetPDF !== 'function') {
+    return null;
+  }
+  try {
+    const pdfBlob = await generateEmployeePdfBlob(emp, monthKey);
+    if (!pdfBlob) return null;
+
+    const res = await window.supabaseService.uploadTimesheetPDF(emp.id, monthKey, pdfBlob, emp.name);
+    return res;
+  } catch (e) {
+    console.warn(`Erro ao gerar/enviar PDF de ${emp.name}:`, e);
+    return null;
+  }
+}
+
 // Single Employee Print Generation (Only Current Employee)
 function generateSingleEmployeePrintView(emp) {
   syncDomTableToActiveEmployee();
@@ -3376,6 +3432,7 @@ function printCurrentEmployeeTimesheet() {
   const emp = getCurrentEmployee();
   if (!emp) return;
   const monthName = MONTH_NAMES[currentMonth - 1] || `${currentMonth}`;
+  const monthKey = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
   const previousTitle = document.title;
 
   // Define o nome exato sugerido no diálogo de Salvar como PDF
@@ -3390,15 +3447,27 @@ function printCurrentEmployeeTimesheet() {
   };
   window.addEventListener('afterprint', restoreTitle);
 
+  // Dispara impressão do navegador
   setTimeout(() => {
     window.print();
     setTimeout(restoreTitle, 3000);
   }, 350);
+
+  // Salva cópia individual no Supabase Storage em segundo plano
+  saveAndUploadSingleEmployeePDF(emp, monthKey).then(res => {
+    if (res && res.success) {
+      console.log(`✅ PDF de ${emp.name} salvo com sucesso no Supabase Storage:`, res.pdfUrl);
+      showToast(`☁️ PDF de ${emp.name} salvo no Supabase Storage com sucesso!`);
+    }
+  }).catch(err => {
+    console.warn('Aviso no envio do PDF para o Supabase Storage:', err);
+  });
 }
 
 // Print All Employees (Multi-page PDF)
 function printAllEmployeesTimesheets() {
   const monthName = MONTH_NAMES[currentMonth - 1] || `${currentMonth}`;
+  const monthKey = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
   const previousTitle = document.title;
 
   document.title = `Folhas de Ponto - Todos os Funcionários - ${monthName} de ${currentYear}`;
@@ -3412,10 +3481,36 @@ function printAllEmployeesTimesheets() {
   };
   window.addEventListener('afterprint', restoreTitle);
 
+  // Dispara impressão do navegador com todos
   setTimeout(() => {
     window.print();
     setTimeout(restoreTitle, 3000);
   }, 400);
+
+  // Processa e salva cópia individual de cada colaborador no Supabase Storage em segundo plano
+  (async () => {
+    const total = employeesDB.length;
+    let savedCount = 0;
+    let failCount = 0;
+
+    for (let i = 0; i < total; i++) {
+      const currentEmp = employeesDB[i];
+      try {
+        const res = await saveAndUploadSingleEmployeePDF(currentEmp, monthKey);
+        if (res && res.success) {
+          savedCount++;
+        } else {
+          failCount++;
+        }
+      } catch (e) {
+        failCount++;
+      }
+    }
+
+    if (savedCount > 0) {
+      showToast(`☁️ ${savedCount} PDFs individuais salvos com sucesso no Supabase Storage (${monthName}/${currentYear})!`);
+    }
+  })();
 }
 
 function aprovarFolhaParaPagamento() {
