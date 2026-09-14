@@ -2482,7 +2482,7 @@ async function saveTimesheetData() {
   // 4. Salvar no localStorage de imediato (Permanência garantida no F5)
   saveEmployeesToLocalStorage();
 
-  // 5. Save to Supabase if connected
+  // 5. Save to Supabase database if connected
   if (window.supabaseService && window.supabaseService.isConfigured() && typeof window.supabaseService.saveFullTimesheet === 'function') {
     try {
       await window.supabaseService.saveFullTimesheet(emp.id, monthKey, emp.days);
@@ -2490,13 +2490,6 @@ async function saveTimesheetData() {
       console.warn('Erro ao salvar no Supabase:', err);
     }
   }
-
-  // 5b. Gera e envia PDF oficial formatado para o Supabase Storage em segundo plano
-  saveAndUploadSingleEmployeePDF(emp, monthKey).then(res => {
-    if (res && res.success) {
-      console.log(`✅ PDF de ${emp.name} atualizado no Supabase Storage:`, res.pdfUrl);
-    }
-  }).catch(e => console.warn('Aviso no upload do PDF:', e));
 
   if (btn) {
     btn.disabled = false;
