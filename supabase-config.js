@@ -727,6 +727,7 @@ async function uploadTimesheetPDFToSupabase(empId, monthKey, pdfBlobOrBase64, em
 
     console.log(`📄 Enviando PDF para o Supabase Storage: folhas-ponto/${storagePath}`);
 
+    let pdfUrl = null;
     const { data: uploadData, error: uploadError } = await client.storage
       .from('folhas-ponto')
       .upload(storagePath, fileBody, {
@@ -735,16 +736,21 @@ async function uploadTimesheetPDFToSupabase(empId, monthKey, pdfBlobOrBase64, em
       });
 
     if (uploadError) {
-      console.warn('Aviso no upload do PDF ao Storage:', uploadError.message);
+      console.warn('Aviso no upload do PDF ao Storage (verifique a Policy de Storage):', uploadError.message);
     }
 
-    // Obter URL pública
+    // Obter URL pública do Storage
     const { data: publicUrlData } = client.storage
       .from('folhas-ponto')
       .getPublicUrl(storagePath);
 
-    const pdfUrl = publicUrlData?.publicUrl || storagePath;
-    console.log('✅ PDF salvo com sucesso no Storage:', pdfUrl);
+    if (publicUrlData && publicUrlData.publicUrl) {
+      pdfUrl = publicUrlData.publicUrl;
+    } else {
+      pdfUrl = `https://zbrxfmqqoepcbclqhsze.supabase.co/storage/v1/object/public/folhas-ponto/${storagePath}`;
+    }
+
+    console.log('✅ PDF registrado:', pdfUrl);
 
     // Atualiza a coluna pdf_path em folha_pontos correspondente
     const monthFormats = [
