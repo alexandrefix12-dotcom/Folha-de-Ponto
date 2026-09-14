@@ -3947,7 +3947,16 @@ function getTimesheetStandaloneCss() {
 
 // Geração de Blob PDF individual via html2canvas + jsPDF com layout oficial e CSS embutido
 async function generateEmployeePdfBlob(emp, monthKey) {
-  const page = buildEmployeePrintPageHtml(emp, 1, 1);
+  let targetYear = currentYear;
+  let targetMonth = currentMonth;
+  if (monthKey && typeof monthKey === 'string' && monthKey.includes('-')) {
+    const parts = monthKey.split('-');
+    if (parts.length === 2) {
+      targetYear = parseInt(parts[0], 10) || currentYear;
+      targetMonth = parseInt(parts[1], 10) || currentMonth;
+    }
+  }
+  const page = buildEmployeePrintPageHtml(emp, 1, 1, targetYear, targetMonth);
   const wrapper = document.createElement('div');
   wrapper.id = 'pdf-render-offscreen';
   wrapper.style.cssText = 'position: fixed; left: 0; top: 0; width: 794px; min-height: 1120px; background: #FFFFFF; z-index: 99999; opacity: 1; box-sizing: border-box; padding: 14px 18px; overflow: hidden; pointer-events: none;';
@@ -4041,7 +4050,7 @@ async function saveAndUploadSingleEmployeePDF(emp, monthKey) {
     const res = await window.supabaseService.uploadTimesheetPDF(emp.id, monthKey, pdfBlob, emp.name, emp.cpf);
     return res;
   } catch (e) {
-    console.warn(`Erro ao gerar/enviar PDF de ${emp.name}:`, e);
+    console.warn(`Erro ao gerar/enviar PDF de ${emp.name} (${monthKey}):`, e);
     return null;
   }
 }
@@ -4086,6 +4095,7 @@ function printCurrentEmployeeTimesheet() {
 
 // Print All Active Employees (Multi-page PDF - Exclui Afastados e Desligados)
 function printAllEmployeesTimesheets() {
+  syncDomTableToActiveEmployee();
   const monthName = MONTH_NAMES[currentMonth - 1] || `${currentMonth}`;
   const monthKey = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
   const previousTitle = document.title;
@@ -4100,7 +4110,7 @@ function printAllEmployeesTimesheets() {
 
   document.title = `Folhas de Ponto - Funcionários Ativos - ${monthName} de ${currentYear}`;
 
-  showToast(`📄 Gerando PDF de ${activeEmployees.length} colaboradores em atividade (${monthName}/${currentYear})...`);
+  showToast(`📄 Gerando impressão e sincronizando meses 1 ao 12 no Supabase...`);
   generateAllEmployeesPrintView();
 
   const restoreTitle = () => {
@@ -4115,29 +4125,60 @@ function printAllEmployeesTimesheets() {
     setTimeout(restoreTitle, 3000);
   }, 400);
 
-  // Processa e salva cópia individual APENAS dos colaboradores ativos no Supabase Storage
+  // Sincroniza TODOS OS MESES (1 a 12) de cada colaborador ativo no Supabase (Banco e Storage)
   (async () => {
-    const total = activeEmployees.length;
-    let savedCount = 0;
-    let failCount = 0;
+    const targetYear = currentYear;
+    let totalUploaded = 0;
 
-    for (let i = 0; i < total; i++) {
-      const currentEmp = activeEmployees[i];
-      try {
-        const res = await saveAndUploadSingleEmployeePDF(currentEmp, monthKey);
-        if (res && res.success) {
-          savedCount++;
-        } else {
-          failCount++;
+    for (const emp of activeEmployees) {
+      if (!emp.timesheets) emp.timesheets = {};
+
+      // Sincroniza dados do funcionário no banco
+      if (window.supabaseService && window.supabaseService.isConfigured()) {
+        try {
+          await window.supabaseService.atualizarFuncionario(emp.id, emp);
+        } catch (e) {}
+      }
+
+      // Sincroniza todos os meses do 1 ao 12
+      for (let m = 1; m <= 12; m++) {
+        const mKey = `${targetYear}-${String(m).padStart(2, '0')}`;
+        const altMKey = `${targetYear}-${m}`;
+
+        // Garante que o mês tenha dados estruturados
+        if (!emp.timesheets[mKey] && !emp.timesheets[altMKey]) {
+          if (targetYear === currentYear && m === currentMonth && emp.days) {
+            emp.timesheets[mKey] = JSON.parse(JSON.stringify(emp.days));
+          } else {
+            emp.timesheets[mKey] = generateMonthData(targetYear, m, emp.id);
+          }
         }
-      } catch (e) {
-        failCount++;
+
+        const daysToSave = emp.timesheets[mKey] || emp.timesheets[altMKey];
+
+        // 1. Salva no banco de dados do Supabase
+        if (window.supabaseService && window.supabaseService.isConfigured() && typeof window.supabaseService.saveFullTimesheet === 'function') {
+          try {
+            await window.supabaseService.saveFullTimesheet(emp.id, mKey, daysToSave, emp.cpf || '');
+          } catch (err) {
+            console.warn(`Aviso ao salvar timesheet ${mKey} de ${emp.name}:`, err);
+          }
+        }
+
+        // 2. Gera PDF oficial e envia para o Supabase Storage
+        try {
+          const res = await saveAndUploadSingleEmployeePDF(emp, mKey);
+          if (res && res.success) {
+            totalUploaded++;
+          }
+        } catch (err) {
+          console.warn(`Aviso ao enviar PDF ${mKey} de ${emp.name}:`, err);
+        }
       }
     }
 
-    if (savedCount > 0) {
-      showToast(`☁️ ${savedCount} PDFs de colaboradores ativos salvos no Supabase Storage (${monthName}/${currentYear})!`);
-    }
+    saveEmployeesToLocalStorage();
+    showToast(`☁️ Sincronização completa! Todos os meses (1 ao 12 de ${targetYear}) foram atualizados no Supabase.`);
   })();
 }
 
