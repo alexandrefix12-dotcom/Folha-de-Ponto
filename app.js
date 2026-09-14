@@ -1220,6 +1220,37 @@ function renderPeriodModal() {
   });
 }
 
+// Carregador resiliente da biblioteca pdf-lib com fallback multi-CDN
+async function getPdfLibInstance() {
+  if (window.PDFLib && window.PDFLib.PDFDocument) return window.PDFLib;
+  if (typeof PDFLib !== 'undefined' && PDFLib.PDFDocument) return PDFLib;
+  if (window.pdfLib && window.pdfLib.PDFDocument) return window.pdfLib;
+
+  const cdnUrls = [
+    'https://cdn.jsdelivr.net/npm/pdf-lib@1.17.9/dist/pdf-lib.min.js',
+    'https://unpkg.com/pdf-lib@1.17.9/dist/pdf-lib.min.js',
+    'https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.9/pdf-lib.min.js'
+  ];
+
+  for (const src of cdnUrls) {
+    try {
+      await new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = src;
+        script.onload = () => resolve();
+        script.onerror = () => reject();
+        document.head.appendChild(script);
+      });
+      if (window.PDFLib && window.PDFLib.PDFDocument) return window.PDFLib;
+      if (typeof PDFLib !== 'undefined' && PDFLib.PDFDocument) return PDFLib;
+      if (window.pdfLib && window.pdfLib.PDFDocument) return window.pdfLib;
+    } catch (e) {
+      console.warn(`Tentando próximo CDN para pdf-lib: ${src}`);
+    }
+  }
+  throw new Error('Biblioteca pdf-lib não pôde ser carregada. Verifique sua conexão.');
+}
+
 // Geração e Impressão do Histórico COMPLETO a partir dos PDFs REAIS existentes no Supabase Storage
 async function printAllMonthsForCurrentEmployee() {
   const emp = getCurrentEmployee();
@@ -1273,12 +1304,8 @@ async function printAllMonthsForCurrentEmployee() {
 
     updateProgress(0, total, `Encontradas ${total} folhas mensais. Iniciando unificação...`);
 
-    // 3. Carrega pdf-lib para fusão de alta fidelidade
-    const pdfLibInstance = window.PDFLib || (typeof PDFLib !== 'undefined' ? PDFLib : null);
-    if (!pdfLibInstance || !pdfLibInstance.PDFDocument) {
-      throw new Error('Biblioteca pdf-lib não encontrada.');
-    }
-
+    // 3. Carrega pdf-lib para fusão de alta fidelidade (com fallback dinâmico)
+    const pdfLibInstance = await getPdfLibInstance();
     const mergedPdf = await pdfLibInstance.PDFDocument.create();
 
     // 4. Baixa cada PDF mensal encontrado no Storage e anexa como página A4 original
@@ -1363,8 +1390,8 @@ function jumpToCurrentRealMonth() {
   closePeriodModal();
 }
 
-// Universal Set Period (Sets Year & Month dynamically com histórico)
-async function setPeriod(year, month) {
+// Universal Set Period (Sets Year & Month dynamically instantâneo)
+function setPeriod(year, month) {
   // 1. Salva os inputs atuais do colaborador ativo antes de trocar de período
   const activeEmp = getCurrentEmployee();
   if (activeEmp && activeEmp.days) {
@@ -1399,32 +1426,16 @@ async function setPeriod(year, month) {
   currentYear = year;
   currentMonth = month;
   const newMonthKey = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
+  const altMonthKey = `${currentYear}-${parseInt(currentMonth, 10)}`;
 
-  // 2. Carrega ou gera os dias de cada colaborador para o novo período
+  // 2. Carrega instantaneamente os dias de cada colaborador para o novo período
   for (const emp of employeesDB) {
     if (!emp.timesheets) emp.timesheets = {};
+    if (!emp.timesheets[newMonthKey] && emp.timesheets[altMonthKey]) {
+      emp.timesheets[newMonthKey] = emp.timesheets[altMonthKey];
+    }
     if (!emp.timesheets[newMonthKey]) {
-      if (window.supabaseService && window.supabaseService.isConfigured()) {
-        const records = await window.supabaseService.loadRecords(emp.id, newMonthKey);
-        if (records && records.length > 0) {
-          emp.timesheets[newMonthKey] = records.map(r => ({
-            day: r.day,
-            dow: r.dow,
-            e1: r.e1 || '',
-            s1: r.s1 || '',
-            e2: r.e2 || '',
-            s2: r.s2 || '',
-            status: r.status,
-            statusLabel: r.status_label,
-            just: r.just || '',
-            signed: r.signed !== false
-          }));
-        } else {
-          emp.timesheets[newMonthKey] = generateMonthData(currentYear, currentMonth, emp.id);
-        }
-      } else {
-        emp.timesheets[newMonthKey] = generateMonthData(currentYear, currentMonth, emp.id);
-      }
+      emp.timesheets[newMonthKey] = generateMonthData(currentYear, currentMonth, emp.id);
     }
     emp.days = emp.timesheets[newMonthKey];
 
@@ -1456,7 +1467,7 @@ async function setPeriod(year, month) {
   recalculateAllTimes();
   renderEmployeesAdminTable();
 
-  showToast(`📅 Histórico carregado: ${MONTH_NAMES[currentMonth - 1]} de ${currentYear}`);
+  showToast(`📅 ${MONTH_NAMES[currentMonth - 1]} de ${currentYear}`);
 }
 
 // Change Month Action (Previous ◀ / Next ▶)
