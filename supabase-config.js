@@ -346,7 +346,8 @@ async function loadTimesheetFromSupabase(empId, monthKey, cpf = '') {
         return {
           registros: fp.registros,
           assinatura: fp.assinatura || null,
-          assinaturaEmpresa: fp.assinatura_empresa || null
+          assinaturaEmpresa: fp.assinatura_empresa || null,
+          pdfPath: fp.pdf_path || null
         };
       }
     }
