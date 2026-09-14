@@ -1750,6 +1750,7 @@ function renderTimesheetTable() {
             <option value="meio_periodo" ${item.status === 'meio_periodo' ? 'selected' : ''}>🟡 Meio Período (08h às 12h)</option>
             <option value="falta" ${item.status === 'falta' ? 'selected' : ''}>🔴 Faltou</option>
             <option value="justificada" ${item.status === 'justificada' ? 'selected' : ''}>🟡 Justificou</option>
+            <option value="ferias" ${item.status === 'ferias' ? 'selected' : ''}>🌴 Férias</option>
             <option value="dsr" ${item.status === 'dsr' ? 'selected' : ''}>🟣 DSR / Folga</option>
             <option value="feriado" ${item.status === 'feriado' ? 'selected' : ''}>🔵 Feriado</option>
           </select>
@@ -2270,7 +2271,50 @@ function changeDayStatus(index, newStatus) {
   const prevStatus = item.status || 'presenca';
 
   if (newStatus === 'ferias') {
-    openTopFeriasModal(index, 'start');
+    const monthName = MONTH_NAMES[currentMonth - 1] || `Mês ${currentMonth}`;
+    const confirmed = window.confirm(`Deseja alterar TODO o mês de ${monthName}/${currentYear} para FÉRIAS para o colaborador "${emp.name}"?\n\nAo confirmar, todos os dias deste mês serão definidos como Férias Regulamentares.`);
+    if (!confirmed) {
+      renderTimesheetTable();
+      return;
+    }
+
+    // Definir metadados de férias do colaborador
+    emp.statusCategory = 'ferias';
+    emp.statusTag = 'Em Férias';
+    emp.statusTagClass = 'blue';
+    emp.statusPillLabel = '🌴 Em Férias';
+    emp.statusPillClass = 'ferias';
+
+    // Aplicar férias em todos os dias do mês atual
+    emp.days.forEach(dayItem => {
+      dayItem.status = 'ferias';
+      dayItem.statusLabel = 'Férias Regulamentares';
+      dayItem.e1 = '';
+      dayItem.s1 = '';
+      dayItem.e2 = '';
+      dayItem.s2 = '';
+      dayItem.signed = true;
+      dayItem.just = 'Férias Regulamentares';
+      dayItem.attachmentData = null;
+      dayItem.attachmentType = null;
+      dayItem.attachmentName = null;
+      dayItem.attachmentSize = null;
+    });
+
+    const monthKey = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
+    if (!emp.timesheets) emp.timesheets = {};
+    emp.timesheets[monthKey] = JSON.parse(JSON.stringify(emp.days));
+    saveEmployeesToLocalStorage();
+
+    if (window.supabaseService && window.supabaseService.isConfigured()) {
+      window.supabaseService.atualizarFuncionario(emp.id, emp).catch(err => console.warn(err));
+    }
+
+    renderTimesheetTable();
+    recalculateAllTimes();
+    renderEmployeesAdminTable();
+    updateSidebarBadges(false, true);
+    showToast(`🌴 Todo o mês de ${monthName}/${currentYear} foi alterado para Férias para ${emp.name}!`);
     return;
   }
 
