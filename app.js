@@ -1069,6 +1069,7 @@ let pickerYear = currentYear;
 function openPeriodModal() {
   pickerYear = currentYear;
   renderPeriodModal();
+  updatePeriodModalHistorySummary();
   const modal = document.getElementById('modal-period-picker');
   if (modal) modal.style.display = 'flex';
 }
@@ -1083,120 +1084,54 @@ function changePickerYear(delta) {
   renderPeriodModal();
 }
 
-// Obtém a lista cronológica de todas as competências [ { year, month, label, monthKey } ] do colaborador
-function getEmployeePeriodMonths(emp) {
-  if (!emp) return [];
-
-  const realNow = new Date();
-  const realCurrentYear = realNow.getFullYear();
-  const realCurrentMonth = realNow.getMonth() + 1;
-
-  // 1. Data de Admissão
-  let startYear = realCurrentYear;
-  let startMonth = 1;
-
-  const rawAdmission = emp.admission || emp.admissionDate || emp.admi || emp.admissao || '01/01/2024';
-  if (rawAdmission) {
-    if (rawAdmission.includes('/')) {
-      const parts = rawAdmission.split('/');
-      if (parts.length === 3) {
-        startMonth = parseInt(parts[1], 10) || 1;
-        startYear = parseInt(parts[2], 10) || realCurrentYear;
-      }
-    } else if (rawAdmission.includes('-')) {
-      const parts = rawAdmission.split('-');
-      if (parts.length === 3) {
-        startYear = parseInt(parts[0], 10) || realCurrentYear;
-        startMonth = parseInt(parts[1], 10) || 1;
-      }
-    }
-  }
-
-  // 2. Data de Desligamento / Fim
-  let endYear = realCurrentYear;
-  let endMonth = realCurrentMonth;
-
-  const rawResignation = emp.resignationDate || emp.desligamento || emp.demissao || emp.dataDesligamento;
-  const isInactive = (emp.statusCategory === 'inativo' || emp.statusCategory === 'demitido' || emp.statusCategory === 'desligado');
-
-  if (rawResignation) {
-    if (rawResignation.includes('/')) {
-      const parts = rawResignation.split('/');
-      if (parts.length === 3) {
-        endMonth = parseInt(parts[1], 10) || realCurrentMonth;
-        endYear = parseInt(parts[2], 10) || realCurrentYear;
-      }
-    } else if (rawResignation.includes('-')) {
-      const parts = rawResignation.split('-');
-      if (parts.length === 3) {
-        endYear = parseInt(parts[0], 10) || realCurrentYear;
-        endMonth = parseInt(parts[1], 10) || realCurrentMonth;
-      }
-    }
-  } else if (isInactive && emp.inactivationDate) {
-    const parts = emp.inactivationDate.split('/');
-    if (parts.length === 3) {
-      endMonth = parseInt(parts[1], 10) || realCurrentMonth;
-      endYear = parseInt(parts[2], 10) || realCurrentYear;
-    }
-  }
-
-  // Garante que o fim não seja anterior ao início
-  if (endYear < startYear || (endYear === startYear && endMonth < startMonth)) {
-    endYear = startYear;
-    endMonth = startMonth;
-  }
-
-  // Gera todas as competências mês a mês em ordem cronológica
-  const months = [];
-  let y = startYear;
-  let m = startMonth;
-
-  while (y < endYear || (y === endYear && m <= endMonth)) {
-    const padM = String(m).padStart(2, '0');
-    const mName = MONTH_NAMES[m - 1] || `${m}`;
-    months.push({
-      year: y,
-      month: m,
-      padMonth: padM,
-      monthKey: `${y}-${padM}`,
-      altKey: `${padM}/${y}`,
-      label: `${mName}/${y}`
-    });
-
-    m++;
-    if (m > 12) {
-      m = 1;
-      y++;
-    }
-  }
-
-  return months;
-}
-
-function renderPeriodModal() {
-  const yearDisplay = document.getElementById('picker-year-display');
-  if (yearDisplay) yearDisplay.textContent = pickerYear;
-
+// Atualiza o card de resumo do histórico no modal com a contagem REAL de PDFs mensais existentes no Storage
+async function updatePeriodModalHistorySummary() {
   const activeEmp = getCurrentEmployee();
   const nameEl = document.getElementById('picker-emp-name-display');
   const rangeEl = document.getElementById('picker-emp-period-range');
   const totalEl = document.getElementById('picker-emp-total-months');
   const printAllBtn = document.getElementById('btn-print-all-employee-months');
 
-  if (activeEmp) {
-    const periodMonths = getEmployeePeriodMonths(activeEmp);
-    if (nameEl) nameEl.textContent = activeEmp.name || 'Colaborador';
-    if (rangeEl && periodMonths.length > 0) {
-      const first = periodMonths[0];
-      const last = periodMonths[periodMonths.length - 1];
-      rangeEl.textContent = `${first.padMonth}/${first.year} até ${last.padMonth}/${last.year}`;
-    }
-    if (totalEl) totalEl.textContent = `${periodMonths.length} meses`;
-    if (printAllBtn) {
-      printAllBtn.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg> 🖨️ Imprimir todos os meses (${periodMonths.length} págs)`;
+  if (!activeEmp) return;
+
+  if (nameEl) nameEl.textContent = activeEmp.name || 'Colaborador';
+
+  let pdfList = [];
+  if (window.supabaseService && typeof window.supabaseService.listEmployeeMonthlyPDFs === 'function') {
+    try {
+      pdfList = await window.supabaseService.listEmployeeMonthlyPDFs(activeEmp.id, activeEmp.name, activeEmp.cpf);
+    } catch (e) {
+      console.warn('Erro ao consultar lista de PDFs do Storage:', e);
     }
   }
+
+  const count = pdfList.length;
+  const pageWord = (count === 1 ? 'página' : 'páginas');
+
+  if (totalEl) {
+    totalEl.textContent = `${count} ${pageWord}`;
+  }
+
+  if (rangeEl) {
+    if (count > 0) {
+      const first = pdfList[0];
+      const last = pdfList[count - 1];
+      const firstStr = `${String(first.month).padStart(2, '0')}/${first.year}`;
+      const lastStr = `${String(last.month).padStart(2, '0')}/${last.year}`;
+      rangeEl.textContent = (count === 1 ? firstStr : `${firstStr} até ${lastStr}`);
+    } else {
+      rangeEl.textContent = `Nenhum PDF encontrado no Storage`;
+    }
+  }
+
+  if (printAllBtn) {
+    printAllBtn.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg> 🖨️ Imprimir todos os meses (${count} ${pageWord})`;
+  }
+}
+
+function renderPeriodModal() {
+  const yearDisplay = document.getElementById('picker-year-display');
+  if (yearDisplay) yearDisplay.textContent = pickerYear;
 
   // Render Quick Year Chips
   const yearsBar = document.getElementById('years-quick-bar');
@@ -1225,6 +1160,7 @@ function renderPeriodModal() {
   if (!grid) return;
 
   grid.innerHTML = '';
+  const activeEmp = getCurrentEmployee();
   const realDate = new Date();
   const realYear = realDate.getFullYear();
   const realMonth = realDate.getMonth() + 1;
@@ -1271,7 +1207,7 @@ function renderPeriodModal() {
   });
 }
 
-// Geração e Impressão do Histórico COMPLETO de todas as competências do colaborador em UM ÚNICO PDF
+// Geração e Impressão do Histórico COMPLETO a partir dos PDFs REAIS existentes no Supabase Storage
 async function printAllMonthsForCurrentEmployee() {
   const emp = getCurrentEmployee();
   if (!emp) {
@@ -1279,24 +1215,12 @@ async function printAllMonthsForCurrentEmployee() {
     return;
   }
 
-  // 1. Sincroniza dados atuais da tela
-  syncDomTableToActiveEmployee();
-
-  // 2. Calcula todas as competências trabalhadas (Admissão até Mês Atual ou Desligamento)
-  const periodMonths = getEmployeePeriodMonths(emp);
-  if (!periodMonths || periodMonths.length === 0) {
-    showToast('⚠️ Nenhuma competência encontrada para o período deste colaborador.');
+  if (!window.supabaseService || typeof window.supabaseService.listEmployeeMonthlyPDFs !== 'function') {
+    showToast('⚠️ Serviço Supabase não configurado.');
     return;
   }
 
-  const totalMonths = periodMonths.length;
-  const firstPeriod = periodMonths[0];
-  const lastPeriod = periodMonths[totalMonths - 1];
-  const yearSuffix = (firstPeriod.year !== lastPeriod.year) ? `${firstPeriod.year}-${lastPeriod.year}` : `${firstPeriod.year}`;
-  const cleanEmpName = (emp.name || 'colaborador').replace(/\s+/g, '_');
-  const pdfFileName = `Historico_Folha_Ponto_${cleanEmpName}_${yearSuffix}`;
-
-  // 3. Abre modal de progresso
+  // 1. Abre modal de progresso
   const progressModal = document.getElementById('modal-history-progress');
   const statusText = document.getElementById('history-progress-status-text');
   const barFill = document.getElementById('history-progress-bar-fill');
@@ -1307,162 +1231,116 @@ async function printAllMonthsForCurrentEmployee() {
     progressModal.style.setProperty('display', 'flex', 'important');
   }
 
-  const updateProgress = (currentIdx, label) => {
-    const percent = Math.round((currentIdx / totalMonths) * 100);
+  const updateProgress = (currentIdx, total, label) => {
+    const percent = total > 0 ? Math.round((currentIdx / total) * 100) : 0;
     if (statusText) statusText.textContent = label;
     if (barFill) barFill.style.width = `${percent}%`;
-    if (countLabel) countLabel.textContent = `${currentIdx} / ${totalMonths} meses processados`;
+    if (countLabel) countLabel.textContent = `${currentIdx} / ${total} PDFs processados`;
     if (percentLabel) percentLabel.textContent = `${percent}%`;
   };
 
-  updateProgress(0, `Iniciando consulta histórica (${totalMonths} meses)...`);
-
-  const printContainer = document.getElementById('print-all-container');
-  if (printContainer) {
-    printContainer.innerHTML = '';
-  }
-
-  const jsPDFConstructor = (window.jspdf && window.jspdf.jsPDF) ? window.jspdf.jsPDF : (typeof jsPDF !== 'undefined' ? jsPDF : null);
-  let multiPageDoc = jsPDFConstructor ? new jsPDFConstructor('p', 'mm', 'a4') : null;
-
-  const styleEl = document.createElement('style');
-  styleEl.id = 'timesheet-history-runtime-style';
-  styleEl.textContent = getTimesheetStandaloneCss();
-  document.head.appendChild(styleEl);
+  updateProgress(0, 0, 'Localizando folhas de ponto no Supabase Storage...');
 
   try {
-    for (let i = 0; i < totalMonths; i++) {
-      const p = periodMonths[i];
-      updateProgress(i, `Consultando ${p.label}... (${i + 1}/${totalMonths})`);
+    // 2. Consulta TODOS os PDFs mensais (MM-AAAA.pdf) pertencentes exclusivamente a este colaborador no Storage
+    const pdfList = await window.supabaseService.listEmployeeMonthlyPDFs(emp.id, emp.name, emp.cpf);
 
-      // 4. Busca dados REAIS e isolados daquela competência no Supabase
-      let monthDays = null;
-      let monthSig = null;
-
-      if (window.supabaseService && typeof window.supabaseService.fetchTimesheetForMonth === 'function') {
-        try {
-          const remoteData = await window.supabaseService.fetchTimesheetForMonth(emp.id, p.year, p.month);
-          if (remoteData && remoteData.days && Array.isArray(remoteData.days) && remoteData.days.length > 0) {
-            monthDays = remoteData.days;
-            monthSig = remoteData.signatures || null;
-          }
-        } catch (e) {
-          console.warn(`Aviso ao consultar ${p.label}:`, e);
-        }
-      }
-
-      // Se não houver no banco, verifica cache local ou gera folha padrão em branco
-      if (!monthDays) {
-        if (emp.timesheets && (emp.timesheets[p.monthKey] || emp.timesheets[p.altKey])) {
-          monthDays = emp.timesheets[p.monthKey] || emp.timesheets[p.altKey];
-        } else if (p.year === currentYear && p.month === currentMonth && emp.days && emp.days.length > 0) {
-          monthDays = emp.days;
-        } else {
-          monthDays = generateMonthData(p.year, p.month, emp.id);
-        }
-      }
-
-      if (!monthSig) {
-        monthSig = (emp.signatures && (emp.signatures[p.monthKey] || emp.signatures[p.altKey])) || null;
-      }
-
-      // 5. Monta a página A4 oficial com 100% de precisão para aquele mês
-      const pageEl = buildEmployeePrintPageHtml(emp, i + 1, totalMonths, p.year, p.month, monthDays, monthSig);
-      if (printContainer) {
-        printContainer.appendChild(pageEl.cloneNode(true));
-      }
-
-      // 6. Converte em canvas para o PDF consolidado do Supabase Storage
-      if (typeof html2canvas !== 'undefined' && multiPageDoc) {
-        const offscreenWrapper = document.createElement('div');
-        offscreenWrapper.style.cssText = 'position: fixed; left: 0; top: 0; width: 794px; min-height: 1120px; background: #FFFFFF; z-index: 99999; opacity: 1; box-sizing: border-box; padding: 14px 18px; overflow: hidden; pointer-events: none;';
-        offscreenWrapper.appendChild(pageEl);
-        document.body.appendChild(offscreenWrapper);
-
-        try {
-          const imgs = Array.from(offscreenWrapper.querySelectorAll('img'));
-          await Promise.all(imgs.map(img => {
-            if (img.complete) return Promise.resolve();
-            return new Promise(res => {
-              img.onload = res;
-              img.onerror = res;
-              setTimeout(res, 250);
-            });
-          }));
-
-          const canvas = await html2canvas(offscreenWrapper, {
-            scale: 2,
-            useCORS: true,
-            allowTaint: true,
-            logging: false,
-            backgroundColor: '#FFFFFF',
-            width: 794,
-            windowWidth: 794
-          });
-
-          const imgData = canvas.toDataURL('image/jpeg', 0.98);
-          if (i > 0) {
-            multiPageDoc.addPage('a4', 'p');
-          }
-          multiPageDoc.addImage(imgData, 'JPEG', 0, 0, 210, 297);
-        } catch (canvasErr) {
-          console.warn(`Aviso no canvas do mês ${p.label}:`, canvasErr);
-        } finally {
-          if (offscreenWrapper.parentNode) {
-            offscreenWrapper.parentNode.removeChild(offscreenWrapper);
-          }
-        }
-      }
-
-      // Pequeno delay para liberar a thread e atualizar UI
-      await new Promise(res => setTimeout(res, 30));
+    if (!pdfList || pdfList.length === 0) {
+      if (progressModal) progressModal.style.display = 'none';
+      alert(`⚠️ Nenhuma folha de ponto mensal (.pdf) foi encontrada no Supabase Storage para ${emp.name}.\n\nPara que os PDFs mensais sejam salvos no Storage, acesse as competências do colaborador e clique em "Salvar alterações" ou "Imprimir".`);
+      return;
     }
 
-    updateProgress(totalMonths, `✅ Todas as ${totalMonths} competências processadas!`);
+    const total = pdfList.length;
+    const firstPeriod = pdfList[0];
+    const lastPeriod = pdfList[total - 1];
+    const yearSuffix = (firstPeriod.year !== lastPeriod.year) ? `${firstPeriod.year}-${lastPeriod.year}` : `${firstPeriod.year}`;
+    const cleanEmpName = (emp.name || 'colaborador').replace(/\s+/g, '_');
+    const pdfFileName = `Historico_Folha_Ponto_${cleanEmpName}_${yearSuffix}.pdf`;
 
-    // 7. Envia PDF de Histórico Completo consolidado para o Supabase Storage em segundo plano
-    if (multiPageDoc && window.supabaseService && typeof window.supabaseService.uploadEmployeeHistoryPDF === 'function') {
+    updateProgress(0, total, `Encontradas ${total} folhas mensais. Iniciando unificação...`);
+
+    // 3. Carrega pdf-lib para fusão de alta fidelidade
+    const pdfLibInstance = window.PDFLib || (typeof PDFLib !== 'undefined' ? PDFLib : null);
+    if (!pdfLibInstance || !pdfLibInstance.PDFDocument) {
+      throw new Error('Biblioteca pdf-lib não encontrada.');
+    }
+
+    const mergedPdf = await pdfLibInstance.PDFDocument.create();
+
+    // 4. Baixa cada PDF mensal encontrado no Storage e anexa como página A4 original
+    for (let i = 0; i < total; i++) {
+      const pdfItem = pdfList[i];
+      updateProgress(i, total, `Baixando e unificando ${pdfItem.fileName}... (${i + 1}/${total})`);
+
       try {
-        const pdfBlob = multiPageDoc.output('blob');
-        window.supabaseService.uploadEmployeeHistoryPDF(emp.id, pdfBlob, emp.name, emp.cpf, firstPeriod.year, lastPeriod.year).then(res => {
-          if (res && res.success) {
-            console.log(`✅ Histórico Completo salvo no Storage:`, res.pdfUrl);
+        let existingPdfBytes = null;
+        if (window.supabaseService && typeof window.supabaseService.downloadEmployeePDFBytes === 'function') {
+          existingPdfBytes = await window.supabaseService.downloadEmployeePDFBytes(pdfItem.filePath, pdfItem.url);
+        } else {
+          const resp = await fetch(pdfItem.url);
+          if (!resp.ok) {
+            throw new Error(`Status ${resp.status} ao baixar ${pdfItem.fileName}`);
           }
-        }).catch(e => console.warn('Aviso no upload do histórico consolidado:', e));
-      } catch (e) {}
+          existingPdfBytes = await resp.arrayBuffer();
+        }
+
+        if (existingPdfBytes) {
+          const loadedDoc = await pdfLibInstance.PDFDocument.load(existingPdfBytes);
+          const copiedPages = await mergedPdf.copyPages(loadedDoc, loadedDoc.getPageIndices());
+          copiedPages.forEach((page) => mergedPdf.addPage(page));
+        }
+      } catch (fileErr) {
+        console.warn(`Erro ao carregar folha ${pdfItem.fileName}:`, fileErr);
+      }
+
+      await new Promise(res => setTimeout(res, 20));
     }
 
-    // 8. Fecha modal de progresso após 400ms
+    updateProgress(total, total, `✅ Todas as ${total} folhas unificadas com sucesso!`);
+
+    // 5. Salva documento PDF mesclado final
+    const mergedPdfBytes = await mergedPdf.save();
+    const mergedBlob = new Blob([mergedPdfBytes], { type: 'application/pdf' });
+    const blobUrl = URL.createObjectURL(mergedBlob);
+
+    // 6. Salva arquivo consolidado no Supabase Storage (sem substituir os mensais)
+    if (window.supabaseService && typeof window.supabaseService.uploadEmployeeHistoryPDF === 'function') {
+      window.supabaseService.uploadEmployeeHistoryPDF(emp.id, mergedBlob, emp.name, emp.cpf, firstPeriod.year, lastPeriod.year).then(res => {
+        if (res && res.success) {
+          console.log(`✅ Histórico Completo consolidado salvo no Storage:`, res.pdfUrl);
+        }
+      }).catch(e => console.warn('Aviso no upload do histórico consolidado:', e));
+    }
+
+    // 7. Fecha modal de progresso e abre para download / impressão
     setTimeout(() => {
       if (progressModal) progressModal.style.display = 'none';
       closePeriodModal();
 
-      // 9. Dispara diálogo nativo de impressão com todas as páginas
-      const previousTitle = document.title;
-      document.title = pdfFileName;
-
-      const restoreTitle = () => {
-        document.title = previousTitle;
-        window.removeEventListener('afterprint', restoreTitle);
-      };
-      window.addEventListener('afterprint', restoreTitle);
-
-      showToast(`📚 Histórico completo de ${emp.name} (${totalMonths} páginas) pronto para impressão / PDF!`);
+      // Download automático do arquivo
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = pdfFileName;
+      document.body.appendChild(link);
+      link.click();
       setTimeout(() => {
-        window.print();
-        setTimeout(restoreTitle, 4000);
-      }, 350);
+        if (link.parentNode) link.parentNode.removeChild(link);
+      }, 1000);
+
+      // Abre visualizador para impressão imediata
+      const viewerWindow = window.open(blobUrl, '_blank');
+      if (viewerWindow) {
+        showToast(`📚 Histórico completo (${total} páginas) baixado e aberto para impressão!`);
+      } else {
+        showToast(`📚 Histórico completo (${total} páginas) baixado com sucesso!`);
+      }
     }, 450);
 
   } catch (err) {
-    console.error('Erro na geração do histórico completo:', err);
+    console.error('Erro na unificação dos PDFs do histórico:', err);
     if (progressModal) progressModal.style.display = 'none';
-    alert('⚠️ Ocorreu um erro ao gerar o histórico completo: ' + (err.message || err));
-  } finally {
-    const injectedStyle = document.getElementById('timesheet-history-runtime-style');
-    if (injectedStyle && injectedStyle.parentNode) {
-      injectedStyle.parentNode.removeChild(injectedStyle);
-    }
+    alert('⚠️ Ocorreu um erro ao unificar as folhas de ponto: ' + (err.message || err));
   }
 }
 

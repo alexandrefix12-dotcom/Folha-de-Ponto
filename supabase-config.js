@@ -945,6 +945,183 @@ async function uploadEmployeeHistoryPDFToSupabase(empId, pdfBlobOrBase64, empNam
   }
 }
 
+// 16. Localizar e listar todos os PDFs mensais existentes no Supabase Storage para o colaborador
+async function listEmployeeMonthlyPDFsFromStorage(empId, empName = '', cpf = '') {
+  const client = getSupabaseClient();
+  if (!client || !empId) return [];
+
+  try {
+    const cleanId = String(empId).trim();
+
+    // 1. Identificar possíveis nomes de pasta no Storage para este colaborador
+    const candidateFolders = [];
+    if (empName && empName.trim()) {
+      const fullSanitized = empName.trim()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-zA-Z0-9_-]/g, '_')
+        .replace(/_+/g, '_')
+        .toUpperCase();
+      candidateFolders.push(fullSanitized);
+
+      // Versão sem underline ou apenas primeiros nomes (ex: "ALEXANDRE_GABRIEL")
+      const parts = fullSanitized.split('_').filter(Boolean);
+      if (parts.length >= 2) {
+        candidateFolders.push(`${parts[0]}_${parts[1]}`);
+      }
+      if (parts.length >= 3) {
+        candidateFolders.push(`${parts[0]}_${parts[1]}_${parts[2]}`);
+      }
+    }
+    if (cpf && String(cpf).replace(/\D/g, '')) {
+      candidateFolders.push(String(cpf).replace(/\D/g, ''));
+    }
+    candidateFolders.push(cleanId);
+
+    // Identifica qual pasta realmente existe no bucket folhas-ponto
+    let targetFolder = null;
+    const { data: rootItems, error: rootError } = await client.storage.from('folhas-ponto').list('', { limit: 1000 });
+    
+    if (!rootError && Array.isArray(rootItems) && rootItems.length > 0) {
+      // 1º passo: busca exata
+      for (const cand of candidateFolders) {
+        const exact = rootItems.find(item => item.name && item.name.toUpperCase() === cand.toUpperCase());
+        if (exact) {
+          targetFolder = exact.name;
+          break;
+        }
+      }
+      // 2º passo: busca por prefixo se não encontrou exato
+      if (!targetFolder) {
+        for (const cand of candidateFolders) {
+          const match = rootItems.find(item => item.name && (item.name.toUpperCase().startsWith(cand.toUpperCase()) || cand.toUpperCase().startsWith(item.name.toUpperCase())));
+          if (match) {
+            targetFolder = match.name;
+            break;
+          }
+        }
+      }
+    }
+
+    // Se a listagem da raiz não retornou itens ou não encontrou, testa as pastas candidatas diretamente
+    if (!targetFolder) {
+      for (const cand of candidateFolders) {
+        const { data: testItems, error: testErr } = await client.storage.from('folhas-ponto').list(cand, { limit: 10 });
+        if (!testErr && Array.isArray(testItems) && testItems.length > 0) {
+          targetFolder = cand;
+          break;
+        }
+      }
+    }
+
+    if (!targetFolder) {
+      targetFolder = candidateFolders[0];
+    }
+
+    // 2. Listar anos e arquivos dentro da pasta do funcionário
+    const { data: yearFolders, error: yearError } = await client.storage.from('folhas-ponto').list(targetFolder, { limit: 1000 });
+    if (yearError || !Array.isArray(yearFolders)) {
+      return [];
+    }
+
+    const pdfMap = new Map();
+    const monthlyRegex = /^(\d{2})-(\d{4})\.pdf$/i;
+
+    for (const item of yearFolders) {
+      if (!item || !item.name) continue;
+
+      // Se for subpasta de ano (ex: "2024", "2025", "2026")
+      const isYearDir = /^\d{4}$/.test(item.name);
+      if (isYearDir) {
+        const year = item.name;
+        const yearPath = `${targetFolder}/${year}`;
+        const { data: files, error: filesError } = await client.storage.from('folhas-ponto').list(yearPath, { limit: 1000 });
+        if (!filesError && Array.isArray(files)) {
+          for (const f of files) {
+            if (!f || !f.name) continue;
+            // Ignora arquivos de histórico consolidado ou outros que não sejam folhas mensais
+            if (f.name.toUpperCase().startsWith('HISTORICO_COMPLETO')) continue;
+
+            const match = f.name.match(monthlyRegex);
+            if (match) {
+              const month = parseInt(match[1], 10);
+              const fileYear = parseInt(match[2], 10);
+              const filePath = `${yearPath}/${f.name}`;
+              const { data: urlData } = client.storage.from('folhas-ponto').getPublicUrl(filePath);
+              const sortKey = fileYear * 100 + month;
+
+              if (!pdfMap.has(sortKey)) {
+                pdfMap.set(sortKey, {
+                  fileName: f.name,
+                  filePath: filePath,
+                  url: urlData?.publicUrl || `https://zbrxfmqqoepcbclqhsze.supabase.co/storage/v1/object/public/folhas-ponto/${filePath}`,
+                  month: month,
+                  year: fileYear,
+                  sortKey: sortKey
+                });
+              }
+            }
+          }
+        }
+      } else {
+        // Se for arquivo mensal na raiz da pasta do colaborador
+        if (item.name.toUpperCase().startsWith('HISTORICO_COMPLETO')) continue;
+
+        const match = item.name.match(monthlyRegex);
+        if (match) {
+          const month = parseInt(match[1], 10);
+          const fileYear = parseInt(match[2], 10);
+          const filePath = `${targetFolder}/${item.name}`;
+          const { data: urlData } = client.storage.from('folhas-ponto').getPublicUrl(filePath);
+          const sortKey = fileYear * 100 + month;
+
+          if (!pdfMap.has(sortKey)) {
+            pdfMap.set(sortKey, {
+              fileName: item.name,
+              filePath: filePath,
+              url: urlData?.publicUrl || `https://zbrxfmqqoepcbclqhsze.supabase.co/storage/v1/object/public/folhas-ponto/${filePath}`,
+              month: month,
+              year: fileYear,
+              sortKey: sortKey
+            });
+          }
+        }
+      }
+    }
+
+    const pdfList = Array.from(pdfMap.values());
+
+    // 3. Ordenar cronologicamente do mais antigo para o mais recente
+    pdfList.sort((a, b) => a.sortKey - b.sortKey);
+
+    return pdfList;
+  } catch (err) {
+    console.warn('Erro ao listar PDFs do colaborador no Storage:', err);
+    return [];
+  }
+}
+
+// 17. Baixar binário de um PDF do Storage
+async function downloadEmployeePDFBytes(filePath, fallbackUrl) {
+  const client = getSupabaseClient();
+  if (client && filePath) {
+    try {
+      const { data, error } = await client.storage.from('folhas-ponto').download(filePath);
+      if (!error && data) {
+        return await data.arrayBuffer();
+      }
+    } catch (e) {
+      console.warn(`Tentando fetch público para ${filePath}:`, e);
+    }
+  }
+  if (fallbackUrl) {
+    const resp = await fetch(fallbackUrl);
+    if (!resp.ok) throw new Error(`Status HTTP ${resp.status} ao baixar ${filePath || fallbackUrl}`);
+    return await resp.arrayBuffer();
+  }
+  throw new Error(`Não foi possível baixar o PDF: ${filePath}`);
+}
+
 // Exportar globalmente
 window.supabaseService = {
   config: SUPABASE_CONFIG,
@@ -966,6 +1143,8 @@ window.supabaseService = {
   excluirFuncionario: excluirFuncionarioNoSupabase,
   uploadTimesheetPDF: uploadTimesheetPDFToSupabase,
   uploadEmployeeHistoryPDF: uploadEmployeeHistoryPDFToSupabase,
+  listEmployeeMonthlyPDFs: listEmployeeMonthlyPDFsFromStorage,
+  downloadEmployeePDFBytes: downloadEmployeePDFBytes,
   fetchTimesheetForMonth: fetchTimesheetForEmployeeMonth,
   getTimesheetPDFUrl: getTimesheetPDFUrl
 };
