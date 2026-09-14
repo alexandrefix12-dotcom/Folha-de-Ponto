@@ -3399,46 +3399,121 @@ function buildEmployeePrintPageHtml(emp, pageNum = 1, totalPages = 1, customYear
       const dayPad = String(item.day).padStart(2, '0');
       const abbr = dowAbbrMap[item.dow] || (item.dow ? item.dow.slice(0, 3) : '');
       const isSunday = item.dow === 'Domingo' || abbr === 'Dom';
+      const isSaturday = item.dow === 'Sábado' || abbr === 'Sáb';
       const metrics = calcDayMetrics(item.e1, item.s1, item.e2, item.s2, item.status, item.dow);
 
-      let intervalFormatted = 'à';
-      if (item.s1 && item.e2) {
-        intervalFormatted = `${item.s1} à ${item.e2}`;
-      } else if (item.s1) {
-        intervalFormatted = `${item.s1} à`;
-      } else if (item.e2) {
-        intervalFormatted = `à ${item.e2}`;
-      }
-
-      let extraFormatted = 'à';
-      if (item.status === 'presenca' && metrics.balanceMins > 0) {
-        extraFormatted = `+${minutesToTime(metrics.balanceMins)}`;
-      } else if (item.status === 'presenca' && metrics.balanceMins < 0) {
-        extraFormatted = `-${minutesToTime(Math.abs(metrics.balanceMins))}`;
-      } else if (item.status === 'presenca' && (item.e1 || item.s1)) {
-        extraFormatted = '00:00';
-      }
-
+      let entDisplay = item.e1 || '';
+      let intDisplay = 'à';
+      let saiDisplay = item.s2 || item.s1 || '';
+      let extDisplay = 'à';
       let rubricaDisplay = '';
-      if (item.signed !== false && (item.e1 || item.s1 || item.e2 || item.s2 || item.status === 'dsr' || item.status === 'feriado' || item.status === 'meio_periodo' || item.status === 'ferias' || item.status === 'atestado')) {
-        rubricaDisplay = emp.initials || '';
+      let rowBgStyle = '';
+      let rowExtraClass = '';
+
+      const st = item.status || (isSunday ? 'dsr' : 'presenca');
+
+      if (st === 'falta') {
+        entDisplay = '<strong style="color: #B91C1C; font-weight: 800; font-size: 7.2pt;">FALTA</strong>';
+        intDisplay = '<span style="color: #94A3B8;">à</span>';
+        saiDisplay = '<strong style="color: #B91C1C; font-weight: 800; font-size: 7.2pt;">FALTA</strong>';
+        extDisplay = '<strong style="color: #B91C1C; font-weight: 800; font-size: 7.0pt;">-08:00</strong>';
+        rubricaDisplay = ''; // Ausência não assina
+        rowBgStyle = 'background-color: #FEF2F2;';
+        rowExtraClass = 'print-row-falta';
+      } else if (st === 'dsr') {
+        entDisplay = '<strong style="color: #065F46; font-weight: 800; font-size: 7.0pt;">FOLGA</strong>';
+        intDisplay = '<span style="color: #94A3B8;">à</span>';
+        saiDisplay = '<strong style="color: #065F46; font-weight: 800; font-size: 7.0pt;">FOLGA</strong>';
+        extDisplay = '00:00';
+        if (item.signed !== false) rubricaDisplay = emp.initials || '';
+        rowBgStyle = isSunday ? 'background-color: #F8FAFC;' : 'background-color: #F0FDF4;';
+        rowExtraClass = 'print-row-dsr';
+      } else if (st === 'feriado') {
+        entDisplay = '<strong style="color: #1D4ED8; font-weight: 800; font-size: 7.0pt;">FERIADO</strong>';
+        intDisplay = '<span style="color: #94A3B8;">à</span>';
+        saiDisplay = '<strong style="color: #1D4ED8; font-weight: 800; font-size: 7.0pt;">FERIADO</strong>';
+        extDisplay = '00:00';
+        if (item.signed !== false) rubricaDisplay = emp.initials || '';
+        rowBgStyle = 'background-color: #EFF6FF;';
+        rowExtraClass = 'print-row-feriado';
+      } else if (st === 'ferias') {
+        entDisplay = '<strong style="color: #047857; font-weight: 800; font-size: 7.0pt;">FÉRIAS</strong>';
+        intDisplay = '<span style="color: #94A3B8;">à</span>';
+        saiDisplay = '<strong style="color: #047857; font-weight: 800; font-size: 7.0pt;">FÉRIAS</strong>';
+        extDisplay = '00:00';
+        if (item.signed !== false) rubricaDisplay = emp.initials || '';
+        rowBgStyle = 'background-color: #ECFDF5;';
+        rowExtraClass = 'print-row-ferias';
+      } else if (st === 'atestado' || st === 'afastado') {
+        entDisplay = '<strong style="color: #B45309; font-weight: 800; font-size: 7.0pt;">ATESTADO</strong>';
+        intDisplay = '<span style="color: #94A3B8;">à</span>';
+        saiDisplay = '<strong style="color: #B45309; font-weight: 800; font-size: 7.0pt;">ATESTADO</strong>';
+        extDisplay = '00:00';
+        if (item.signed !== false) rubricaDisplay = emp.initials || '';
+        rowBgStyle = 'background-color: #FFFBEB;';
+        rowExtraClass = 'print-row-atestado';
+      } else if (st === 'justificada') {
+        entDisplay = '<strong style="color: #B45309; font-weight: 800; font-size: 7.0pt;">JUSTIFICADA</strong>';
+        intDisplay = '<span style="color: #94A3B8;">à</span>';
+        saiDisplay = '<strong style="color: #B45309; font-weight: 800; font-size: 7.0pt;">JUSTIFICADA</strong>';
+        extDisplay = '00:00';
+        if (item.signed !== false) rubricaDisplay = emp.initials || '';
+        rowBgStyle = 'background-color: #FFFBEB;';
+        rowExtraClass = 'print-row-justificada';
+      } else if (st === 'demitido' || st === 'desligado') {
+        entDisplay = '<strong style="color: #6B7280; font-weight: 800; font-size: 7.0pt;">DESLIGADO</strong>';
+        intDisplay = '<span style="color: #94A3B8;">à</span>';
+        saiDisplay = '<strong style="color: #6B7280; font-weight: 7.0pt;">DESLIGADO</strong>';
+        extDisplay = 'à';
+        rubricaDisplay = '';
+        rowBgStyle = 'background-color: #F1F5F9;';
+        rowExtraClass = 'print-row-desligado';
+      } else if (st === 'meio_periodo') {
+        entDisplay = item.e1 || '08:00';
+        intDisplay = item.s1 ? `${item.s1} à` : '12:00 à';
+        saiDisplay = item.s2 || item.s1 || '12:00';
+        extDisplay = '00:00';
+        if (item.signed !== false) rubricaDisplay = emp.initials || '';
+        rowBgStyle = 'background-color: #FEFCE8;';
+        rowExtraClass = 'print-row-meio';
+      } else {
+        // Presença normal ou horários preenchidos
+        if (item.s1 && item.e2) {
+          intDisplay = `${item.s1} à ${item.e2}`;
+        } else if (item.s1) {
+          intDisplay = `${item.s1} à`;
+        } else if (item.e2) {
+          intDisplay = `à ${item.e2}`;
+        }
+
+        if (metrics.balanceMins > 0) {
+          extDisplay = `+${minutesToTime(metrics.balanceMins)}`;
+        } else if (metrics.balanceMins < 0) {
+          extDisplay = `-${minutesToTime(Math.abs(metrics.balanceMins))}`;
+        } else if (item.e1 || item.s1) {
+          extDisplay = '00:00';
+        }
+
+        if (item.signed !== false && (item.e1 || item.s1 || item.e2 || item.s2)) {
+          rubricaDisplay = emp.initials || '';
+        }
       }
 
       const dayDisplay = isSunday
         ? `${dayPad} <strong>Dom</strong>`
         : `${dayPad} ${abbr}`;
 
-      const tdDiaStyle = 'border: 1px solid #006633; border-left: none; padding: 0 1mm 0 2mm; text-align: left; line-height: 5.2mm; height: 5.2mm; color: #000000; box-sizing: border-box; font-size: 7.5pt; font-family: Arial, sans-serif; white-space: nowrap;';
-      const tdStyle = 'border: 1px solid #006633; padding: 0 1mm; text-align: center; line-height: 5.2mm; height: 5.2mm; color: #000000; box-sizing: border-box; font-size: 7.5pt; font-family: Arial, sans-serif;';
-      const tdLastStyle = 'border: 1px solid #006633; border-right: none; padding: 0 1mm; text-align: center; line-height: 5.2mm; height: 5.2mm; color: #000000; box-sizing: border-box; font-size: 7.2pt; font-family: Arial, sans-serif;';
+      const tdDiaStyle = `border: 1px solid #006633; border-left: none; padding: 0 1mm 0 2mm; text-align: left; line-height: 5.2mm; height: 5.2mm; color: #000000; box-sizing: border-box; font-size: 7.5pt; font-family: Arial, sans-serif; white-space: nowrap; ${rowBgStyle}`;
+      const tdStyle = `border: 1px solid #006633; padding: 0 1mm; text-align: center; line-height: 5.2mm; height: 5.2mm; color: #000000; box-sizing: border-box; font-size: 7.5pt; font-family: Arial, sans-serif; ${rowBgStyle}`;
+      const tdLastStyle = `border: 1px solid #006633; border-right: none; padding: 0 1mm; text-align: center; line-height: 5.2mm; height: 5.2mm; color: #000000; box-sizing: border-box; font-size: 7.2pt; font-family: Arial, sans-serif; ${rowBgStyle}`;
 
       rowsHtml += `
-        <tr class="${isSunday ? 'print-row-dom' : ''}">
+        <tr class="${isSunday ? 'print-row-dom' : ''} ${rowExtraClass}">
           <td class="col-dia" style="${tdDiaStyle}">${dayDisplay}</td>
-          <td class="col-ent" style="${tdStyle}">${item.e1 || ''}</td>
-          <td class="col-int" style="${tdStyle}">${intervalFormatted}</td>
-          <td class="col-sai" style="${tdStyle}">${item.s2 || item.s1 || ''}</td>
-          <td class="col-ext" style="${tdStyle}">${extraFormatted}</td>
+          <td class="col-ent" style="${tdStyle}">${entDisplay}</td>
+          <td class="col-int" style="${tdStyle}">${intDisplay}</td>
+          <td class="col-sai" style="${tdStyle}">${saiDisplay}</td>
+          <td class="col-ext" style="${tdStyle}">${extDisplay}</td>
           <td class="col-ass" style="${tdLastStyle}">${rubricaDisplay}</td>
         </tr>
       `;
