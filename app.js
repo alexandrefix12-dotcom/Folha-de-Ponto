@@ -834,8 +834,13 @@ function switchScreen(screenId) {
   const targetTab = document.querySelector(`.screen-tab[data-screen="${screenId}"]`);
   if (targetTab) targetTab.classList.add('active');
 
-  // Update sidebar active link state
+  // Update sidebar active link state and reset to current real month when returning to admin/menu
   if (screenId === 'screen-admin') {
+    const now = new Date();
+    currentYear = now.getFullYear();
+    currentMonth = now.getMonth() + 1;
+    updateMonthDisplay();
+
     const isAfastadosActive = document.getElementById('nav-link-afastados')?.classList.contains('active');
     const isFeriasActive = document.getElementById('nav-link-ferias')?.classList.contains('active');
     if (!isAfastadosActive && !isFeriasActive) {
@@ -955,6 +960,12 @@ function selectEmployee(empIdOrName, navigateToTimesheet = false) {
 
   const emp = getCurrentEmployee();
   if (!emp) return;
+
+  if (navigateToTimesheet) {
+    const now = new Date();
+    currentYear = now.getFullYear();
+    currentMonth = now.getMonth() + 1;
+  }
 
   const monthKey = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
   if (!emp.timesheets) emp.timesheets = {};
@@ -2947,6 +2958,11 @@ function updateAfastadosBadgeCounter(hasNewNotification = false) {
 
 // Switch between Active Employees, Férias, and Afastados/Desligados view
 function showEmployeesView(viewMode) {
+  const now = new Date();
+  currentYear = now.getFullYear();
+  currentMonth = now.getMonth() + 1;
+  updateMonthDisplay();
+
   switchScreen('screen-admin');
   localStorage.setItem('lane_last_admin_view_mode', viewMode || 'ativos');
 
@@ -3051,6 +3067,10 @@ function resetFilters() {
 
 // Navigation to employee timesheet from list / filter
 function viewEmployeeTimesheet(employeeIdOrName) {
+  const now = new Date();
+  currentYear = now.getFullYear();
+  currentMonth = now.getMonth() + 1;
+  updateMonthDisplay();
   selectEmployee(employeeIdOrName, true);
 }
 
