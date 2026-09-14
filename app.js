@@ -1083,9 +1083,120 @@ function changePickerYear(delta) {
   renderPeriodModal();
 }
 
+// Obtém a lista cronológica de todas as competências [ { year, month, label, monthKey } ] do colaborador
+function getEmployeePeriodMonths(emp) {
+  if (!emp) return [];
+
+  const realNow = new Date();
+  const realCurrentYear = realNow.getFullYear();
+  const realCurrentMonth = realNow.getMonth() + 1;
+
+  // 1. Data de Admissão
+  let startYear = realCurrentYear;
+  let startMonth = 1;
+
+  const rawAdmission = emp.admission || emp.admissionDate || emp.admi || emp.admissao || '01/01/2024';
+  if (rawAdmission) {
+    if (rawAdmission.includes('/')) {
+      const parts = rawAdmission.split('/');
+      if (parts.length === 3) {
+        startMonth = parseInt(parts[1], 10) || 1;
+        startYear = parseInt(parts[2], 10) || realCurrentYear;
+      }
+    } else if (rawAdmission.includes('-')) {
+      const parts = rawAdmission.split('-');
+      if (parts.length === 3) {
+        startYear = parseInt(parts[0], 10) || realCurrentYear;
+        startMonth = parseInt(parts[1], 10) || 1;
+      }
+    }
+  }
+
+  // 2. Data de Desligamento / Fim
+  let endYear = realCurrentYear;
+  let endMonth = realCurrentMonth;
+
+  const rawResignation = emp.resignationDate || emp.desligamento || emp.demissao || emp.dataDesligamento;
+  const isInactive = (emp.statusCategory === 'inativo' || emp.statusCategory === 'demitido' || emp.statusCategory === 'desligado');
+
+  if (rawResignation) {
+    if (rawResignation.includes('/')) {
+      const parts = rawResignation.split('/');
+      if (parts.length === 3) {
+        endMonth = parseInt(parts[1], 10) || realCurrentMonth;
+        endYear = parseInt(parts[2], 10) || realCurrentYear;
+      }
+    } else if (rawResignation.includes('-')) {
+      const parts = rawResignation.split('-');
+      if (parts.length === 3) {
+        endYear = parseInt(parts[0], 10) || realCurrentYear;
+        endMonth = parseInt(parts[1], 10) || realCurrentMonth;
+      }
+    }
+  } else if (isInactive && emp.inactivationDate) {
+    const parts = emp.inactivationDate.split('/');
+    if (parts.length === 3) {
+      endMonth = parseInt(parts[1], 10) || realCurrentMonth;
+      endYear = parseInt(parts[2], 10) || realCurrentYear;
+    }
+  }
+
+  // Garante que o fim não seja anterior ao início
+  if (endYear < startYear || (endYear === startYear && endMonth < startMonth)) {
+    endYear = startYear;
+    endMonth = startMonth;
+  }
+
+  // Gera todas as competências mês a mês em ordem cronológica
+  const months = [];
+  let y = startYear;
+  let m = startMonth;
+
+  while (y < endYear || (y === endYear && m <= endMonth)) {
+    const padM = String(m).padStart(2, '0');
+    const mName = MONTH_NAMES[m - 1] || `${m}`;
+    months.push({
+      year: y,
+      month: m,
+      padMonth: padM,
+      monthKey: `${y}-${padM}`,
+      altKey: `${padM}/${y}`,
+      label: `${mName}/${y}`
+    });
+
+    m++;
+    if (m > 12) {
+      m = 1;
+      y++;
+    }
+  }
+
+  return months;
+}
+
 function renderPeriodModal() {
   const yearDisplay = document.getElementById('picker-year-display');
   if (yearDisplay) yearDisplay.textContent = pickerYear;
+
+  const activeEmp = getCurrentEmployee();
+  const nameEl = document.getElementById('picker-emp-name-display');
+  const rangeEl = document.getElementById('picker-emp-period-range');
+  const totalEl = document.getElementById('picker-emp-total-months');
+  const printAllBtn = document.getElementById('btn-print-all-employee-months');
+
+  if (activeEmp) {
+    const periodMonths = getEmployeePeriodMonths(activeEmp);
+    if (nameEl) nameEl.textContent = activeEmp.name || 'Colaborador';
+    if (rangeEl && periodMonths.length > 0) {
+      const first = periodMonths[0];
+      const last = periodMonths[periodMonths.length - 1];
+      rangeEl.textContent = `${first.padMonth}/${first.year} até ${last.padMonth}/${last.year}`;
+    }
+    if (totalEl) totalEl.textContent = `${periodMonths.length} meses`;
+    if (printAllBtn) {
+      printAllBtn.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg> 🖨️ Imprimir todos os meses (${periodMonths.length} págs)`;
+    }
+  }
 
   // Render Quick Year Chips
   const yearsBar = document.getElementById('years-quick-bar');
@@ -1114,7 +1225,6 @@ function renderPeriodModal() {
   if (!grid) return;
 
   grid.innerHTML = '';
-  const activeEmp = getCurrentEmployee();
   const realDate = new Date();
   const realYear = realDate.getFullYear();
   const realMonth = realDate.getMonth() + 1;
@@ -1159,6 +1269,201 @@ function renderPeriodModal() {
     };
     grid.appendChild(btn);
   });
+}
+
+// Geração e Impressão do Histórico COMPLETO de todas as competências do colaborador em UM ÚNICO PDF
+async function printAllMonthsForCurrentEmployee() {
+  const emp = getCurrentEmployee();
+  if (!emp) {
+    showToast('⚠️ Selecione um colaborador para gerar o histórico.');
+    return;
+  }
+
+  // 1. Sincroniza dados atuais da tela
+  syncDomTableToActiveEmployee();
+
+  // 2. Calcula todas as competências trabalhadas (Admissão até Mês Atual ou Desligamento)
+  const periodMonths = getEmployeePeriodMonths(emp);
+  if (!periodMonths || periodMonths.length === 0) {
+    showToast('⚠️ Nenhuma competência encontrada para o período deste colaborador.');
+    return;
+  }
+
+  const totalMonths = periodMonths.length;
+  const firstPeriod = periodMonths[0];
+  const lastPeriod = periodMonths[totalMonths - 1];
+  const yearSuffix = (firstPeriod.year !== lastPeriod.year) ? `${firstPeriod.year}-${lastPeriod.year}` : `${firstPeriod.year}`;
+  const cleanEmpName = (emp.name || 'colaborador').replace(/\s+/g, '_');
+  const pdfFileName = `Historico_Folha_Ponto_${cleanEmpName}_${yearSuffix}`;
+
+  // 3. Abre modal de progresso
+  const progressModal = document.getElementById('modal-history-progress');
+  const statusText = document.getElementById('history-progress-status-text');
+  const barFill = document.getElementById('history-progress-bar-fill');
+  const countLabel = document.getElementById('history-progress-count-label');
+  const percentLabel = document.getElementById('history-progress-percent-label');
+
+  if (progressModal) {
+    progressModal.style.setProperty('display', 'flex', 'important');
+  }
+
+  const updateProgress = (currentIdx, label) => {
+    const percent = Math.round((currentIdx / totalMonths) * 100);
+    if (statusText) statusText.textContent = label;
+    if (barFill) barFill.style.width = `${percent}%`;
+    if (countLabel) countLabel.textContent = `${currentIdx} / ${totalMonths} meses processados`;
+    if (percentLabel) percentLabel.textContent = `${percent}%`;
+  };
+
+  updateProgress(0, `Iniciando consulta histórica (${totalMonths} meses)...`);
+
+  const printContainer = document.getElementById('print-all-container');
+  if (printContainer) {
+    printContainer.innerHTML = '';
+  }
+
+  const jsPDFConstructor = (window.jspdf && window.jspdf.jsPDF) ? window.jspdf.jsPDF : (typeof jsPDF !== 'undefined' ? jsPDF : null);
+  let multiPageDoc = jsPDFConstructor ? new jsPDFConstructor('p', 'mm', 'a4') : null;
+
+  const styleEl = document.createElement('style');
+  styleEl.id = 'timesheet-history-runtime-style';
+  styleEl.textContent = getTimesheetStandaloneCss();
+  document.head.appendChild(styleEl);
+
+  try {
+    for (let i = 0; i < totalMonths; i++) {
+      const p = periodMonths[i];
+      updateProgress(i, `Consultando ${p.label}... (${i + 1}/${totalMonths})`);
+
+      // 4. Busca dados REAIS e isolados daquela competência no Supabase
+      let monthDays = null;
+      let monthSig = null;
+
+      if (window.supabaseService && typeof window.supabaseService.fetchTimesheetForMonth === 'function') {
+        try {
+          const remoteData = await window.supabaseService.fetchTimesheetForMonth(emp.id, p.year, p.month);
+          if (remoteData && remoteData.days && Array.isArray(remoteData.days) && remoteData.days.length > 0) {
+            monthDays = remoteData.days;
+            monthSig = remoteData.signatures || null;
+          }
+        } catch (e) {
+          console.warn(`Aviso ao consultar ${p.label}:`, e);
+        }
+      }
+
+      // Se não houver no banco, verifica cache local ou gera folha padrão em branco
+      if (!monthDays) {
+        if (emp.timesheets && (emp.timesheets[p.monthKey] || emp.timesheets[p.altKey])) {
+          monthDays = emp.timesheets[p.monthKey] || emp.timesheets[p.altKey];
+        } else if (p.year === currentYear && p.month === currentMonth && emp.days && emp.days.length > 0) {
+          monthDays = emp.days;
+        } else {
+          monthDays = generateMonthData(p.year, p.month, emp.id);
+        }
+      }
+
+      if (!monthSig) {
+        monthSig = (emp.signatures && (emp.signatures[p.monthKey] || emp.signatures[p.altKey])) || null;
+      }
+
+      // 5. Monta a página A4 oficial com 100% de precisão para aquele mês
+      const pageEl = buildEmployeePrintPageHtml(emp, i + 1, totalMonths, p.year, p.month, monthDays, monthSig);
+      if (printContainer) {
+        printContainer.appendChild(pageEl.cloneNode(true));
+      }
+
+      // 6. Converte em canvas para o PDF consolidado do Supabase Storage
+      if (typeof html2canvas !== 'undefined' && multiPageDoc) {
+        const offscreenWrapper = document.createElement('div');
+        offscreenWrapper.style.cssText = 'position: fixed; left: 0; top: 0; width: 794px; min-height: 1120px; background: #FFFFFF; z-index: 99999; opacity: 1; box-sizing: border-box; padding: 14px 18px; overflow: hidden; pointer-events: none;';
+        offscreenWrapper.appendChild(pageEl);
+        document.body.appendChild(offscreenWrapper);
+
+        try {
+          const imgs = Array.from(offscreenWrapper.querySelectorAll('img'));
+          await Promise.all(imgs.map(img => {
+            if (img.complete) return Promise.resolve();
+            return new Promise(res => {
+              img.onload = res;
+              img.onerror = res;
+              setTimeout(res, 250);
+            });
+          }));
+
+          const canvas = await html2canvas(offscreenWrapper, {
+            scale: 2,
+            useCORS: true,
+            allowTaint: true,
+            logging: false,
+            backgroundColor: '#FFFFFF',
+            width: 794,
+            windowWidth: 794
+          });
+
+          const imgData = canvas.toDataURL('image/jpeg', 0.98);
+          if (i > 0) {
+            multiPageDoc.addPage('a4', 'p');
+          }
+          multiPageDoc.addImage(imgData, 'JPEG', 0, 0, 210, 297);
+        } catch (canvasErr) {
+          console.warn(`Aviso no canvas do mês ${p.label}:`, canvasErr);
+        } finally {
+          if (offscreenWrapper.parentNode) {
+            offscreenWrapper.parentNode.removeChild(offscreenWrapper);
+          }
+        }
+      }
+
+      // Pequeno delay para liberar a thread e atualizar UI
+      await new Promise(res => setTimeout(res, 30));
+    }
+
+    updateProgress(totalMonths, `✅ Todas as ${totalMonths} competências processadas!`);
+
+    // 7. Envia PDF de Histórico Completo consolidado para o Supabase Storage em segundo plano
+    if (multiPageDoc && window.supabaseService && typeof window.supabaseService.uploadEmployeeHistoryPDF === 'function') {
+      try {
+        const pdfBlob = multiPageDoc.output('blob');
+        window.supabaseService.uploadEmployeeHistoryPDF(emp.id, pdfBlob, emp.name, emp.cpf, firstPeriod.year, lastPeriod.year).then(res => {
+          if (res && res.success) {
+            console.log(`✅ Histórico Completo salvo no Storage:`, res.pdfUrl);
+          }
+        }).catch(e => console.warn('Aviso no upload do histórico consolidado:', e));
+      } catch (e) {}
+    }
+
+    // 8. Fecha modal de progresso após 400ms
+    setTimeout(() => {
+      if (progressModal) progressModal.style.display = 'none';
+      closePeriodModal();
+
+      // 9. Dispara diálogo nativo de impressão com todas as páginas
+      const previousTitle = document.title;
+      document.title = pdfFileName;
+
+      const restoreTitle = () => {
+        document.title = previousTitle;
+        window.removeEventListener('afterprint', restoreTitle);
+      };
+      window.addEventListener('afterprint', restoreTitle);
+
+      showToast(`📚 Histórico completo de ${emp.name} (${totalMonths} páginas) pronto para impressão / PDF!`);
+      setTimeout(() => {
+        window.print();
+        setTimeout(restoreTitle, 4000);
+      }, 350);
+    }, 450);
+
+  } catch (err) {
+    console.error('Erro na geração do histórico completo:', err);
+    if (progressModal) progressModal.style.display = 'none';
+    alert('⚠️ Ocorreu um erro ao gerar o histórico completo: ' + (err.message || err));
+  } finally {
+    const injectedStyle = document.getElementById('timesheet-history-runtime-style');
+    if (injectedStyle && injectedStyle.parentNode) {
+      injectedStyle.parentNode.removeChild(injectedStyle);
+    }
+  }
 }
 
 function jumpToCurrentRealMonth() {
@@ -3078,7 +3383,7 @@ function generateDemonstrativoPDF() {
 }
 
 // Build Print Page HTML for a single employee (Exact Reference: Official Green Envelope Timesheet)
-function buildEmployeePrintPageHtml(emp, pageNum = 1, totalPages = 1) {
+function buildEmployeePrintPageHtml(emp, pageNum = 1, totalPages = 1, customYear = null, customMonth = null, customDays = null, customSig = null) {
   let totalPresencas = 0;
   let totalExtraMins = 0;
   let totalAtrasoMins = 0;
@@ -3086,8 +3391,18 @@ function buildEmployeePrintPageHtml(emp, pageNum = 1, totalPages = 1) {
   let totalFaltas = 0;
   let totalFaltasJustificadas = 0;
 
-  const monthKey = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
-  const empDays = (emp.timesheets && emp.timesheets[monthKey]) || emp.days || generateMonthData(currentYear, currentMonth, emp.id);
+  const targetYear = customYear || currentYear;
+  const targetMonth = customMonth || currentMonth;
+  const monthPad = String(targetMonth).padStart(2, '0');
+  const monthKey = `${targetYear}-${monthPad}`;
+  const altMonthKey = `${targetYear}-${parseInt(targetMonth, 10)}`;
+
+  let empDays = customDays;
+  if (!empDays) {
+    empDays = (emp.timesheets && (emp.timesheets[monthKey] || emp.timesheets[altMonthKey])) 
+      || (targetYear === currentYear && targetMonth === currentMonth ? emp.days : null) 
+      || generateMonthData(targetYear, targetMonth, emp.id);
+  }
 
   if (empDays && Array.isArray(empDays)) {
     empDays.forEach(item => {
@@ -3115,7 +3430,6 @@ function buildEmployeePrintPageHtml(emp, pageNum = 1, totalPages = 1) {
     'Sábado': 'Sáb'
   };
 
-  const monthPad = String(currentMonth).padStart(2, '0');
   let rowsHtml = '';
   if (empDays && Array.isArray(empDays)) {
     empDays.forEach(item => {
@@ -3168,8 +3482,12 @@ function buildEmployeePrintPageHtml(emp, pageNum = 1, totalPages = 1) {
     });
   }
 
-  const sigData = (emp.signatures && emp.signatures[monthKey]) || emp.digitalSignature;
-  const companySigData = (typeof systemSettings !== 'undefined' && systemSettings.autoApplyCompanySig !== false && systemSettings.companySignature) || (emp.signatures && emp.signatures[monthKey]?.companySignature);
+  const sigData = customSig 
+    || (emp.signatures && (emp.signatures[monthKey] || emp.signatures[altMonthKey])) 
+    || (targetYear === currentYear && targetMonth === currentMonth ? emp.digitalSignature : null);
+
+  const companySigData = (typeof systemSettings !== 'undefined' && systemSettings.autoApplyCompanySig !== false && systemSettings.companySignature) 
+    || (emp.signatures && (emp.signatures[monthKey]?.companySignature || emp.signatures[altMonthKey]?.companySignature));
 
   let empSigImg = null;
   if (sigData) {
@@ -3189,22 +3507,22 @@ function buildEmployeePrintPageHtml(emp, pageNum = 1, totalPages = 1) {
 
   const compName = (typeof systemSettings !== 'undefined' && systemSettings.companyName) ? systemSettings.companyName : 'LANE RO COMUNICAÇÕES LTDA';
   const compCnpj = (typeof systemSettings !== 'undefined' && systemSettings.companyCnpj) ? systemSettings.companyCnpj : '43.557.034/0001-94';
-  const monthNameUpper = (MONTH_NAMES[currentMonth - 1] || `${currentMonth}`).toUpperCase();
+  const monthNameUpper = (MONTH_NAMES[targetMonth - 1] || `${targetMonth}`).toUpperCase();
 
-  const lastDay = new Date(currentYear, currentMonth, 0).getDate();
-  const closingDateFormatted = (sigData && typeof sigData === 'object' && sigData.date) ? sigData.date : `${String(lastDay).padStart(2, '0')} / ${String(currentMonth).padStart(2, '0')} / ${currentYear}`;
+  const lastDay = new Date(targetYear, targetMonth, 0).getDate();
+  const closingDateFormatted = (sigData && typeof sigData === 'object' && sigData.date) ? sigData.date : `${String(lastDay).padStart(2, '0')} / ${monthPad} / ${targetYear}`;
 
   const now = new Date();
   const nowFormatted = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
 
   const page = document.createElement('div');
   page.className = 'print-page';
-  page.style.cssText = 'box-sizing: border-box; padding: 0; margin: 0 auto; width: 100%; max-width: 100%; background: #FFFFFF; color: #000000; display: flex; flex-direction: column; justify-content: flex-start; font-size: 7.5pt; line-height: 1.2; font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;';
+  page.style.cssText = 'box-sizing: border-box; padding: 0; margin: 0 auto; width: 100%; max-width: 100%; background: #FFFFFF; color: #000000; display: flex; flex-direction: column; justify-content: flex-start; font-size: 7.5pt; line-height: 1.2; font-family: Arial, "Helvetica Neue", Helvetica, sans-serif; page-break-after: always; break-after: page;';
 
   page.innerHTML = `
     <!-- Top Centered Document Title -->
     <div class="print-doc-title" style="font-size: 13.5pt; font-weight: 800; color: #006633; text-align: center; margin: 0 0 2mm 0; letter-spacing: 0.8px; text-transform: uppercase; font-family: Arial, sans-serif;">
-      FOLHA DE PONTO ( ${monthNameUpper} / ${currentYear} )
+      FOLHA DE PONTO ( ${monthNameUpper} / ${targetYear} )
     </div>
 
     <!-- Main Outer Envelope Container (Green Border) -->
@@ -3223,8 +3541,6 @@ function buildEmployeePrintPageHtml(emp, pageNum = 1, totalPages = 1) {
         <div class="print-comp-right" style="text-align: right;">
           <span class="print-comp-code" style="font-size: 9pt; font-weight: 800; color: #000000;">${emp.code || '300'}</span>
         </div>
-      </div>
-
       <!-- 2. Header: Funcionário & Horário -->
       <div class="print-emp-header" style="display: grid; grid-template-columns: 32% 68%; box-sizing: border-box; border-bottom: 1.2px solid #006633;">
         <div class="print-emp-col-left" style="border-right: 1.2px solid #006633; padding: 2.5mm 3.5mm; display: flex; flex-direction: column; justify-content: space-between; min-height: 25mm; box-sizing: border-box;">

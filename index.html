@@ -733,9 +733,9 @@
     </div>
   </div>
 
-  <!-- Modal Seletor de Período (Mês e Ano) -->
+  <!-- Modal Seletor de Período (Mês e Ano) & Histórico Completo -->
   <div id="modal-period-picker" class="modal-backdrop" style="display: none;">
-    <div class="modal-dialog" style="max-width: 480px;">
+    <div class="modal-dialog" style="max-width: 520px;">
       <div class="modal-header">
         <div style="display: flex; align-items: center; gap: 10px;">
           <div style="width: 38px; height: 38px; border-radius: 8px; background: #ECFDF5; border: 1px solid #A7F3D0; color: #065F46; display: flex; align-items: center; justify-content: center; font-size: 1.25rem;">
@@ -749,7 +749,23 @@
         <button class="modal-close-btn" onclick="closePeriodModal()" title="Fechar">✕</button>
       </div>
 
-      <div class="modal-body" style="padding: 18px 22px; display: flex; flex-direction: column; gap: 14px;">
+      <div class="modal-body" style="padding: 16px 20px; display: flex; flex-direction: column; gap: 12px;">
+        <!-- Employee Period Summary & Action Box -->
+        <div id="picker-history-summary-box" style="background: #F0FDF4; border: 1.5px solid #BBF7D0; border-radius: 10px; padding: 12px 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;">
+          <div style="display: flex; flex-direction: column; gap: 2px;">
+            <div style="font-size: 0.82rem; color: #166534; font-weight: 800;">
+              👤 <span id="picker-emp-name-display">Colaborador</span>
+            </div>
+            <div style="font-size: 0.76rem; color: #15803D;">
+              📅 Período: <span id="picker-emp-period-range">01/2024 até 09/2026</span> • <strong id="picker-emp-total-months">27 meses</strong> de histórico
+            </div>
+          </div>
+          <button type="button" id="btn-print-all-employee-months" onclick="printAllMonthsForCurrentEmployee()" style="background: #065F46; color: #FFFFFF; border: none; border-radius: 8px; padding: 8px 14px; font-size: 0.82rem; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 4px rgba(6, 95, 70, 0.2); transition: all 0.2s;" title="Gerar e imprimir todas as competências deste colaborador em um único PDF">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+            🖨️ Imprimir todos os meses
+          </button>
+        </div>
+
         <!-- Year Switcher Row -->
         <div style="display: flex; align-items: center; justify-content: space-between; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 6px 14px;">
           <button type="button" class="btn-month-nav" onclick="changePickerYear(-1)" title="Ano Anterior">◀</button>
@@ -774,6 +790,33 @@
           Mês Atual (Hoje)
         </button>
         <button type="button" class="btn-secondary" onclick="closePeriodModal()">Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de Progresso: Geração do Histórico Completo em PDF -->
+  <div id="modal-history-progress" class="modal-backdrop" style="display: none; z-index: 10070; align-items: center; justify-content: center;">
+    <div style="background: #FFFFFF; border-radius: 16px; max-width: 440px; width: 92vw; padding: 24px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4); text-align: center; border: 1px solid #E2E8F0;">
+      <div style="width: 54px; height: 54px; border-radius: 50%; background: #ECFDF5; color: #059669; font-size: 1.6rem; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px;">
+        📚
+      </div>
+      <h3 style="font-size: 1.15rem; font-weight: 800; color: #0F172A; margin: 0 0 6px;">Gerando Histórico Completo</h3>
+      <p id="history-progress-status-text" style="font-size: 0.84rem; color: #64748B; margin: 0 0 16px;">
+        Identificando competências trabalhadas...
+      </p>
+
+      <!-- Progress Bar -->
+      <div style="width: 100%; height: 10px; background: #E2E8F0; border-radius: 999px; overflow: hidden; margin-bottom: 12px;">
+        <div id="history-progress-bar-fill" style="width: 0%; height: 100%; background: linear-gradient(90deg, #059669, #10B981); transition: width 0.25s ease; border-radius: 999px;"></div>
+      </div>
+
+      <div style="display: flex; justify-content: space-between; font-size: 0.76rem; color: #64748B; font-weight: 600; margin-bottom: 18px;">
+        <span id="history-progress-count-label">0 / 0 meses</span>
+        <span id="history-progress-percent-label">0%</span>
+      </div>
+
+      <div style="font-size: 0.75rem; color: #64748B; background: #F8FAFC; padding: 8px 12px; border-radius: 8px; border: 1px solid #E2E8F0; text-align: left; line-height: 1.4;">
+        🔒 Cada competência é consultada individualmente e renderizada em 1 página A4 oficial com fidelidade exata.
       </div>
     </div>
   </div>
@@ -1163,8 +1206,8 @@
 
   <!-- Supabase JS Client & Config -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase-config.js?v=20260913_v25"></script>
+  <script src="supabase-config.js?v=20260913_v26"></script>
 
-  <script src="app.js?v=20260913_v25"></script>
+  <script src="app.js?v=20260913_v26"></script>
 </body>
 </html>

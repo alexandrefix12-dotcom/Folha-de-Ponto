@@ -814,6 +814,137 @@ function getTimesheetPDFUrl(pdfPath) {
   return pdfPath;
 }
 
+// 14. Buscar folha de ponto de uma competência específica sem alterar estado global da tela
+async function fetchTimesheetForEmployeeMonth(empId, year, month) {
+  const client = getSupabaseClient();
+  if (!client || !empId) return null;
+
+  try {
+    const cleanId = String(empId).trim();
+    const padMonth = String(month).padStart(2, '0');
+    const numMonth = String(parseInt(month, 10));
+
+    const possibleKeys = [
+      `${year}-${padMonth}`,
+      `${padMonth}/${year}`,
+      `${numMonth}/${year}`,
+      `${padMonth}-${year}`
+    ];
+
+    const orFilter = possibleKeys.map(k => `mes_ano.eq.${k}`).join(',');
+
+    const { data: fp, error } = await client
+      .from('folha_pontos')
+      .select('id, mes_ano, registros, assinaturas, pdf_path, total_horas, total_extras, total_atrasos, total_faltas')
+      .eq('funcionario_id', cleanId)
+      .or(orFilter)
+      .maybeSingle();
+
+    if (error) {
+      console.warn(`Aviso ao buscar folha ${padMonth}/${year}:`, error.message);
+      return null;
+    }
+
+    if (!fp || !fp.registros) return null;
+
+    let parsedDays = [];
+    if (typeof fp.registros === 'string') {
+      try { parsedDays = JSON.parse(fp.registros); } catch (e) {}
+    } else if (Array.isArray(fp.registros)) {
+      parsedDays = fp.registros;
+    }
+
+    let parsedSigs = {};
+    if (fp.assinaturas) {
+      if (typeof fp.assinaturas === 'string') {
+        try { parsedSigs = JSON.parse(fp.assinaturas); } catch (e) {}
+      } else if (typeof fp.assinaturas === 'object') {
+        parsedSigs = fp.assinaturas;
+      }
+    }
+
+    return {
+      mes_ano: fp.mes_ano,
+      days: parsedDays,
+      signatures: parsedSigs,
+      pdfPath: fp.pdf_path || null
+    };
+  } catch (err) {
+    console.warn(`Erro ao buscar competência ${month}/${year}:`, err);
+    return null;
+  }
+}
+
+// 15. Upload do PDF de Histórico Completo consolidado para o Supabase Storage
+async function uploadEmployeeHistoryPDFToSupabase(empId, pdfBlobOrBase64, empName = '', cpf = '', startYear = '', endYear = '') {
+  const client = getSupabaseClient();
+  if (!client || !empId || !pdfBlobOrBase64) return null;
+
+  try {
+    const cleanId = String(empId).trim();
+    
+    // Nome limpo para a pasta no Storage (ex: "ALEXANDRE_GABRIEL_SANTOS_DA_SILVA")
+    let folderName = cleanId;
+    if (empName && empName.trim()) {
+      folderName = empName.trim()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-zA-Z0-9_-]/g, '_')
+        .replace(/_+/g, '_')
+        .toUpperCase();
+    } else if (cpf && String(cpf).replace(/\D/g, '')) {
+      folderName = String(cpf).replace(/\D/g, '');
+    }
+
+    const yearSuffix = (startYear && endYear && String(startYear) !== String(endYear))
+      ? `${startYear}-${endYear}`
+      : (startYear || endYear || new Date().getFullYear());
+
+    const storagePath = `${folderName}/HISTORICO_COMPLETO_${yearSuffix}.pdf`;
+    
+    let fileBody = pdfBlobOrBase64;
+    if (typeof pdfBlobOrBase64 === 'string' && pdfBlobOrBase64.startsWith('data:application/pdf;base64,')) {
+      const byteCharacters = atob(pdfBlobOrBase64.split(',')[1]);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      fileBody = new Blob([byteArray], { type: 'application/pdf' });
+    }
+
+    console.log(`📄 Enviando Histórico Completo para o Supabase Storage: folhas-ponto/${storagePath}`);
+
+    const { data: uploadData, error: uploadError } = await client.storage
+      .from('folhas-ponto')
+      .upload(storagePath, fileBody, {
+        contentType: 'application/pdf',
+        upsert: true
+      });
+
+    if (uploadError) {
+      console.warn('Aviso no upload do Histórico Completo ao Storage:', uploadError.message);
+    }
+
+    const { data: publicUrlData } = client.storage
+      .from('folhas-ponto')
+      .getPublicUrl(storagePath);
+
+    const pdfUrl = publicUrlData?.publicUrl || `https://zbrxfmqqoepcbclqhsze.supabase.co/storage/v1/object/public/folhas-ponto/${storagePath}`;
+
+    console.log('✅ Histórico Completo registrado no Storage:', pdfUrl);
+
+    return {
+      success: true,
+      storagePath: storagePath,
+      pdfUrl: pdfUrl
+    };
+  } catch (err) {
+    console.error('Exceção ao fazer upload do Histórico Completo no Supabase:', err);
+    return null;
+  }
+}
+
 // Exportar globalmente
 window.supabaseService = {
   config: SUPABASE_CONFIG,
@@ -834,6 +965,8 @@ window.supabaseService = {
   deleteCompanySignature: deleteCompanySignatureFromSupabase,
   excluirFuncionario: excluirFuncionarioNoSupabase,
   uploadTimesheetPDF: uploadTimesheetPDFToSupabase,
+  uploadEmployeeHistoryPDF: uploadEmployeeHistoryPDFToSupabase,
+  fetchTimesheetForMonth: fetchTimesheetForEmployeeMonth,
   getTimesheetPDFUrl: getTimesheetPDFUrl
 };
 
