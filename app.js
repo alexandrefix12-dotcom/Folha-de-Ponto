@@ -995,19 +995,6 @@ function selectEmployee(empIdOrName, navigateToTimesheet = false) {
       emp.timesheets[monthKey] = JSON.parse(JSON.stringify(emp.days));
       saveEmployeesToLocalStorage();
     }
-  } else if (emp.statusCategory === 'ferias' && emp.days && Array.isArray(emp.days)) {
-    const hasWrongStatus = emp.days.some(d => d.status !== 'ferias');
-    if (hasWrongStatus) {
-      emp.days.forEach(item => {
-        item.status = 'ferias';
-        item.statusLabel = 'Férias Regulamentares';
-        item.just = 'Férias Regulamentares';
-        item.e1 = ''; item.s1 = ''; item.e2 = ''; item.s2 = '';
-        item.signed = true;
-      });
-      emp.timesheets[monthKey] = JSON.parse(JSON.stringify(emp.days));
-      saveEmployeesToLocalStorage();
-    }
   }
 
   // 1. Update Header tab text
@@ -2272,20 +2259,13 @@ function changeDayStatus(index, newStatus) {
 
   if (newStatus === 'ferias') {
     const monthName = MONTH_NAMES[currentMonth - 1] || `Mês ${currentMonth}`;
-    const confirmed = window.confirm(`Deseja alterar TODO o mês de ${monthName}/${currentYear} para FÉRIAS para o colaborador "${emp.name}"?\n\nAo confirmar, todos os dias deste mês serão definidos como Férias Regulamentares.`);
+    const confirmed = window.confirm(`Deseja alterar todos os dias do mês de ${monthName}/${currentYear} para FÉRIAS para o colaborador "${emp.name}"?\n\nAo confirmar, todos os dias APENAS deste mês selecionado serão definidos como Férias Regulamentares.`);
     if (!confirmed) {
       renderTimesheetTable();
       return;
     }
 
-    // Definir metadados de férias do colaborador
-    emp.statusCategory = 'ferias';
-    emp.statusTag = 'Em Férias';
-    emp.statusTagClass = 'blue';
-    emp.statusPillLabel = '🌴 Em Férias';
-    emp.statusPillClass = 'ferias';
-
-    // Aplicar férias em todos os dias do mês atual
+    // Aplicar férias APENAS nos dias deste mês selecionado
     emp.days.forEach(dayItem => {
       dayItem.status = 'ferias';
       dayItem.statusLabel = 'Férias Regulamentares';
@@ -2313,8 +2293,7 @@ function changeDayStatus(index, newStatus) {
     renderTimesheetTable();
     recalculateAllTimes();
     renderEmployeesAdminTable();
-    updateSidebarBadges(false, true);
-    showToast(`🌴 Todo o mês de ${monthName}/${currentYear} foi alterado para Férias para ${emp.name}!`);
+    showToast(`🌴 O mês de ${monthName}/${currentYear} foi alterado para Férias para ${emp.name}!`);
     return;
   }
 
