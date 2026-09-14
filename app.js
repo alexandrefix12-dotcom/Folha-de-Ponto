@@ -3360,7 +3360,332 @@ function generateAllEmployeesPrintView() {
   });
 }
 
-// Geração de Blob PDF individual via html2pdf com layout oficial
+// CSS Embutido com 100% de fidelidade visual para renderização de PDF (html2canvas / html2pdf)
+function getTimesheetStandaloneCss() {
+  return `
+    .print-page {
+      box-sizing: border-box !important;
+      padding: 0 !important;
+      margin: 0 auto !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      background: #FFFFFF !important;
+      color: #000000 !important;
+      display: flex !important;
+      flex-direction: column !important;
+      justify-content: flex-start !important;
+      font-size: 7.5pt !important;
+      line-height: 1.2 !important;
+      font-family: Arial, "Helvetica Neue", Helvetica, sans-serif !important;
+    }
+    .print-doc-title {
+      font-size: 13.5pt !important;
+      font-weight: 800 !important;
+      color: #006633 !important;
+      text-align: center !important;
+      margin: 0 0 2mm 0 !important;
+      letter-spacing: 0.8px !important;
+      text-transform: uppercase !important;
+    }
+    .print-doc-envelope {
+      border: 1.5px solid #006633 !important;
+      box-sizing: border-box !important;
+      width: 100% !important;
+      background: #FFFFFF !important;
+    }
+    .print-comp-header {
+      display: flex !important;
+      justify-content: space-between !important;
+      align-items: flex-start !important;
+      padding: 2.2mm 3.5mm !important;
+      border-bottom: 1.2px solid #006633 !important;
+    }
+    .print-comp-left {
+      display: flex !important;
+      flex-direction: column !important;
+      gap: 0.8mm !important;
+      font-size: 7.2pt !important;
+      line-height: 1.2 !important;
+    }
+    .print-comp-name {
+      font-weight: 800 !important;
+      font-size: 8.5pt !important;
+      color: #000000 !important;
+    }
+    .print-comp-addr-row {
+      display: flex !important;
+      gap: 25mm !important;
+      font-size: 7.2pt !important;
+      color: #000000 !important;
+    }
+    .print-comp-addr-mid {
+      margin-left: 5mm !important;
+    }
+    .print-comp-cnpj {
+      font-size: 7.2pt !important;
+      color: #000000 !important;
+    }
+    .print-comp-right {
+      text-align: right !important;
+    }
+    .print-comp-code {
+      font-size: 9pt !important;
+      font-weight: 800 !important;
+      color: #000000 !important;
+    }
+    .print-emp-header {
+      display: grid !important;
+      grid-template-columns: 32% 68% !important;
+      box-sizing: border-box !important;
+      border-bottom: 1.2px solid #006633 !important;
+    }
+    .print-emp-col-left {
+      border-right: 1.2px solid #006633 !important;
+      padding: 2.5mm 3.5mm !important;
+      display: flex !important;
+      flex-direction: column !important;
+      justify-content: space-between !important;
+      min-height: 25mm !important;
+      box-sizing: border-box !important;
+    }
+    .print-emp-name {
+      font-size: 8.5pt !important;
+      font-weight: 800 !important;
+      color: #000000 !important;
+      line-height: 1.2 !important;
+    }
+    .print-emp-sig-slot {
+      margin-top: 1mm !important;
+      height: 14mm !important;
+      display: flex !important;
+      align-items: flex-end !important;
+    }
+    .print-emp-header-sig-img {
+      max-height: 13mm !important;
+      max-width: 55mm !important;
+      object-fit: contain !important;
+      background: transparent !important;
+    }
+    .print-emp-sig-blank {
+      height: 12mm !important;
+    }
+    .print-emp-col-right {
+      padding: 2mm 3.5mm !important;
+      font-size: 7.2pt !important;
+      display: flex !important;
+      flex-direction: column !important;
+      justify-content: space-between !important;
+      box-sizing: border-box !important;
+    }
+    .print-emp-meta-row {
+      display: flex !important;
+      justify-content: space-between !important;
+      align-items: center !important;
+      font-size: 7.2pt !important;
+      border-bottom: 0.5px solid #CBD5E1 !important;
+      padding-bottom: 1.2mm !important;
+      margin-bottom: 1.2mm !important;
+      color: #000000 !important;
+    }
+    .print-emp-meta-row span {
+      white-space: nowrap !important;
+    }
+    .print-emp-mat {
+      font-weight: 800 !important;
+      font-size: 7.5pt !important;
+    }
+    .print-schedule-box {
+      display: flex !important;
+      gap: 4mm !important;
+      font-size: 6.6pt !important;
+      line-height: 1.3 !important;
+      color: #000000 !important;
+    }
+    .print-sched-title {
+      font-weight: 800 !important;
+      white-space: nowrap !important;
+    }
+    .print-sched-list {
+      flex: 1 !important;
+      display: flex !important;
+      flex-direction: column !important;
+      gap: 0.2mm !important;
+    }
+    .print-sched-row {
+      display: flex !important;
+      gap: 1.5mm !important;
+      white-space: nowrap !important;
+    }
+    .print-sched-row .sched-day {
+      width: 22mm !important;
+      display: inline-block !important;
+      font-weight: 600 !important;
+    }
+    .print-table {
+      width: 100% !important;
+      border-collapse: collapse !important;
+      border-left: none !important;
+      border-right: none !important;
+      border-top: none !important;
+      border-bottom: 1.2px solid #006633 !important;
+      margin: 0 !important;
+      font-size: 7.5pt !important;
+      table-layout: fixed !important;
+      box-sizing: border-box !important;
+    }
+    .print-table th {
+      background-color: #FFFFFF !important;
+      color: #000000 !important;
+      font-weight: 800 !important;
+      border: 1px solid #006633 !important;
+      padding: 1.6mm 1mm !important;
+      text-align: center !important;
+      font-size: 7.8pt !important;
+      letter-spacing: 0.3px !important;
+    }
+    .print-table th:first-child { border-left: none !important; }
+    .print-table th:last-child { border-right: none !important; }
+    .print-table td {
+      border: 1px solid #006633 !important;
+      padding: 0 1mm !important;
+      text-align: center !important;
+      line-height: 5.4mm !important;
+      height: 5.4mm !important;
+      color: #000000 !important;
+      box-sizing: border-box !important;
+    }
+    .print-table td:first-child { border-left: none !important; }
+    .print-table td:last-child { border-right: none !important; }
+    .print-table .col-dia {
+      text-align: left !important;
+      padding-left: 2mm !important;
+      font-size: 7.5pt !important;
+      white-space: nowrap !important;
+    }
+    .print-table tr.print-row-dom .col-dia strong {
+      font-weight: 800 !important;
+    }
+    .print-table .col-ent,
+    .print-table .col-sai,
+    .print-table .col-int,
+    .print-table .col-ext {
+      font-size: 7.5pt !important;
+      font-family: Arial, sans-serif !important;
+      text-align: center !important;
+    }
+    .print-table .col-ass {
+      font-size: 7.2pt !important;
+      text-align: center !important;
+    }
+    .print-bottom-container {
+      border: none !important;
+      display: grid !important;
+      grid-template-columns: 66% 34% !important;
+      box-sizing: border-box !important;
+      width: 100% !important;
+    }
+    .print-resumo-box {
+      border-right: 1.2px solid #006633 !important;
+      display: flex !important;
+      flex-direction: column !important;
+    }
+    .print-resumo-header {
+      background-color: #FFFFFF !important;
+      color: #000000 !important;
+      font-weight: 800 !important;
+      font-size: 8.5pt !important;
+      text-align: center !important;
+      padding: 1.8mm !important;
+      border-bottom: 1.2px solid #006633 !important;
+      letter-spacing: 0.5px !important;
+    }
+    .print-resumo-grid {
+      display: grid !important;
+      grid-template-columns: 1fr 1fr !important;
+      gap: 3mm !important;
+      padding: 2.2mm 3.5mm !important;
+      font-size: 7.0pt !important;
+      line-height: 1.4 !important;
+    }
+    .resumo-subcol {
+      display: flex !important;
+      flex-direction: column !important;
+      gap: 1.2mm !important;
+    }
+    .resumo-item {
+      display: flex !important;
+      align-items: center !important;
+      justify-content: space-between !important;
+    }
+    .resumo-item span:first-child {
+      white-space: nowrap !important;
+      color: #000000 !important;
+    }
+    .resumo-item .colon {
+      margin: 0 1.5mm !important;
+    }
+    .resumo-line-val {
+      flex: 1 !important;
+      border-bottom: 1px solid #000000 !important;
+      height: 4.8mm !important;
+      text-align: center !important;
+      font-size: 7.0pt !important;
+      color: #000000 !important;
+      font-weight: 700 !important;
+    }
+    .print-sigs-box {
+      display: flex !important;
+      flex-direction: column !important;
+      justify-content: space-between !important;
+      padding: 2.2mm 4mm !important;
+      box-sizing: border-box !important;
+    }
+    .print-date-row {
+      font-size: 7.5pt !important;
+      text-align: left !important;
+      margin-bottom: 1.5mm !important;
+      color: #000000 !important;
+    }
+    .print-sig-field {
+      display: flex !important;
+      flex-direction: column !important;
+      align-items: center !important;
+      text-align: center !important;
+      margin-top: 1mm !important;
+    }
+    .print-sig-preview-space {
+      min-height: 8mm !important;
+      max-height: 10mm !important;
+      display: flex !important;
+      align-items: flex-end !important;
+      justify-content: center !important;
+      margin-bottom: -1px !important;
+    }
+    .print-footer-sig-img {
+      max-height: 9.5mm !important;
+      max-width: 45mm !important;
+      object-fit: contain !important;
+      background: transparent !important;
+    }
+    .print-sig-line {
+      width: 95% !important;
+      border-top: 1px solid #000000 !important;
+      margin: 0.8mm 0 !important;
+    }
+    .print-sig-caption {
+      font-size: 7.2pt !important;
+      color: #000000 !important;
+    }
+    .print-micro-footer {
+      font-size: 6.8pt !important;
+      color: #000000 !important;
+      padding: 1.5mm 2mm !important;
+      text-align: left !important;
+    }
+  `;
+}
+
+// Geração de Blob PDF individual via html2pdf com layout oficial e CSS embutido
 async function generateEmployeePdfBlob(emp, monthKey) {
   if (typeof html2pdf === 'undefined') {
     console.warn('Biblioteca html2pdf não disponível.');
@@ -3369,14 +3694,12 @@ async function generateEmployeePdfBlob(emp, monthKey) {
 
   const page = buildEmployeePrintPageHtml(emp, 1, 1);
   const wrapper = document.createElement('div');
-  wrapper.className = 'pdf-render-standalone';
-  wrapper.style.position = 'fixed';
-  wrapper.style.left = '-9999px';
-  wrapper.style.top = '0';
-  wrapper.style.width = '210mm';
-  wrapper.style.boxSizing = 'border-box';
-  wrapper.style.padding = '4mm 6mm';
-  wrapper.style.background = '#ffffff';
+  wrapper.id = 'pdf-render-offscreen';
+  wrapper.style.cssText = 'position: absolute; left: 0; top: 0; width: 794px; min-height: 1120px; background: #FFFFFF; z-index: -9999; box-sizing: border-box; padding: 12px 18px; overflow: hidden; pointer-events: none;';
+
+  const styleEl = document.createElement('style');
+  styleEl.textContent = getTimesheetStandaloneCss();
+  wrapper.appendChild(styleEl);
   wrapper.appendChild(page);
   document.body.appendChild(wrapper);
 
@@ -3392,7 +3715,8 @@ async function generateEmployeePdfBlob(emp, monthKey) {
         letterRendering: true, 
         logging: false,
         backgroundColor: '#FFFFFF',
-        width: 794
+        width: 794,
+        windowWidth: 794
       },
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
