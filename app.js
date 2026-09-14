@@ -103,7 +103,16 @@ function generateMonthData(year, month, empId = '') {
         day, dow,
         e1: '', s1: '', e2: '', s2: '',
         status: 'dsr',
-        statusLabel: 'D.S.R.',
+        statusLabel: 'DSR / Folga',
+        just: '',
+        signed: true
+      });
+    } else if (isSaturday) {
+      list.push({
+        day, dow,
+        e1: '08:00', s1: '12:00', e2: '', s2: '',
+        status: 'meio_periodo',
+        statusLabel: 'Meio Período (08h às 12h)',
         just: '',
         signed: true
       });
@@ -1690,11 +1699,22 @@ function renderTimesheetTable() {
   const monthKey = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
 
   emp.days.forEach((item, index) => {
+    // Sábado padrão da empresa: Meio Período das 08h às 12h
+    if (item.dow === 'Sábado' && (!item.status || item.status === 'empty' || item.status === 'none') && !item.e1) {
+      item.status = 'meio_periodo';
+      item.e1 = '08:00';
+      item.s1 = '12:00';
+      item.e2 = '';
+      item.s2 = '';
+      item.signed = true;
+    }
+
     const tr = document.createElement('tr');
 
     // Row classes
     if (item.status === 'dsr') tr.className = 'weekend-row';
     else if (item.status === 'feriado') tr.className = 'holiday-row';
+    else if (item.status === 'meio_periodo') tr.className = 'meio-periodo-row';
     else if (item.status === 'falta' || item.status === 'demitido' || item.status === 'desligado') tr.className = 'absence-row';
     else if (item.status === 'atestado' || item.status === 'afastado') tr.className = 'atestado-row';
     else if (item.status === 'justificada') tr.className = 'justificada-row';
@@ -3407,10 +3427,17 @@ function buildEmployeePrintPageHtml(emp, pageNum = 1, totalPages = 1, customYear
       let saiDisplay = item.s2 || item.s1 || '';
       let extDisplay = 'à';
       let rubricaDisplay = '';
-      let rowBgStyle = '';
-      let rowExtraClass = '';
+      let st = item.status;
+      if (!st || st === 'empty' || st === 'none') {
+        if (isSunday) st = 'dsr';
+        else if (isSaturday) st = 'meio_periodo';
+        else st = 'presenca';
+      }
 
-      const st = item.status || (isSunday ? 'dsr' : 'presenca');
+      // Regra da empresa: Sábado é sempre Meio Período (08h às 12h) a menos que tenha status específico de ausência
+      if (isSaturday && st !== 'falta' && st !== 'ferias' && st !== 'feriado' && st !== 'atestado' && st !== 'afastado' && st !== 'dsr' && st !== 'justificada' && st !== 'demitido' && st !== 'desligado') {
+        st = 'meio_periodo';
+      }
 
       if (st === 'falta') {
         entDisplay = '<strong style="color: #B91C1C; font-weight: 800; font-size: 7.2pt;">FALTA</strong>';
@@ -3468,9 +3495,9 @@ function buildEmployeePrintPageHtml(emp, pageNum = 1, totalPages = 1, customYear
         rubricaDisplay = '';
         rowBgStyle = 'background-color: #F1F5F9;';
         rowExtraClass = 'print-row-desligado';
-      } else if (st === 'meio_periodo') {
+      } else if (st === 'meio_periodo' || isSaturday) {
         entDisplay = item.e1 || '08:00';
-        intDisplay = item.s1 ? `${item.s1} à` : '12:00 à';
+        intDisplay = (item.s1 || '12:00') + ' à';
         saiDisplay = item.s2 || item.s1 || '12:00';
         extDisplay = '00:00';
         if (item.signed !== false) rubricaDisplay = emp.initials || '';
@@ -3599,12 +3626,12 @@ function buildEmployeePrintPageHtml(emp, pageNum = 1, totalPages = 1, customYear
           <div class="print-schedule-box" style="display: flex; gap: 4mm; font-size: 6.6pt; line-height: 1.3; color: #000000;">
             <span class="print-sched-title" style="font-weight: 800; white-space: nowrap;">HORÁRIO</span>
             <div class="print-sched-list" style="flex: 1; display: flex; flex-direction: column; gap: 0.2mm;">
-              <div class="print-sched-row" style="display: flex; gap: 1.5mm; white-space: nowrap;"><span class="sched-day" style="width: 22mm; display: inline-block; font-weight: 600;">Segunda-Feira</span><span class="sched-times">ENT.: 06:00 - INT.: 12:00 a 14:00 - SAI.: 18:00</span></div>
-              <div class="print-sched-row" style="display: flex; gap: 1.5mm; white-space: nowrap;"><span class="sched-day" style="width: 22mm; display: inline-block; font-weight: 600;">Terça-Feira</span><span class="sched-times">ENT.: 06:00 - INT.: 12:00 a 14:00 - SAI.: 18:00</span></div>
-              <div class="print-sched-row" style="display: flex; gap: 1.5mm; white-space: nowrap;"><span class="sched-day" style="width: 22mm; display: inline-block; font-weight: 600;">Quarta-Feira</span><span class="sched-times">ENT.: 06:00 - INT.: 12:00 a 14:00 - SAI.: 18:00</span></div>
-              <div class="print-sched-row" style="display: flex; gap: 1.5mm; white-space: nowrap;"><span class="sched-day" style="width: 22mm; display: inline-block; font-weight: 600;">Quinta-Feira</span><span class="sched-times">ENT.: 06:00 - INT.: 12:00 a 14:00 - SAI.: 18:00</span></div>
-              <div class="print-sched-row" style="display: flex; gap: 1.5mm; white-space: nowrap;"><span class="sched-day" style="width: 22mm; display: inline-block; font-weight: 600;">Sexta-Feira</span><span class="sched-times">ENT.: 06:00 - INT.: 12:00 a 14:00 - SAI.: 18:00</span></div>
-              <div class="print-sched-row" style="display: flex; gap: 1.5mm; white-space: nowrap;"><span class="sched-day" style="width: 22mm; display: inline-block; font-weight: 600;">Sábado</span><span class="sched-times">ENT.: 06:00 - INT.: 12:00 a &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- SAI.: -</span></div>
+              <div class="print-sched-row" style="display: flex; gap: 1.5mm; white-space: nowrap;"><span class="sched-day" style="width: 22mm; display: inline-block; font-weight: 600;">Segunda-Feira</span><span class="sched-times">ENT.: 08:00 - INT.: 12:00 a 14:00 - SAI.: 18:00</span></div>
+              <div class="print-sched-row" style="display: flex; gap: 1.5mm; white-space: nowrap;"><span class="sched-day" style="width: 22mm; display: inline-block; font-weight: 600;">Terça-Feira</span><span class="sched-times">ENT.: 08:00 - INT.: 12:00 a 14:00 - SAI.: 18:00</span></div>
+              <div class="print-sched-row" style="display: flex; gap: 1.5mm; white-space: nowrap;"><span class="sched-day" style="width: 22mm; display: inline-block; font-weight: 600;">Quarta-Feira</span><span class="sched-times">ENT.: 08:00 - INT.: 12:00 a 14:00 - SAI.: 18:00</span></div>
+              <div class="print-sched-row" style="display: flex; gap: 1.5mm; white-space: nowrap;"><span class="sched-day" style="width: 22mm; display: inline-block; font-weight: 600;">Quinta-Feira</span><span class="sched-times">ENT.: 08:00 - INT.: 12:00 a 14:00 - SAI.: 18:00</span></div>
+              <div class="print-sched-row" style="display: flex; gap: 1.5mm; white-space: nowrap;"><span class="sched-day" style="width: 22mm; display: inline-block; font-weight: 600;">Sexta-Feira</span><span class="sched-times">ENT.: 08:00 - INT.: 12:00 a 14:00 - SAI.: 18:00</span></div>
+              <div class="print-sched-row" style="display: flex; gap: 1.5mm; white-space: nowrap;"><span class="sched-day" style="width: 22mm; display: inline-block; font-weight: 600;">Sábado</span><span class="sched-times">ENT.: 08:00 - INT.: 12:00 a &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- SAI.: 12:00</span></div>
             </div>
           </div>
         </div>
