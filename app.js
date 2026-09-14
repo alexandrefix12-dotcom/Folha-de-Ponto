@@ -2516,24 +2516,39 @@ async function saveTimesheetData() {
   // 4. Salvar no localStorage de imediato (Permanência garantida no F5)
   saveEmployeesToLocalStorage();
 
-  // 5. Save to Supabase database if connected
-  if (window.supabaseService && window.supabaseService.isConfigured() && typeof window.supabaseService.saveFullTimesheet === 'function') {
+  // 5. Save to Supabase database and upload monthly PDF to Storage if connected
+  let pdfUploaded = false;
+  if (window.supabaseService && window.supabaseService.isConfigured()) {
     try {
-      await window.supabaseService.saveFullTimesheet(emp.id, monthKey, emp.days);
+      if (typeof window.supabaseService.saveFullTimesheet === 'function') {
+        await window.supabaseService.saveFullTimesheet(emp.id, monthKey, emp.days);
+      }
+      if (typeof saveAndUploadSingleEmployeePDF === 'function') {
+        if (btn) {
+          btn.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin"><circle cx="12" cy="12" r="10"></circle></svg> Sincronizando PDF (${String(currentMonth).padStart(2, '0')}/${currentYear})...`;
+        }
+        const uploadRes = await saveAndUploadSingleEmployeePDF(emp, monthKey);
+        if (uploadRes) pdfUploaded = true;
+      }
     } catch (err) {
-      console.warn('Erro ao salvar no Supabase:', err);
+      console.warn('Erro ao salvar e sincronizar no Supabase:', err);
     }
   }
 
   if (btn) {
     btn.disabled = false;
-    btn.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg> Salvo com Sucesso!`;
+    btn.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg> Salvo e Sincronizado!`;
     setTimeout(() => {
       if (btn) btn.innerHTML = originalBtnHtml || `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg> Salvar alterações`;
     }, 2500);
   }
 
-  showToast(`💾 Folha de ponto de ${emp.name} salva com sucesso! Os dados persistem após o F5.`);
+  const monthLabel = String(currentMonth).padStart(2, '0') + '/' + currentYear;
+  if (pdfUploaded) {
+    showToast(`💾 Folha e PDF de ${emp.name} (${monthLabel}) salvos e sincronizados no Supabase Storage!`);
+  } else {
+    showToast(`💾 Folha de ponto de ${emp.name} (${monthLabel}) salva com sucesso!`);
+  }
 }
 
 // Render Employees Admin Table
