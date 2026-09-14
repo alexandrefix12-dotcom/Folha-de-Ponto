@@ -295,6 +295,8 @@ body {
   font-size: 0.88rem;
   font-weight: 500;
   transition: all 0.2s;
+  cursor: pointer;
+  user-select: none;
 }
 
 .sidebar-link:hover {
@@ -307,6 +309,11 @@ body {
   color: #FFFFFF;
   font-weight: 600;
   box-shadow: inset 0 0 0 1px rgba(52, 211, 153, 0.4);
+}
+
+.sidebar-link svg {
+  pointer-events: none;
+  flex-shrink: 0;
 }
 
 .sidebar-counter-badge {
@@ -322,11 +329,13 @@ body {
   justify-content: center;
   line-height: 1.4;
   box-shadow: 0 1px 4px rgba(239, 68, 68, 0.4);
+  pointer-events: none;
 }
 
 .sidebar-counter-badge.ferias {
   background: #0284C7;
   box-shadow: 0 1px 4px rgba(2, 132, 199, 0.4);
+  pointer-events: none;
 }
 
 .sidebar-card {

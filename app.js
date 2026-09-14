@@ -832,6 +832,12 @@ function initScreenNavigation() {
 }
 
 function switchScreen(screenId) {
+  if (screenId === 'screen-admin') {
+    const savedMode = localStorage.getItem('lane_last_admin_view_mode') || 'ativos';
+    showEmployeesView(savedMode);
+    return;
+  }
+
   document.querySelectorAll('.stitch-screen').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.screen-tab').forEach(t => t.classList.remove('active'));
 
@@ -841,23 +847,7 @@ function switchScreen(screenId) {
   const targetTab = document.querySelector(`.screen-tab[data-screen="${screenId}"]`);
   if (targetTab) targetTab.classList.add('active');
 
-  // Update sidebar active link state and reset to current real month when returning to admin/menu
-  if (screenId === 'screen-admin') {
-    const now = new Date();
-    currentYear = now.getFullYear();
-    currentMonth = now.getMonth() + 1;
-    updateMonthDisplay();
-
-    const isAfastadosActive = document.getElementById('nav-link-afastados')?.classList.contains('active');
-    const isFeriasActive = document.getElementById('nav-link-ferias')?.classList.contains('active');
-    if (isAfastadosActive) {
-      showEmployeesView('afastados');
-    } else if (isFeriasActive) {
-      showEmployeesView('ferias');
-    } else {
-      showEmployeesView('ativos');
-    }
-  } else if (screenId === 'screen-timesheet') {
+  if (screenId === 'screen-timesheet') {
     document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
     document.getElementById('nav-link-employees')?.classList.add('active');
   } else if (screenId === 'screen-auditor') {
@@ -2968,13 +2958,23 @@ function updateAfastadosBadgeCounter(hasNewNotification = false) {
 
 // Switch between Active Employees, Férias, and Afastados/Desligados view
 function showEmployeesView(viewMode) {
+  const mode = viewMode || 'ativos';
+  localStorage.setItem('lane_last_admin_view_mode', mode);
+
   const now = new Date();
   currentYear = now.getFullYear();
   currentMonth = now.getMonth() + 1;
   updateMonthDisplay();
 
-  switchScreen('screen-admin');
-  localStorage.setItem('lane_last_admin_view_mode', viewMode || 'ativos');
+  // Switch to admin screen directly without calling switchScreen to prevent loop
+  document.querySelectorAll('.stitch-screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.screen-tab').forEach(t => t.classList.remove('active'));
+
+  const targetScreen = document.getElementById('screen-admin');
+  if (targetScreen) targetScreen.classList.add('active');
+
+  const targetTab = document.querySelector(`.screen-tab[data-screen="screen-admin"]`);
+  if (targetTab) targetTab.classList.add('active');
 
   const navEmployees = document.getElementById('nav-link-employees');
   const navFerias = document.getElementById('nav-link-ferias');
@@ -2985,7 +2985,7 @@ function showEmployeesView(viewMode) {
 
   document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
 
-  if (viewMode === 'ferias') {
+  if (mode === 'ferias') {
     // Ao clicar e visualizar a lista de férias, limpa e marca a notificação como lida de forma definitiva
     const countFerias = employeesDB.filter(e => e.statusCategory === 'ferias').length;
     localStorage.setItem('lane_viewed_ferias_count', String(countFerias));
@@ -2997,7 +2997,7 @@ function showEmployeesView(viewMode) {
     if (titleEl) titleEl.textContent = 'Colaboradores em Férias';
     if (subtitleEl) subtitleEl.textContent = 'Controle e acompanhamento de colaboradores em gozo de férias regulamentares.';
     if (filterStatusEl) filterStatusEl.value = 'ferias';
-  } else if (viewMode === 'afastados') {
+  } else if (mode === 'afastados') {
     // Ao clicar e visualizar a lista de afastados, limpa e marca a notificação como lida de forma definitiva
     const countAfastados = employeesDB.filter(e => e.statusCategory === 'afastado' || e.statusCategory === 'demitido' || e.statusCategory === 'desligado').length;
     localStorage.setItem('lane_viewed_afastados_count', String(countAfastados));
@@ -3017,6 +3017,7 @@ function showEmployeesView(viewMode) {
   }
 
   renderEmployeesAdminTable();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 // Employee List Filter Logic
