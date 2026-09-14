@@ -4269,7 +4269,6 @@ function printCurrentEmployeeTimesheet() {
 function printAllEmployeesTimesheets() {
   syncDomTableToActiveEmployee();
   const monthName = MONTH_NAMES[currentMonth - 1] || `${currentMonth}`;
-  const monthKey = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
   const previousTitle = document.title;
 
   // Filtra SOMENTE colaboradores em atividade (exclui afastados e desligados)
@@ -4282,7 +4281,7 @@ function printAllEmployeesTimesheets() {
 
   document.title = `Folhas de Ponto - Funcionários Ativos - ${monthName} de ${currentYear}`;
 
-  showToast(`📄 Gerando impressão e sincronizando meses 1 ao 12 no Supabase...`);
+  showToast(`📄 Gerando visualização para impressão / Salvar como PDF...`);
   generateAllEmployeesPrintView();
 
   const restoreTitle = () => {
@@ -4296,62 +4295,6 @@ function printAllEmployeesTimesheets() {
     window.print();
     setTimeout(restoreTitle, 3000);
   }, 400);
-
-  // Sincroniza TODOS OS MESES (1 a 12) de cada colaborador ativo no Supabase (Banco e Storage)
-  (async () => {
-    const targetYear = currentYear;
-    let totalUploaded = 0;
-
-    for (const emp of activeEmployees) {
-      if (!emp.timesheets) emp.timesheets = {};
-
-      // Sincroniza dados do funcionário no banco
-      if (window.supabaseService && window.supabaseService.isConfigured()) {
-        try {
-          await window.supabaseService.atualizarFuncionario(emp.id, emp);
-        } catch (e) {}
-      }
-
-      // Sincroniza todos os meses do 1 ao 12
-      for (let m = 1; m <= 12; m++) {
-        const mKey = `${targetYear}-${String(m).padStart(2, '0')}`;
-        const altMKey = `${targetYear}-${m}`;
-
-        // Garante que o mês tenha dados estruturados
-        if (!emp.timesheets[mKey] && !emp.timesheets[altMKey]) {
-          if (targetYear === currentYear && m === currentMonth && emp.days) {
-            emp.timesheets[mKey] = JSON.parse(JSON.stringify(emp.days));
-          } else {
-            emp.timesheets[mKey] = generateMonthData(targetYear, m, emp.id);
-          }
-        }
-
-        const daysToSave = emp.timesheets[mKey] || emp.timesheets[altMKey];
-
-        // 1. Salva no banco de dados do Supabase
-        if (window.supabaseService && window.supabaseService.isConfigured() && typeof window.supabaseService.saveFullTimesheet === 'function') {
-          try {
-            await window.supabaseService.saveFullTimesheet(emp.id, mKey, daysToSave, emp.cpf || '');
-          } catch (err) {
-            console.warn(`Aviso ao salvar timesheet ${mKey} de ${emp.name}:`, err);
-          }
-        }
-
-        // 2. Gera PDF oficial e envia para o Supabase Storage
-        try {
-          const res = await saveAndUploadSingleEmployeePDF(emp, mKey);
-          if (res && res.success) {
-            totalUploaded++;
-          }
-        } catch (err) {
-          console.warn(`Aviso ao enviar PDF ${mKey} de ${emp.name}:`, err);
-        }
-      }
-    }
-
-    saveEmployeesToLocalStorage();
-    showToast(`☁️ Sincronização completa! Todos os meses (1 ao 12 de ${targetYear}) foram atualizados no Supabase.`);
-  })();
 }
 
 function aprovarFolhaParaPagamento() {
