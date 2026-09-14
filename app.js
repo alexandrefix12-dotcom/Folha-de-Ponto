@@ -260,6 +260,19 @@ function getStatusPillInfo(statusCategory) {
   }
 }
 
+// Identifica se o colaborador está afastado, desligado ou demitido
+function isEmployeeAfastadoOuDesligado(emp) {
+  if (!emp) return false;
+  const status = String(emp.statusCategory || emp.situacao || emp.status || emp.statusTag || '').toLowerCase().trim();
+  return status === 'afastado' || 
+         status === 'demitido' || 
+         status === 'desligado' || 
+         status === 'inativo' || 
+         status.includes('afastad') || 
+         status.includes('desligad') || 
+         status.includes('demitid');
+}
+
 async function initApp() {
   initScreenNavigation();
   loadSystemSettings();
@@ -3554,15 +3567,18 @@ function syncDomTableToActiveEmployee() {
   saveEmployeesToLocalStorage();
 }
 
-// Multi-Page Print Generation (1 Page per registered Employee)
+// Multi-Page Print Generation (1 Page per active Employee - Exclui afastados e desligados)
 function generateAllEmployeesPrintView() {
   syncDomTableToActiveEmployee();
   const container = document.getElementById('print-all-container');
   if (!container) return;
 
   container.innerHTML = '';
-  employeesDB.forEach((emp, empIdx) => {
-    const page = buildEmployeePrintPageHtml(emp, empIdx + 1, employeesDB.length);
+  // Filtra SOMENTE colaboradores em atividade (exclui afastados e desligados)
+  const activeEmployees = employeesDB.filter(emp => !isEmployeeAfastadoOuDesligado(emp));
+
+  activeEmployees.forEach((emp, empIdx) => {
+    const page = buildEmployeePrintPageHtml(emp, empIdx + 1, activeEmployees.length);
     container.appendChild(page);
   });
 }
@@ -3974,6 +3990,13 @@ async function saveAndUploadSingleEmployeePDF(emp, monthKey) {
   if (!emp || !window.supabaseService || typeof window.supabaseService.uploadTimesheetPDF !== 'function') {
     return null;
   }
+
+  // REGRA: NÃO salvar PDF no Supabase Storage se o colaborador estiver afastado ou desligado
+  if (isEmployeeAfastadoOuDesligado(emp)) {
+    console.log(`ℹ️ [Supabase Storage] Envio de PDF ignorado para ${emp.name}: colaborador está afastado/desligado.`);
+    return null;
+  }
+
   try {
     const pdfBlob = await generateEmployeePdfBlob(emp, monthKey);
     if (!pdfBlob) return null;
@@ -4001,6 +4024,12 @@ function generateSingleEmployeePrintView(emp) {
 function printCurrentEmployeeTimesheet() {
   const emp = getCurrentEmployee();
   if (!emp) return;
+
+  const isInactive = isEmployeeAfastadoOuDesligado(emp);
+  if (isInactive) {
+    showToast(`⚠️ Colaborador ${emp.name} está ${emp.statusCategory || 'afastado/desligado'}. O PDF NÃO será salvo no Supabase Storage.`);
+  }
+
   const monthName = MONTH_NAMES[currentMonth - 1] || `${currentMonth}`;
   const monthKey = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
   const previousTitle = document.title;
@@ -4023,26 +4052,36 @@ function printCurrentEmployeeTimesheet() {
     setTimeout(restoreTitle, 3000);
   }, 350);
 
-  // Salva cópia individual no Supabase Storage em segundo plano
-  saveAndUploadSingleEmployeePDF(emp, monthKey).then(res => {
-    if (res && res.success) {
-      console.log(`✅ PDF de ${emp.name} salvo com sucesso no Supabase Storage:`, res.pdfUrl);
-      showToast(`☁️ PDF de ${emp.name} salvo no Supabase Storage com sucesso!`);
-    }
-  }).catch(err => {
-    console.warn('Aviso no envio do PDF para o Supabase Storage:', err);
-  });
+  // Salva cópia individual no Supabase Storage APENAS se estiver em atividade
+  if (!isInactive) {
+    saveAndUploadSingleEmployeePDF(emp, monthKey).then(res => {
+      if (res && res.success) {
+        console.log(`✅ PDF de ${emp.name} salvo com sucesso no Supabase Storage:`, res.pdfUrl);
+        showToast(`☁️ PDF de ${emp.name} salvo no Supabase Storage com sucesso!`);
+      }
+    }).catch(err => {
+      console.warn('Aviso no envio do PDF para o Supabase Storage:', err);
+    });
+  }
 }
 
-// Print All Employees (Multi-page PDF)
+// Print All Active Employees (Multi-page PDF - Exclui Afastados e Desligados)
 function printAllEmployeesTimesheets() {
   const monthName = MONTH_NAMES[currentMonth - 1] || `${currentMonth}`;
   const monthKey = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
   const previousTitle = document.title;
 
-  document.title = `Folhas de Ponto - Todos os Funcionários - ${monthName} de ${currentYear}`;
+  // Filtra SOMENTE colaboradores em atividade (exclui afastados e desligados)
+  const activeEmployees = employeesDB.filter(emp => !isEmployeeAfastadoOuDesligado(emp));
 
-  showToast(`📄 Gerando PDF de todos os ${employeesDB.length} colaboradores (${monthName}/${currentYear})...`);
+  if (activeEmployees.length === 0) {
+    showToast('⚠️ Nenhum colaborador ativo encontrado para impressão.');
+    return;
+  }
+
+  document.title = `Folhas de Ponto - Funcionários Ativos - ${monthName} de ${currentYear}`;
+
+  showToast(`📄 Gerando PDF de ${activeEmployees.length} colaboradores em atividade (${monthName}/${currentYear})...`);
   generateAllEmployeesPrintView();
 
   const restoreTitle = () => {
@@ -4051,20 +4090,20 @@ function printAllEmployeesTimesheets() {
   };
   window.addEventListener('afterprint', restoreTitle);
 
-  // Dispara impressão do navegador com todos
+  // Dispara impressão do navegador com todos os ativos
   setTimeout(() => {
     window.print();
     setTimeout(restoreTitle, 3000);
   }, 400);
 
-  // Processa e salva cópia individual de cada colaborador no Supabase Storage em segundo plano
+  // Processa e salva cópia individual APENAS dos colaboradores ativos no Supabase Storage
   (async () => {
-    const total = employeesDB.length;
+    const total = activeEmployees.length;
     let savedCount = 0;
     let failCount = 0;
 
     for (let i = 0; i < total; i++) {
-      const currentEmp = employeesDB[i];
+      const currentEmp = activeEmployees[i];
       try {
         const res = await saveAndUploadSingleEmployeePDF(currentEmp, monthKey);
         if (res && res.success) {
@@ -4078,7 +4117,7 @@ function printAllEmployeesTimesheets() {
     }
 
     if (savedCount > 0) {
-      showToast(`☁️ ${savedCount} PDFs individuais salvos com sucesso no Supabase Storage (${monthName}/${currentYear})!`);
+      showToast(`☁️ ${savedCount} PDFs de colaboradores ativos salvos no Supabase Storage (${monthName}/${currentYear})!`);
     }
   })();
 }
