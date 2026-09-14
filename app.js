@@ -4069,7 +4069,7 @@ async function generateEmployeePdfBlob(emp, monthKey) {
   const page = buildEmployeePrintPageHtml(emp, 1, 1, targetYear, targetMonth);
   const wrapper = document.createElement('div');
   wrapper.id = 'pdf-render-offscreen';
-  wrapper.style.cssText = 'position: fixed; left: 0; top: 0; width: 794px; min-height: 1120px; background: #FFFFFF; z-index: 99999; opacity: 1; box-sizing: border-box; padding: 14px 18px; overflow: hidden; pointer-events: none;';
+  wrapper.style.cssText = 'position: fixed; left: -9999px; top: -9999px; width: 794px; min-height: 1120px; background: #FFFFFF; z-index: -99999; opacity: 0; pointer-events: none; box-sizing: border-box; padding: 14px 18px; overflow: hidden;';
 
   const styleEl = document.createElement('style');
   styleEl.id = 'timesheet-pdf-runtime-style';
