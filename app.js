@@ -135,6 +135,54 @@ function generateCurrentMonthData(year = currentYear, month = currentMonth, empI
   return generateMonthData(year, month, empId);
 }
 
+// Valida e garante que a estrutura de dias corresponda EXATAMENTE ao calendário real do mês e ano
+function ensureCorrectMonthData(emp, year, month) {
+  if (!emp) return [];
+  const targetYear = parseInt(year, 10) || currentYear;
+  const targetMonth = parseInt(month, 10) || currentMonth;
+  const monthKey = `${targetYear}-${String(targetMonth).padStart(2, '0')}`;
+  const altMonthKey = `${targetYear}-${parseInt(targetMonth, 10)}`;
+  const expectedNumDays = new Date(targetYear, targetMonth, 0).getDate();
+  const dows = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
+  const expectedFirstDow = dows[new Date(targetYear, targetMonth - 1, 1).getDay()];
+
+  if (!emp.timesheets) emp.timesheets = {};
+  let currentDays = emp.timesheets[monthKey] || emp.timesheets[altMonthKey];
+
+  // Verifica se o array existe e se é válido para este mês e ano específico
+  const isInvalid = !currentDays || !Array.isArray(currentDays) || currentDays.length !== expectedNumDays || (currentDays[0] && currentDays[0].dow !== expectedFirstDow);
+
+  if (isInvalid) {
+    const freshDays = generateMonthData(targetYear, targetMonth, emp.id);
+    if (currentDays && Array.isArray(currentDays)) {
+      // Se havia dados anteriores, migra faltas, atestados, justificativas ou horários personalizados válidos
+      for (let i = 0; i < Math.min(currentDays.length, expectedNumDays); i++) {
+        const oldDay = currentDays[i];
+        const fresh = freshDays[i];
+        if (oldDay && fresh) {
+          if (['falta', 'atestado', 'justificada', 'ferias', 'folga'].includes(oldDay.status)) {
+            fresh.status = oldDay.status;
+            fresh.just = oldDay.just || '';
+            fresh.e1 = oldDay.e1 || '';
+            fresh.s1 = oldDay.s1 || '';
+            fresh.e2 = oldDay.e2 || '';
+            fresh.s2 = oldDay.s2 || '';
+          } else if (oldDay.just && oldDay.just.trim()) {
+            fresh.just = oldDay.just;
+          }
+          if (oldDay.signed !== undefined) {
+            fresh.signed = oldDay.signed;
+          }
+        }
+      }
+    }
+    emp.timesheets[monthKey] = freshDays;
+    currentDays = freshDays;
+  }
+  emp.timesheets[monthKey] = currentDays;
+  return currentDays;
+}
+
 // Complete Employee Database with individual timesheets
 var employeesDB = [];
 
@@ -977,11 +1025,7 @@ function selectEmployee(empIdOrName, navigateToTimesheet = false) {
   }
 
   const monthKey = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
-  if (!emp.timesheets) emp.timesheets = {};
-  if (!emp.timesheets[monthKey]) {
-    emp.timesheets[monthKey] = generateMonthData(currentYear, currentMonth, emp.id);
-  }
-  emp.days = emp.timesheets[monthKey];
+  emp.days = ensureCorrectMonthData(emp, currentYear, currentMonth);
 
   // Sincronização automática dos registros diários com o status contratual do colaborador
   if (emp.statusCategory === 'afastado' && emp.days && Array.isArray(emp.days)) {
@@ -1437,14 +1481,7 @@ function setPeriod(year, month) {
 
   // 2. Carrega instantaneamente os dias de cada colaborador para o novo período
   for (const emp of employeesDB) {
-    if (!emp.timesheets) emp.timesheets = {};
-    if (!emp.timesheets[newMonthKey] && emp.timesheets[altMonthKey]) {
-      emp.timesheets[newMonthKey] = emp.timesheets[altMonthKey];
-    }
-    if (!emp.timesheets[newMonthKey]) {
-      emp.timesheets[newMonthKey] = generateMonthData(currentYear, currentMonth, emp.id);
-    }
-    emp.days = emp.timesheets[newMonthKey];
+    emp.days = ensureCorrectMonthData(emp, currentYear, currentMonth);
 
     // Se o colaborador for afastado ou de férias, sincroniza
     if (emp.statusCategory === 'afastado' && emp.days && Array.isArray(emp.days)) {
@@ -3382,9 +3419,7 @@ function buildEmployeePrintPageHtml(emp, pageNum = 1, totalPages = 1, customYear
 
   let empDays = customDays;
   if (!empDays) {
-    empDays = (emp.timesheets && (emp.timesheets[monthKey] || emp.timesheets[altMonthKey])) 
-      || (targetYear === currentYear && targetMonth === currentMonth ? emp.days : null) 
-      || generateMonthData(targetYear, targetMonth, emp.id);
+    empDays = ensureCorrectMonthData(emp, targetYear, targetMonth);
   }
 
   if (empDays && Array.isArray(empDays)) {
@@ -4096,7 +4131,7 @@ async function generateEmployeePdfBlob(emp, monthKey) {
   const page = buildEmployeePrintPageHtml(emp, 1, 1, targetYear, targetMonth);
   const wrapper = document.createElement('div');
   wrapper.id = 'pdf-render-offscreen';
-  wrapper.style.cssText = 'position: fixed; left: -9999px; top: -9999px; width: 794px; min-height: 1120px; background: #FFFFFF; z-index: -99999; opacity: 0; pointer-events: none; box-sizing: border-box; padding: 14px 18px; overflow: hidden;';
+  wrapper.style.cssText = 'position: fixed; left: 0; top: 0; width: 794px; min-height: 1120px; background: #FFFFFF; z-index: -9999; opacity: 1; pointer-events: none; box-sizing: border-box; padding: 14px 18px; overflow: hidden;';
 
   const styleEl = document.createElement('style');
   styleEl.id = 'timesheet-pdf-runtime-style';
