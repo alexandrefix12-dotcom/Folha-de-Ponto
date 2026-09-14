@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="icon" type="image/jpeg" href="logo-lane.jpg">
-  <link rel="stylesheet" href="index.css?v=20260913_v14">
+  <link rel="stylesheet" href="index.css?v=20260913_v15">
 </head>
 <body>
   <!-- ============================================================== -->
@@ -79,144 +79,6 @@
       </div>
     </div>
   </div>
-
-  <!-- Inline Auth & UI Switcher (Executa instantaneamente sem depender de rede ou cache) -->
-  <script>
-    const AUTH_SESSION_KEY = 'lane_admin_auth_session_v1';
-
-    function isAuthenticated() {
-      try {
-        const session = localStorage.getItem(AUTH_SESSION_KEY) || sessionStorage.getItem(AUTH_SESSION_KEY);
-        if (!session) return false;
-        const data = JSON.parse(session);
-        return Boolean(data && data.authenticated);
-      } catch (e) {
-        return false;
-      }
-    }
-
-    function toggleLoginPasswordVisibility() {
-      const passInput = document.getElementById('login-password');
-      const iconOpen = document.getElementById('icon-eye-open');
-      const iconClosed = document.getElementById('icon-eye-closed');
-      if (!passInput) return;
-
-      if (passInput.type === 'password') {
-        passInput.type = 'text';
-        if (iconOpen) iconOpen.style.display = 'none';
-        if (iconClosed) iconClosed.style.display = 'block';
-      } else {
-        passInput.type = 'password';
-        if (iconOpen) iconOpen.style.display = 'block';
-        if (iconClosed) iconClosed.style.display = 'none';
-      }
-    }
-
-    function showAppSuite() {
-      const loginView = document.getElementById('view-login-screen');
-      const mainSuite = document.getElementById('app-main-suite');
-      if (loginView) {
-        loginView.style.setProperty('display', 'none', 'important');
-        loginView.style.visibility = 'hidden';
-        loginView.style.opacity = '0';
-      }
-      if (mainSuite) {
-        mainSuite.style.setProperty('display', 'flex', 'important');
-        mainSuite.style.visibility = 'visible';
-      }
-      if (typeof updateSidebarUserUI === 'function') updateSidebarUserUI();
-    }
-
-    function showLoginScreen() {
-      const loginView = document.getElementById('view-login-screen');
-      const mainSuite = document.getElementById('app-main-suite');
-      if (loginView) {
-        loginView.style.setProperty('display', 'flex', 'important');
-        loginView.style.visibility = 'visible';
-        loginView.style.opacity = '1';
-      }
-      if (mainSuite) {
-        mainSuite.style.setProperty('display', 'none', 'important');
-      }
-      setTimeout(() => {
-        const userField = document.getElementById('login-username');
-        if (userField) userField.focus();
-      }, 100);
-    }
-
-    function handleLoginSubmit(e) {
-      if (e) {
-        if (typeof e.preventDefault === 'function') e.preventDefault();
-        if (typeof e.stopPropagation === 'function') e.stopPropagation();
-      }
-      
-      const userEl = document.getElementById('login-username');
-      const passEl = document.getElementById('login-password');
-      const rememberEl = document.getElementById('login-remember');
-      const alertEl = document.getElementById('login-alert-error');
-      const alertMsgEl = document.getElementById('login-alert-msg');
-
-      const username = userEl ? userEl.value.trim() : '';
-      const password = passEl ? passEl.value : '';
-      const remember = rememberEl ? rememberEl.checked : true;
-
-      if (alertEl) alertEl.style.display = 'none';
-
-      if (!username || !password) {
-        if (alertEl) {
-          if (alertMsgEl) alertMsgEl.textContent = 'Por favor, preencha todos os campos.';
-          alertEl.style.display = 'flex';
-        }
-        return false;
-      }
-
-      let displayName = 'Administrador (Admin)';
-      if (username.includes('@')) {
-        const prefix = username.split('@')[0];
-        displayName = prefix.charAt(0).toUpperCase() + prefix.slice(1) + ' (Admin)';
-      } else if (username.length > 0) {
-        displayName = username.charAt(0).toUpperCase() + username.slice(1) + ' (Admin)';
-      }
-
-      const sessionData = {
-        authenticated: true,
-        username: username,
-        userDisplayName: displayName,
-        timestamp: new Date().toISOString()
-      };
-
-      try {
-        if (remember) {
-          localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(sessionData));
-        } else {
-          sessionStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(sessionData));
-        }
-      } catch (err) {}
-
-      // Libera imediatamente a visualização do painel
-      showAppSuite();
-
-      // Inicializa dados e funções do sistema
-      if (typeof initApp === 'function') {
-        try {
-          initApp().catch(function(err) { console.warn('Sync background:', err); });
-        } catch (err) {
-          console.warn('Init error:', err);
-        }
-      }
-      
-      if (typeof showToast === 'function') {
-        showToast('👋 Bem-vindo ao Sistema de Folha de Ponto, ' + displayName.split(' ')[0] + '!');
-      }
-
-      return false;
-    }
-
-    // Auto verificação de sessão ao carregar o documento
-    if (isAuthenticated()) {
-      showAppSuite();
-    }
-  </script>
 
   <div id="app-main-suite" class="suite-wrapper" style="display: none;">
     <!-- Top Global Switcher Bar -->
@@ -1298,6 +1160,6 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>
 
-  <script src="app.js?v=20260913_v14"></script>
+  <script src="app.js?v=20260913_v15"></script>
 </body>
 </html>
