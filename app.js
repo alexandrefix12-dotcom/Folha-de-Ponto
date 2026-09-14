@@ -3462,6 +3462,8 @@ function buildEmployeePrintPageHtml(emp, pageNum = 1, totalPages = 1, customYear
       let saiDisplay = item.s2 || item.s1 || '';
       let extDisplay = 'à';
       let rubricaDisplay = '';
+      let rowBgStyle = '';
+      let rowExtraClass = '';
       let st = item.status;
       if (!st || st === 'empty' || st === 'none') {
         if (isSunday) st = 'dsr';
@@ -3784,7 +3786,10 @@ function generateAllEmployeesPrintView() {
 
   container.innerHTML = '';
   // Filtra SOMENTE colaboradores em atividade (exclui afastados e desligados)
-  const activeEmployees = employeesDB.filter(emp => !isEmployeeAfastadoOuDesligado(emp));
+  let activeEmployees = employeesDB.filter(emp => !isEmployeeAfastadoOuDesligado(emp));
+  if (activeEmployees.length === 0) {
+    activeEmployees = employeesDB;
+  }
 
   activeEmployees.forEach((emp, empIdx) => {
     const page = buildEmployeePrintPageHtml(emp, empIdx + 1, activeEmployees.length);
@@ -4271,17 +4276,19 @@ function printAllEmployeesTimesheets() {
   const monthName = MONTH_NAMES[currentMonth - 1] || `${currentMonth}`;
   const previousTitle = document.title;
 
-  // Filtra SOMENTE colaboradores em atividade (exclui afastados e desligados)
-  const activeEmployees = employeesDB.filter(emp => !isEmployeeAfastadoOuDesligado(emp));
+  let activeEmployees = employeesDB.filter(emp => !isEmployeeAfastadoOuDesligado(emp));
+  if (activeEmployees.length === 0) {
+    activeEmployees = employeesDB;
+  }
 
   if (activeEmployees.length === 0) {
-    showToast('⚠️ Nenhum colaborador ativo encontrado para impressão.');
+    showToast('⚠️ Nenhum colaborador encontrado para impressão.');
     return;
   }
 
   document.title = `Folhas de Ponto - Funcionários Ativos - ${monthName} de ${currentYear}`;
 
-  showToast(`📄 Gerando visualização para impressão / Salvar como PDF...`);
+  showToast(`📄 Gerando visualização de impressão (${activeEmployees.length} colaboradores)...`);
   generateAllEmployeesPrintView();
 
   const restoreTitle = () => {
@@ -4294,7 +4301,7 @@ function printAllEmployeesTimesheets() {
   setTimeout(() => {
     window.print();
     setTimeout(restoreTitle, 3000);
-  }, 400);
+  }, 350);
 }
 
 function aprovarFolhaParaPagamento() {
