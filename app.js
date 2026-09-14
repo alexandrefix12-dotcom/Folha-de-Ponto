@@ -3419,6 +3419,8 @@ function buildEmployeePrintPageHtml(emp, pageNum = 1, totalPages = 1, customYear
         <div class="print-comp-right" style="text-align: right;">
           <span class="print-comp-code" style="font-size: 9pt; font-weight: 800; color: #000000;">${emp.code || '300'}</span>
         </div>
+      </div>
+
       <!-- 2. Header: Funcionário & Horário -->
       <div class="print-emp-header" style="display: grid; grid-template-columns: 32% 68%; box-sizing: border-box; border-bottom: 1.2px solid #006633;">
         <div class="print-emp-col-left" style="border-right: 1.2px solid #006633; padding: 2.5mm 3.5mm; display: flex; flex-direction: column; justify-content: space-between; min-height: 25mm; box-sizing: border-box;">

@@ -2593,7 +2593,10 @@ body {
   .modal-overlay,
   .modal,
   .modal-backdrop,
-  .btn-just-chip {
+  .btn-just-chip,
+  #modal-period-picker,
+  #modal-history-progress,
+  #modal-justification {
     display: none !important;
   }
 
@@ -2601,9 +2604,16 @@ body {
   #print-all-container {
     display: block !important;
     width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
   .print-page {
+    box-sizing: border-box !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    background: #FFFFFF !important;
+    color: #000000 !important;
     page-break-after: always !important;
     break-after: page !important;
     page-break-inside: avoid !important;
@@ -2613,6 +2623,72 @@ body {
   .print-page:last-child {
     page-break-after: auto !important;
     break-after: auto !important;
+  }
+
+  .print-doc-title {
+    font-size: 13.5pt !important;
+    font-weight: 800 !important;
+    color: #006633 !important;
+    text-align: center !important;
+    margin: 0 0 2mm 0 !important;
+    letter-spacing: 0.8px !important;
+    text-transform: uppercase !important;
+    font-family: Arial, sans-serif !important;
+  }
+
+  .print-doc-envelope {
+    border: 1.5px solid #006633 !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
+    background: #FFFFFF !important;
+    font-family: Arial, sans-serif !important;
+  }
+
+  .print-comp-header {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: flex-start !important;
+    padding: 2.2mm 3.5mm !important;
+    border-bottom: 1.2px solid #006633 !important;
+    box-sizing: border-box !important;
+  }
+
+  .print-emp-header {
+    display: grid !important;
+    grid-template-columns: 32% 68% !important;
+    box-sizing: border-box !important;
+    border-bottom: 1.2px solid #006633 !important;
+  }
+
+  .print-table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    border-bottom: 1.2px solid #006633 !important;
+    table-layout: fixed !important;
+    box-sizing: border-box !important;
+    font-family: Arial, sans-serif !important;
+  }
+
+  .print-bottom-container {
+    display: grid !important;
+    grid-template-columns: 66% 34% !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
+    font-family: Arial, sans-serif !important;
+  }
+
+  .print-resumo-box {
+    border-right: 1.2px solid #006633 !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  .print-sigs-box {
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+    padding: 2.2mm 4mm !important;
+    box-sizing: border-box !important;
   }
 }
 
