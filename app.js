@@ -642,10 +642,10 @@ function toggleLoginPasswordVisibility() {
   }
 }
 
-async function handleLoginSubmit(e) {
-  if (e && typeof e.preventDefault === 'function') {
-    e.preventDefault();
-    e.stopPropagation();
+function handleLoginSubmit(e) {
+  if (e) {
+    if (typeof e.preventDefault === 'function') e.preventDefault();
+    if (typeof e.stopPropagation === 'function') e.stopPropagation();
   }
   
   const userEl = document.getElementById('login-username');
@@ -670,9 +670,6 @@ async function handleLoginSubmit(e) {
     return false;
   }
 
-  if (submitBtn) submitBtn.disabled = true;
-  if (submitText) submitText.textContent = 'Autenticando...';
-
   let displayName = 'Administrador (Admin)';
   if (username.includes('@')) {
     const prefix = username.split('@')[0];
@@ -696,21 +693,17 @@ async function handleLoginSubmit(e) {
     }
   } catch (err) {}
 
-  if (submitText) submitText.textContent = 'Acesso Liberado!';
-
+  // 1. Oculta tela de login e exibe o sistema imediatamente
   showAppSuite();
   
-  try {
-    await initApp();
-  } catch (initErr) {
+  // 2. Inicializa os dados em background
+  initApp().catch(initErr => {
     console.warn('Erro ao inicializar base de dados:', initErr);
-  }
+  });
   
   updateSidebarUserUI();
   showToast(`👋 Bem-vindo ao Sistema de Folha de Ponto, ${displayName.split(' ')[0]}!`);
   
-  if (submitBtn) submitBtn.disabled = false;
-  if (submitText) submitText.textContent = 'Entrar no Sistema';
   return false;
 }
 
