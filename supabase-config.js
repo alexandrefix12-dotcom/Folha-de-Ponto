@@ -276,7 +276,7 @@ async function saveFullTimesheetToSupabase(empId, monthKey, days, cpf = '') {
 
   try {
     const cleanId = String(empId).trim();
-    const cleanCpf = cpf ? String(cpf).replace(/\D/g, '') : '';
+    const cleanCpf = cpf ? String(cpf).replace(/\D/g, '') : cleanId.replace(/\D/g, '');
 
     // 1. Salva na tabela folha_pontos
     try {
@@ -290,27 +290,27 @@ async function saveFullTimesheetToSupabase(empId, monthKey, days, cpf = '') {
         }, { onConflict: 'funcionario_id,mes_ano' });
     } catch (e) {}
 
-    // 2. Salva também na coluna timesheets de funcionarios para redundância
+    // 2. Salva também na coluna timesheets da tabela funcionarios para redundância total
     try {
-      const applyFilter = (q) => {
-        if (cleanId.length === 36 && cleanId.includes('-')) {
-          return q.eq('id', cleanId);
-        }
-        if (cleanCpf) {
-          return q.or(`id.eq.${cleanId},cpf.eq.${cpf},cpf.eq.${cleanCpf}`);
-        }
-        return q.or(`id.eq.${cleanId},cpf.eq.${cleanId}`);
-      };
+      let query = client.from('funcionarios').select('id, timesheets');
+      if (cleanId.length === 36 && cleanId.includes('-')) {
+        query = query.eq('id', cleanId);
+      } else if (cleanCpf && cleanCpf.length === 11) {
+        query = query.or(`cpf.eq.${cpf},cpf.eq.${cleanCpf},id.eq.${cleanId}`);
+      } else {
+        query = query.or(`id.eq.${cleanId},cpf.eq.${cleanId}`);
+      }
 
-      const { data: empRows } = await applyFilter(client.from('funcionarios').select('id, timesheets'));
+      const { data: empRows } = await query;
       if (empRows && empRows.length > 0) {
-        const empItem = empRows[0];
-        let currentTs = empItem.timesheets || {};
-        if (typeof currentTs === 'string') {
-          try { currentTs = JSON.parse(currentTs); } catch (e) {}
+        for (const empItem of empRows) {
+          let currentTs = empItem.timesheets || {};
+          if (typeof currentTs === 'string') {
+            try { currentTs = JSON.parse(currentTs); } catch (e) {}
+          }
+          currentTs[monthKey] = days;
+          await client.from('funcionarios').update({ timesheets: currentTs }).eq('id', empItem.id);
         }
-        currentTs[monthKey] = days;
-        await client.from('funcionarios').update({ timesheets: currentTs }).eq('id', empItem.id);
       }
     } catch (e) {}
 
