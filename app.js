@@ -395,11 +395,9 @@ async function initApp() {
   const firstId = employeesDB[0]?.id || '';
   selectEmployee(firstId, false);
 
-  // Restaura a visualização anterior (Férias ou Afastados) se estava aberta antes do F5
-  const savedViewMode = localStorage.getItem('lane_last_admin_view_mode');
-  if (savedViewMode && (savedViewMode === 'ferias' || savedViewMode === 'afastados')) {
-    showEmployeesView(savedViewMode);
-  }
+  // Restaura a visualização padrão (Ativos, Férias ou Afastados)
+  const savedViewMode = localStorage.getItem('lane_last_admin_view_mode') || 'ativos';
+  showEmployeesView(savedViewMode);
 
   // Verifica se a URL foi acessada via link de assinatura do WhatsApp (#assinar)
   checkUrlHashForSignature();
@@ -462,6 +460,15 @@ async function syncWithSupabaseRealtime() {
         if (target.dept !== remote.dept && remote.dept) { target.dept = remote.dept; target.fullDept = `Departamento - ${remote.dept}`; stateChanged = true; }
         if (remote.cpf && target.cpf !== remote.cpf) { target.cpf = remote.cpf; stateChanged = true; }
         if (remote.whatsapp && target.whatsapp !== remote.whatsapp) { target.whatsapp = remote.whatsapp; stateChanged = true; }
+        if (remote.statusCategory && target.statusCategory !== remote.statusCategory) {
+          target.statusCategory = remote.statusCategory;
+          const pill = getStatusPillInfo(remote.statusCategory);
+          target.statusPillLabel = pill.label;
+          target.statusPillClass = pill.pillClass;
+          target.statusTag = pill.tagLabel;
+          target.statusTagClass = pill.tagClass;
+          stateChanged = true;
+        }
 
         const wasSigned = Boolean(target.signatures && (target.signatures[padMonthKey] || target.signatures[altMonthKey]));
         const nowSigned = Boolean(remote.signatures && (remote.signatures[padMonthKey] || remote.signatures[altMonthKey]));
@@ -843,9 +850,12 @@ function switchScreen(screenId) {
 
     const isAfastadosActive = document.getElementById('nav-link-afastados')?.classList.contains('active');
     const isFeriasActive = document.getElementById('nav-link-ferias')?.classList.contains('active');
-    if (!isAfastadosActive && !isFeriasActive) {
-      document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
-      document.getElementById('nav-link-employees')?.classList.add('active');
+    if (isAfastadosActive) {
+      showEmployeesView('afastados');
+    } else if (isFeriasActive) {
+      showEmployeesView('ferias');
+    } else {
+      showEmployeesView('ativos');
     }
   } else if (screenId === 'screen-timesheet') {
     document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
@@ -3060,7 +3070,16 @@ function filterEmployees() {
 function resetFilters() {
   if (document.getElementById('filter-search')) document.getElementById('filter-search').value = '';
   if (document.getElementById('filter-dept')) document.getElementById('filter-dept').value = 'all';
-  if (document.getElementById('filter-status')) document.getElementById('filter-status').value = 'all';
+
+  const isAfastadosActive = document.getElementById('nav-link-afastados')?.classList.contains('active');
+  const isFeriasActive = document.getElementById('nav-link-ferias')?.classList.contains('active');
+  const statusEl = document.getElementById('filter-status');
+
+  if (statusEl) {
+    if (isAfastadosActive) statusEl.value = 'afastados_all';
+    else if (isFeriasActive) statusEl.value = 'ferias';
+    else statusEl.value = 'ativo';
+  }
   filterEmployees();
   showToast('Filtros redefinidos');
 }

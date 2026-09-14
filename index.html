@@ -331,12 +331,12 @@
             <div class="select-box">
               <label>Situação / Status:</label>
               <select id="filter-status" onchange="filterEmployees()">
-                <option value="all">Todos os Status</option>
-                <option value="ativo">🟢 Ativos (Em atividade)</option>
+                <option value="ativo" selected>🟢 Ativos (Em atividade)</option>
                 <option value="afastados_all">🟠🔴 Todos Afastados & Desligados</option>
                 <option value="afastado">🟠 Apenas Afastados (INSS / Licença)</option>
                 <option value="demitido">🔴 Apenas Demitidos / Desligados</option>
                 <option value="ferias">🌴 Em Férias</option>
+                <option value="all">Todos os Status</option>
               </select>
             </div>
 
@@ -1208,8 +1208,8 @@
 
   <!-- Supabase JS Client & Config -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase-config.js?v=20260913_v39"></script>
+  <script src="supabase-config.js?v=20260913_v40"></script>
 
-  <script src="app.js?v=20260913_v39"></script>
+  <script src="app.js?v=20260913_v40"></script>
 </body>
 </html>
