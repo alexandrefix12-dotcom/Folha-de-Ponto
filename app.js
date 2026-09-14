@@ -155,24 +155,19 @@ function ensureCorrectMonthData(emp, year, month) {
   if (isInvalid) {
     const freshDays = generateMonthData(targetYear, targetMonth, emp.id);
     if (currentDays && Array.isArray(currentDays)) {
-      // Se havia dados anteriores, migra faltas, atestados, justificativas ou horários personalizados válidos
+      // Migra todos os apontamentos e horários preenchidos pelo usuário
       for (let i = 0; i < Math.min(currentDays.length, expectedNumDays); i++) {
         const oldDay = currentDays[i];
         const fresh = freshDays[i];
         if (oldDay && fresh) {
-          if (['falta', 'atestado', 'justificada', 'ferias', 'folga'].includes(oldDay.status)) {
-            fresh.status = oldDay.status;
-            fresh.just = oldDay.just || '';
-            fresh.e1 = oldDay.e1 || '';
-            fresh.s1 = oldDay.s1 || '';
-            fresh.e2 = oldDay.e2 || '';
-            fresh.s2 = oldDay.s2 || '';
-          } else if (oldDay.just && oldDay.just.trim()) {
-            fresh.just = oldDay.just;
-          }
-          if (oldDay.signed !== undefined) {
-            fresh.signed = oldDay.signed;
-          }
+          if (oldDay.e1 !== undefined && oldDay.e1 !== '') fresh.e1 = oldDay.e1;
+          if (oldDay.s1 !== undefined && oldDay.s1 !== '') fresh.s1 = oldDay.s1;
+          if (oldDay.e2 !== undefined && oldDay.e2 !== '') fresh.e2 = oldDay.e2;
+          if (oldDay.s2 !== undefined && oldDay.s2 !== '') fresh.s2 = oldDay.s2;
+          if (oldDay.status !== undefined && oldDay.status !== '') fresh.status = oldDay.status;
+          if (oldDay.statusLabel !== undefined && oldDay.statusLabel !== '') fresh.statusLabel = oldDay.statusLabel;
+          if (oldDay.just !== undefined && oldDay.just !== '') fresh.just = oldDay.just;
+          if (oldDay.signed !== undefined) fresh.signed = oldDay.signed;
         }
       }
     }
@@ -3419,7 +3414,13 @@ function buildEmployeePrintPageHtml(emp, pageNum = 1, totalPages = 1, customYear
 
   let empDays = customDays;
   if (!empDays) {
-    empDays = ensureCorrectMonthData(emp, targetYear, targetMonth);
+    if (emp.timesheets && (emp.timesheets[monthKey] || emp.timesheets[altMonthKey])) {
+      empDays = emp.timesheets[monthKey] || emp.timesheets[altMonthKey];
+    } else if (targetYear === currentYear && targetMonth === currentMonth && emp.days && Array.isArray(emp.days)) {
+      empDays = emp.days;
+    } else {
+      empDays = ensureCorrectMonthData(emp, targetYear, targetMonth);
+    }
   }
 
   if (empDays && Array.isArray(empDays)) {
@@ -4133,7 +4134,14 @@ async function generateEmployeePdfBlob(emp, monthKey) {
       targetMonth = parseInt(parts[1], 10) || currentMonth;
     }
   }
-  const page = buildEmployeePrintPageHtml(emp, 1, 1, targetYear, targetMonth);
+  const monthPad = String(targetMonth).padStart(2, '0');
+  const mKey = `${targetYear}-${monthPad}`;
+  const altMKey = `${targetYear}-${parseInt(targetMonth, 10)}`;
+  const daysToRender = (emp.timesheets && (emp.timesheets[mKey] || emp.timesheets[altMKey])) 
+    || (targetYear === currentYear && targetMonth === currentMonth && emp.days ? emp.days : null) 
+    || ensureCorrectMonthData(emp, targetYear, targetMonth);
+
+  const page = buildEmployeePrintPageHtml(emp, 1, 1, targetYear, targetMonth, daysToRender);
   const wrapper = document.createElement('div');
   wrapper.id = 'pdf-render-offscreen';
   wrapper.style.cssText = 'position: fixed; left: 0; top: 0; width: 794px; min-height: 1120px; background: #FFFFFF; z-index: -9999; opacity: 1; pointer-events: none; box-sizing: border-box; padding: 14px 18px; overflow: hidden;';
