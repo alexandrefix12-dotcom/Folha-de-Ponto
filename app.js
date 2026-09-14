@@ -2284,6 +2284,13 @@ async function saveTimesheetData() {
     }
   }
 
+  // 5b. Gera e envia PDF oficial formatado para o Supabase Storage em segundo plano
+  saveAndUploadSingleEmployeePDF(emp, monthKey).then(res => {
+    if (res && res.success) {
+      console.log(`✅ PDF de ${emp.name} atualizado no Supabase Storage:`, res.pdfUrl);
+    }
+  }).catch(e => console.warn('Aviso no upload do PDF:', e));
+
   if (btn) {
     btn.disabled = false;
     btn.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg> Salvo com Sucesso!`;
@@ -3115,7 +3122,6 @@ function buildEmployeePrintPageHtml(emp, pageNum = 1, totalPages = 1) {
       const dayPad = String(item.day).padStart(2, '0');
       const abbr = dowAbbrMap[item.dow] || (item.dow ? item.dow.slice(0, 3) : '');
       const isSunday = item.dow === 'Domingo' || abbr === 'Dom';
-      const isSaturday = item.dow === 'Sábado' || abbr === 'Sáb';
       const metrics = calcDayMetrics(item.e1, item.s1, item.e2, item.s2, item.status, item.dow);
 
       let intervalFormatted = 'à';
@@ -3145,14 +3151,18 @@ function buildEmployeePrintPageHtml(emp, pageNum = 1, totalPages = 1) {
         ? `${dayPad} <strong>Dom</strong>`
         : `${dayPad} ${abbr}`;
 
+      const tdDiaStyle = 'border: 1px solid #006633; border-left: none; padding: 0 1mm 0 2mm; text-align: left; line-height: 5.2mm; height: 5.2mm; color: #000000; box-sizing: border-box; font-size: 7.5pt; font-family: Arial, sans-serif; white-space: nowrap;';
+      const tdStyle = 'border: 1px solid #006633; padding: 0 1mm; text-align: center; line-height: 5.2mm; height: 5.2mm; color: #000000; box-sizing: border-box; font-size: 7.5pt; font-family: Arial, sans-serif;';
+      const tdLastStyle = 'border: 1px solid #006633; border-right: none; padding: 0 1mm; text-align: center; line-height: 5.2mm; height: 5.2mm; color: #000000; box-sizing: border-box; font-size: 7.2pt; font-family: Arial, sans-serif;';
+
       rowsHtml += `
         <tr class="${isSunday ? 'print-row-dom' : ''}">
-          <td class="col-dia">${dayDisplay}</td>
-          <td class="col-ent">${item.e1 || ''}</td>
-          <td class="col-int">${intervalFormatted}</td>
-          <td class="col-sai">${item.s2 || item.s1 || ''}</td>
-          <td class="col-ext">${extraFormatted}</td>
-          <td class="col-ass">${rubricaDisplay}</td>
+          <td class="col-dia" style="${tdDiaStyle}">${dayDisplay}</td>
+          <td class="col-ent" style="${tdStyle}">${item.e1 || ''}</td>
+          <td class="col-int" style="${tdStyle}">${intervalFormatted}</td>
+          <td class="col-sai" style="${tdStyle}">${item.s2 || item.s1 || ''}</td>
+          <td class="col-ext" style="${tdStyle}">${extraFormatted}</td>
+          <td class="col-ass" style="${tdLastStyle}">${rubricaDisplay}</td>
         </tr>
       `;
     });
@@ -3189,70 +3199,71 @@ function buildEmployeePrintPageHtml(emp, pageNum = 1, totalPages = 1) {
 
   const page = document.createElement('div');
   page.className = 'print-page';
+  page.style.cssText = 'box-sizing: border-box; padding: 0; margin: 0 auto; width: 100%; max-width: 100%; background: #FFFFFF; color: #000000; display: flex; flex-direction: column; justify-content: flex-start; font-size: 7.5pt; line-height: 1.2; font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;';
 
   page.innerHTML = `
     <!-- Top Centered Document Title -->
-    <div class="print-doc-title">
+    <div class="print-doc-title" style="font-size: 13.5pt; font-weight: 800; color: #006633; text-align: center; margin: 0 0 2mm 0; letter-spacing: 0.8px; text-transform: uppercase; font-family: Arial, sans-serif;">
       FOLHA DE PONTO ( ${monthNameUpper} / ${currentYear} )
     </div>
 
     <!-- Main Outer Envelope Container (Green Border) -->
-    <div class="print-doc-envelope">
+    <div class="print-doc-envelope" style="border: 1.5px solid #006633; box-sizing: border-box; width: 100%; background: #FFFFFF; font-family: Arial, sans-serif;">
       
       <!-- 1. Header: Empresa -->
-      <div class="print-comp-header">
-        <div class="print-comp-left">
-          <div class="print-comp-name">${compName}</div>
-          <div class="print-comp-addr-row">
+      <div class="print-comp-header" style="display: flex; justify-content: space-between; align-items: flex-start; padding: 2.2mm 3.5mm; border-bottom: 1.2px solid #006633; box-sizing: border-box;">
+        <div class="print-comp-left" style="display: flex; flex-direction: column; gap: 0.8mm; font-size: 7.2pt; line-height: 1.2; color: #000000;">
+          <div class="print-comp-name" style="font-weight: 800; font-size: 8.5pt; color: #000000;">${compName}</div>
+          <div class="print-comp-addr-row" style="display: flex; gap: 25mm; font-size: 7.2pt; color: #000000;">
             <span>RUA WINIFRED AVINEL WILES</span>
-            <span class="print-comp-addr-mid">3286, LAGOINHA, PORTO VELHO</span>
+            <span class="print-comp-addr-mid" style="margin-left: 5mm;">3286, LAGOINHA, PORTO VELHO</span>
           </div>
-          <div class="print-comp-cnpj">CNPJ/CAEPF: ${compCnpj}</div>
+          <div class="print-comp-cnpj" style="font-size: 7.2pt; color: #000000;">CNPJ/CAEPF: ${compCnpj}</div>
         </div>
-        <div class="print-comp-right">
-          <span class="print-comp-code">${emp.code || '300'}</span>
+        <div class="print-comp-right" style="text-align: right;">
+          <span class="print-comp-code" style="font-size: 9pt; font-weight: 800; color: #000000;">${emp.code || '300'}</span>
         </div>
       </div>
 
       <!-- 2. Header: Funcionário & Horário -->
-      <div class="print-emp-header">
-        <div class="print-emp-col-left">
-          <div class="print-emp-name">${(emp.name || '-').toUpperCase()}</div>
-          <div class="print-emp-sig-slot">
-            ${empSigImg ? `<img src="${empSigImg}" alt="Assinatura" class="print-emp-header-sig-img">` : '<div class="print-emp-sig-blank"></div>'}
+      <div class="print-emp-header" style="display: grid; grid-template-columns: 32% 68%; box-sizing: border-box; border-bottom: 1.2px solid #006633;">
+        <div class="print-emp-col-left" style="border-right: 1.2px solid #006633; padding: 2.5mm 3.5mm; display: flex; flex-direction: column; justify-content: space-between; min-height: 25mm; box-sizing: border-box;">
+          <div class="print-emp-name" style="font-size: 8.5pt; font-weight: 800; color: #000000; line-height: 1.2;">${(emp.name || '-').toUpperCase()}</div>
+          <div class="print-emp-sig-slot" style="margin-top: 1mm; height: 14mm; display: flex; align-items: flex-end;">
+            ${empSigImg ? `<img src="${empSigImg}" alt="Assinatura" class="print-emp-header-sig-img" style="max-height: 13mm; max-width: 55mm; object-fit: contain; background: transparent;">` : '<div class="print-emp-sig-blank" style="height: 12mm;"></div>'}
           </div>
         </div>
-        <div class="print-emp-col-right">
-          <div class="print-emp-meta-row">
-            <span>Admi: <strong>${emp.admi || emp.admissionDate || '05/02/2022'}</strong></span>
-            <span>CTPS: <strong>${emp.ctps || '00408992 1236 / RO'}</strong></span>
-            <span>FUNÇÃO: <strong>${(emp.role || emp.funcao || 'BACK OFF - AUX ADM').toUpperCase()}</strong></span>
-            <span class="print-emp-mat"><strong>${emp.matricula || '0010'}</strong></span>
+        <div class="print-emp-col-right" style="padding: 2mm 3.5mm; font-size: 7.2pt; display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box;">
+          <div class="print-emp-meta-row" style="display: flex; justify-content: space-between; align-items: center; font-size: 7.2pt; border-bottom: 0.5px solid #CBD5E1; padding-bottom: 1.2mm; margin-bottom: 1.2mm; color: #000000;">
+            <span>Admi: <strong>${emp.admi || emp.admissionDate || emp.admission || '05/02/2022'}</strong></span>
+            <span>CTPS: <strong>${emp.ctps || emp.pis || '00408992 1236 / RO'}</strong></span>
+            <span>FUNÇÃO: <strong>${(emp.role || emp.funcao || 'VENDEDOR').toUpperCase()}</strong></span>
+            <span class="print-emp-mat" style="font-weight: 800; font-size: 7.5pt;"><strong>${emp.matricula || '0001'}</strong></span>
           </div>
-          <div class="print-schedule-box">
-            <span class="print-sched-title">HORÁRIO</span>
-            <div class="print-sched-list">
-              <div class="print-sched-row"><span class="sched-day">Segunda-Feira</span><span class="sched-times">ENT.: 06:00 - INT.: 12:00 a 14:00 - SAI.: 18:00</span></div>
-              <div class="print-sched-row"><span class="sched-day">Terça-Feira</span><span class="sched-times">ENT.: 06:00 - INT.: 12:00 a 14:00 - SAI.: 18:00</span></div>
-              <div class="print-sched-row"><span class="sched-day">Quarta-Feira</span><span class="sched-times">ENT.: 06:00 - INT.: 12:00 a 14:00 - SAI.: 18:00</span></div>
-              <div class="print-sched-row"><span class="sched-day">Quinta-Feira</span><span class="sched-times">ENT.: 06:00 - INT.: 12:00 a 14:00 - SAI.: 18:00</span></div>
-              <div class="print-sched-row"><span class="sched-day">Sexta-Feira</span><span class="sched-times">ENT.: 06:00 - INT.: 12:00 a 14:00 - SAI.: 18:00</span></div>
-              <div class="print-sched-row"><span class="sched-day">Sábado</span><span class="sched-times">ENT.: 06:00 - INT.: 12:00 a &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- SAI.: -</span></div>
+          <div class="print-schedule-box" style="display: flex; gap: 4mm; font-size: 6.6pt; line-height: 1.3; color: #000000;">
+            <span class="print-sched-title" style="font-weight: 800; white-space: nowrap;">HORÁRIO</span>
+            <div class="print-sched-list" style="flex: 1; display: flex; flex-direction: column; gap: 0.2mm;">
+              <div class="print-sched-row" style="display: flex; gap: 1.5mm; white-space: nowrap;"><span class="sched-day" style="width: 22mm; display: inline-block; font-weight: 600;">Segunda-Feira</span><span class="sched-times">ENT.: 06:00 - INT.: 12:00 a 14:00 - SAI.: 18:00</span></div>
+              <div class="print-sched-row" style="display: flex; gap: 1.5mm; white-space: nowrap;"><span class="sched-day" style="width: 22mm; display: inline-block; font-weight: 600;">Terça-Feira</span><span class="sched-times">ENT.: 06:00 - INT.: 12:00 a 14:00 - SAI.: 18:00</span></div>
+              <div class="print-sched-row" style="display: flex; gap: 1.5mm; white-space: nowrap;"><span class="sched-day" style="width: 22mm; display: inline-block; font-weight: 600;">Quarta-Feira</span><span class="sched-times">ENT.: 06:00 - INT.: 12:00 a 14:00 - SAI.: 18:00</span></div>
+              <div class="print-sched-row" style="display: flex; gap: 1.5mm; white-space: nowrap;"><span class="sched-day" style="width: 22mm; display: inline-block; font-weight: 600;">Quinta-Feira</span><span class="sched-times">ENT.: 06:00 - INT.: 12:00 a 14:00 - SAI.: 18:00</span></div>
+              <div class="print-sched-row" style="display: flex; gap: 1.5mm; white-space: nowrap;"><span class="sched-day" style="width: 22mm; display: inline-block; font-weight: 600;">Sexta-Feira</span><span class="sched-times">ENT.: 06:00 - INT.: 12:00 a 14:00 - SAI.: 18:00</span></div>
+              <div class="print-sched-row" style="display: flex; gap: 1.5mm; white-space: nowrap;"><span class="sched-day" style="width: 22mm; display: inline-block; font-weight: 600;">Sábado</span><span class="sched-times">ENT.: 06:00 - INT.: 12:00 a &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- SAI.: -</span></div>
             </div>
           </div>
         </div>
       </div>
 
       <!-- 3. Timesheet Table -->
-      <table class="print-table">
+      <table class="print-table" style="width: 100%; border-collapse: collapse; border-left: none; border-right: none; border-top: none; border-bottom: 1.2px solid #006633; margin: 0; font-size: 7.5pt; table-layout: fixed; box-sizing: border-box; font-family: Arial, sans-serif;">
         <thead>
           <tr>
-            <th style="width: 10%;">DIA</th>
-            <th style="width: 14%;">ENTRADA</th>
-            <th style="width: 19%;">INTERVALO REFEIÇÃO</th>
-            <th style="width: 14%;">SAÍDA</th>
-            <th style="width: 17%;">HORAS EXTRAS</th>
-            <th style="width: 26%;">ASSINATURA</th>
+            <th style="width: 10%; background-color: #FFFFFF; color: #000000; font-weight: 800; border: 1px solid #006633; border-left: none; padding: 1.6mm 1mm; text-align: center; font-size: 7.8pt; letter-spacing: 0.3px;">DIA</th>
+            <th style="width: 14%; background-color: #FFFFFF; color: #000000; font-weight: 800; border: 1px solid #006633; padding: 1.6mm 1mm; text-align: center; font-size: 7.8pt; letter-spacing: 0.3px;">ENTRADA</th>
+            <th style="width: 19%; background-color: #FFFFFF; color: #000000; font-weight: 800; border: 1px solid #006633; padding: 1.6mm 1mm; text-align: center; font-size: 7.8pt; letter-spacing: 0.3px;">INTERVALO REFEIÇÃO</th>
+            <th style="width: 14%; background-color: #FFFFFF; color: #000000; font-weight: 800; border: 1px solid #006633; padding: 1.6mm 1mm; text-align: center; font-size: 7.8pt; letter-spacing: 0.3px;">SAÍDA</th>
+            <th style="width: 17%; background-color: #FFFFFF; color: #000000; font-weight: 800; border: 1px solid #006633; padding: 1.6mm 1mm; text-align: center; font-size: 7.8pt; letter-spacing: 0.3px;">HORAS EXTRAS</th>
+            <th style="width: 26%; background-color: #FFFFFF; color: #000000; font-weight: 800; border: 1px solid #006633; border-right: none; padding: 1.6mm 1mm; text-align: center; font-size: 7.8pt; letter-spacing: 0.3px;">ASSINATURA</th>
           </tr>
         </thead>
         <tbody>
@@ -3261,53 +3272,53 @@ function buildEmployeePrintPageHtml(emp, pageNum = 1, totalPages = 1) {
       </table>
 
       <!-- 4. Resumo de Frequência & Assinaturas Box -->
-      <div class="print-bottom-container">
+      <div class="print-bottom-container" style="border: none; display: grid; grid-template-columns: 66% 34%; box-sizing: border-box; width: 100%; font-family: Arial, sans-serif;">
         <!-- Left: Resumo de Frequência -->
-        <div class="print-resumo-box">
-          <div class="print-resumo-header">RESUMO DE FREQUÊNCIA</div>
-          <div class="print-resumo-grid">
-            <div class="resumo-subcol">
-              <div class="resumo-item"><span>Nº de faltas justificadas</span><span class="colon">:</span><div class="resumo-line-val">${totalFaltasJustificadas > 0 ? totalFaltasJustificadas : ''}</div></div>
-              <div class="resumo-item"><span>Nº de faltas não justificadas</span><span class="colon">:</span><div class="resumo-line-val">${totalFaltas > 0 ? totalFaltas : ''}</div></div>
-              <div class="resumo-item"><span>Atrasos</span><span class="colon">:</span><div class="resumo-line-val">${totalAtrasoMins > 0 ? minutesToTime(totalAtrasoMins) + 'h' : ''}</div></div>
-              <div class="resumo-item"><span>Atrasos não Justificados</span><span class="colon">:</span><div class="resumo-line-val"></div></div>
-              <div class="resumo-item"><span>Nº de Vale Refeição</span><span class="colon">:</span><div class="resumo-line-val">${totalPresencas > 0 ? totalPresencas : ''}</div></div>
+        <div class="print-resumo-box" style="border-right: 1.2px solid #006633; display: flex; flex-direction: column;">
+          <div class="print-resumo-header" style="background-color: #FFFFFF; color: #000000; font-weight: 800; font-size: 8.5pt; text-align: center; padding: 1.8mm; border-bottom: 1.2px solid #006633; letter-spacing: 0.5px;">RESUMO DE FREQUÊNCIA</div>
+          <div class="print-resumo-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 3mm; padding: 2.2mm 3.5mm; font-size: 7.0pt; line-height: 1.4;">
+            <div class="resumo-subcol" style="display: flex; flex-direction: column; gap: 1.2mm;">
+              <div class="resumo-item" style="display: flex; align-items: center; justify-content: space-between;"><span style="white-space: nowrap; color: #000000;">Nº de faltas justificadas</span><span class="colon" style="margin: 0 1.5mm;">:</span><div class="resumo-line-val" style="flex: 1; border-bottom: 1px solid #000000; height: 4.8mm; text-align: center; font-size: 7.0pt; color: #000000; font-weight: 700;">${totalFaltasJustificadas > 0 ? totalFaltasJustificadas : ''}</div></div>
+              <div class="resumo-item" style="display: flex; align-items: center; justify-content: space-between;"><span style="white-space: nowrap; color: #000000;">Nº de faltas não justificadas</span><span class="colon" style="margin: 0 1.5mm;">:</span><div class="resumo-line-val" style="flex: 1; border-bottom: 1px solid #000000; height: 4.8mm; text-align: center; font-size: 7.0pt; color: #000000; font-weight: 700;">${totalFaltas > 0 ? totalFaltas : ''}</div></div>
+              <div class="resumo-item" style="display: flex; align-items: center; justify-content: space-between;"><span style="white-space: nowrap; color: #000000;">Atrasos</span><span class="colon" style="margin: 0 1.5mm;">:</span><div class="resumo-line-val" style="flex: 1; border-bottom: 1px solid #000000; height: 4.8mm; text-align: center; font-size: 7.0pt; color: #000000; font-weight: 700;">${totalAtrasoMins > 0 ? minutesToTime(totalAtrasoMins) + 'h' : ''}</div></div>
+              <div class="resumo-item" style="display: flex; align-items: center; justify-content: space-between;"><span style="white-space: nowrap; color: #000000;">Atrasos não Justificados</span><span class="colon" style="margin: 0 1.5mm;">:</span><div class="resumo-line-val" style="flex: 1; border-bottom: 1px solid #000000; height: 4.8mm; text-align: center; font-size: 7.0pt; color: #000000; font-weight: 700;"></div></div>
+              <div class="resumo-item" style="display: flex; align-items: center; justify-content: space-between;"><span style="white-space: nowrap; color: #000000;">Nº de Vale Refeição</span><span class="colon" style="margin: 0 1.5mm;">:</span><div class="resumo-line-val" style="flex: 1; border-bottom: 1px solid #000000; height: 4.8mm; text-align: center; font-size: 7.0pt; color: #000000; font-weight: 700;">${totalPresencas > 0 ? totalPresencas : ''}</div></div>
             </div>
-            <div class="resumo-subcol">
-              <div class="resumo-item"><span>Nº de Cesta Básica</span><span class="colon">:</span><div class="resumo-line-val"></div></div>
-              <div class="resumo-item"><span>Nº de Vale Transporte</span><span class="colon">:</span><div class="resumo-line-val"></div></div>
-              <div class="resumo-item"><span>Nº de Horas Extras</span><span class="colon">:</span><div class="resumo-line-val">${totalExtraMins > 0 ? minutesToTime(totalExtraMins) + 'h' : ''}</div></div>
-              <div class="resumo-item"><span>Nº de Horas Extras</span><span class="colon">:</span><div class="resumo-line-val"></div></div>
-              <div class="resumo-item"><span>Nº de Adicional Noturno</span><span class="colon">:</span><div class="resumo-line-val"></div></div>
+            <div class="resumo-subcol" style="display: flex; flex-direction: column; gap: 1.2mm;">
+              <div class="resumo-item" style="display: flex; align-items: center; justify-content: space-between;"><span style="white-space: nowrap; color: #000000;">Nº de Cesta Básica</span><span class="colon" style="margin: 0 1.5mm;">:</span><div class="resumo-line-val" style="flex: 1; border-bottom: 1px solid #000000; height: 4.8mm; text-align: center; font-size: 7.0pt; color: #000000; font-weight: 700;"></div></div>
+              <div class="resumo-item" style="display: flex; align-items: center; justify-content: space-between;"><span style="white-space: nowrap; color: #000000;">Nº de Vale Transporte</span><span class="colon" style="margin: 0 1.5mm;">:</span><div class="resumo-line-val" style="flex: 1; border-bottom: 1px solid #000000; height: 4.8mm; text-align: center; font-size: 7.0pt; color: #000000; font-weight: 700;"></div></div>
+              <div class="resumo-item" style="display: flex; align-items: center; justify-content: space-between;"><span style="white-space: nowrap; color: #000000;">Nº de Horas Extras</span><span class="colon" style="margin: 0 1.5mm;">:</span><div class="resumo-line-val" style="flex: 1; border-bottom: 1px solid #000000; height: 4.8mm; text-align: center; font-size: 7.0pt; color: #000000; font-weight: 700;">${totalExtraMins > 0 ? minutesToTime(totalExtraMins) + 'h' : ''}</div></div>
+              <div class="resumo-item" style="display: flex; align-items: center; justify-content: space-between;"><span style="white-space: nowrap; color: #000000;">Nº de Horas Extras</span><span class="colon" style="margin: 0 1.5mm;">:</span><div class="resumo-line-val" style="flex: 1; border-bottom: 1px solid #000000; height: 4.8mm; text-align: center; font-size: 7.0pt; color: #000000; font-weight: 700;"></div></div>
+              <div class="resumo-item" style="display: flex; align-items: center; justify-content: space-between;"><span style="white-space: nowrap; color: #000000;">Nº de Adicional Noturno</span><span class="colon" style="margin: 0 1.5mm;">:</span><div class="resumo-line-val" style="flex: 1; border-bottom: 1px solid #000000; height: 4.8mm; text-align: center; font-size: 7.0pt; color: #000000; font-weight: 700;"></div></div>
             </div>
           </div>
         </div>
 
         <!-- Right: Assinaturas -->
-        <div class="print-sigs-box">
-          <div class="print-date-row">
+        <div class="print-sigs-box" style="display: flex; flex-direction: column; justify-content: space-between; padding: 2.2mm 4mm; box-sizing: border-box;">
+          <div class="print-date-row" style="font-size: 7.5pt; text-align: left; margin-bottom: 1.5mm; color: #000000;">
             Data: &nbsp;${closingDateFormatted}
           </div>
-          <div class="print-sig-field">
-            <div class="print-sig-preview-space">
-              ${empSigImg ? `<img src="${empSigImg}" class="print-footer-sig-img" alt="Assinatura do Funcionário">` : ''}
+          <div class="print-sig-field" style="display: flex; flex-direction: column; align-items: center; text-align: center; margin-top: 1mm;">
+            <div class="print-sig-preview-space" style="min-height: 8mm; max-height: 10mm; display: flex; align-items: flex-end; justify-content: center; margin-bottom: -1px;">
+              ${empSigImg ? `<img src="${empSigImg}" class="print-footer-sig-img" alt="Assinatura do Funcionário" style="max-height: 9.5mm; max-width: 45mm; object-fit: contain; background: transparent;">` : ''}
             </div>
-            <div class="print-sig-line"></div>
-            <div class="print-sig-caption">Assinatura do Funcionário</div>
+            <div class="print-sig-line" style="width: 95%; border-top: 1px solid #000000; margin: 0.8mm 0;"></div>
+            <div class="print-sig-caption" style="font-size: 7.2pt; color: #000000;">Assinatura do Funcionário</div>
           </div>
-          <div class="print-sig-field">
-            <div class="print-sig-preview-space">
-              ${compSigImg ? `<img src="${compSigImg}" class="print-footer-sig-img" alt="Assinatura da Chefia">` : ''}
+          <div class="print-sig-field" style="display: flex; flex-direction: column; align-items: center; text-align: center; margin-top: 1mm;">
+            <div class="print-sig-preview-space" style="min-height: 8mm; max-height: 10mm; display: flex; align-items: flex-end; justify-content: center; margin-bottom: -1px;">
+              ${compSigImg ? `<img src="${compSigImg}" class="print-footer-sig-img" alt="Assinatura da Chefia" style="max-height: 9.5mm; max-width: 45mm; object-fit: contain; background: transparent;">` : ''}
             </div>
-            <div class="print-sig-line"></div>
-            <div class="print-sig-caption">Assinatura da Chefia</div>
+            <div class="print-sig-line" style="width: 95%; border-top: 1px solid #000000; margin: 0.8mm 0;"></div>
+            <div class="print-sig-caption" style="font-size: 7.2pt; color: #000000;">Assinatura da Chefia</div>
           </div>
         </div>
       </div>
     </div>
 
     <!-- 5. Micro Footer -->
-    <div class="print-micro-footer">
+    <div class="print-micro-footer" style="font-size: 6.8pt; color: #000000; padding: 1.5mm 2mm; text-align: left; font-family: Arial, sans-serif;">
       ${compName} ${nowFormatted}
     </div>
   `;
@@ -3690,11 +3701,13 @@ async function generateEmployeePdfBlob(emp, monthKey) {
   const page = buildEmployeePrintPageHtml(emp, 1, 1);
   const wrapper = document.createElement('div');
   wrapper.id = 'pdf-render-offscreen';
-  wrapper.style.cssText = 'position: fixed; left: 0; top: 0; width: 794px; min-height: 1123px; background: #FFFFFF; z-index: -9999; box-sizing: border-box; padding: 14px 18px; overflow: hidden; pointer-events: none;';
+  wrapper.style.cssText = 'position: fixed; left: 0; top: 0; width: 794px; min-height: 1120px; background: #FFFFFF; z-index: 99999; opacity: 1; box-sizing: border-box; padding: 14px 18px; overflow: hidden; pointer-events: none;';
 
   const styleEl = document.createElement('style');
+  styleEl.id = 'timesheet-pdf-runtime-style';
   styleEl.textContent = getTimesheetStandaloneCss();
-  wrapper.appendChild(styleEl);
+  document.head.appendChild(styleEl);
+
   wrapper.appendChild(page);
   document.body.appendChild(wrapper);
 
@@ -3706,7 +3719,7 @@ async function generateEmployeePdfBlob(emp, monthKey) {
       return new Promise(resolve => {
         img.onload = resolve;
         img.onerror = resolve;
-        setTimeout(resolve, 200);
+        setTimeout(resolve, 300);
       });
     }));
 
@@ -3752,6 +3765,10 @@ async function generateEmployeePdfBlob(emp, monthKey) {
   } finally {
     if (wrapper.parentNode) {
       wrapper.parentNode.removeChild(wrapper);
+    }
+    const injectedStyle = document.getElementById('timesheet-pdf-runtime-style');
+    if (injectedStyle && injectedStyle.parentNode) {
+      injectedStyle.parentNode.removeChild(injectedStyle);
     }
   }
 }
