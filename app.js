@@ -2733,7 +2733,8 @@ async function handleSaveEditedEmployee(e) {
 
   // Sincronizar situação nos registros diários da Folha de Ponto automaticamente
   if (statusCategory === 'ferias') {
-    // Aplica Férias em todos os dias do mês atual e timesheets
+    // Aplica Férias APENAS nos dias do mês atual selecionado
+    const curMonthKey = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
     if (emp.days && Array.isArray(emp.days)) {
       emp.days.forEach(item => {
         item.status = 'ferias';
@@ -2743,19 +2744,8 @@ async function handleSaveEditedEmployee(e) {
         item.just = 'Férias Regulamentares';
       });
     }
-    if (emp.timesheets) {
-      Object.keys(emp.timesheets).forEach(k => {
-        if (Array.isArray(emp.timesheets[k])) {
-          emp.timesheets[k].forEach(item => {
-            item.status = 'ferias';
-            item.statusLabel = 'Férias Regulamentares';
-            item.e1 = ''; item.s1 = ''; item.e2 = ''; item.s2 = '';
-            item.signed = true;
-            item.just = 'Férias Regulamentares';
-          });
-        }
-      });
-    }
+    if (!emp.timesheets) emp.timesheets = {};
+    emp.timesheets[curMonthKey] = JSON.parse(JSON.stringify(emp.days));
   } else if (statusCategory === 'afastado') {
     // Aplica Afastamento/INSS em todos os dias e timesheets
     if (emp.days && Array.isArray(emp.days)) {
