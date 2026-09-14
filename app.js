@@ -315,7 +315,7 @@ async function initApp() {
           const localMatch = localCopy.find(l => l.id === remoteEmp.id || (l.cpf && remoteEmp.cpf && l.cpf.replace(/\D/g, '') === remoteEmp.cpf.replace(/\D/g, '')));
           // Prioriza as edições e anexos mais recentes salvos localmente
           const mergedTimesheets = localMatch ? { ...(remoteEmp.timesheets || {}), ...(localMatch.timesheets || {}) } : (remoteEmp.timesheets || {});
-          
+
           if (!mergedTimesheets[monthKey]) {
             mergedTimesheets[monthKey] = generateCurrentMonthData(currentYear, currentMonth, remoteEmp.id);
           }
@@ -366,7 +366,7 @@ async function initApp() {
         systemSettings.companySignature = remoteCompSig;
         try {
           localStorage.setItem(SYSTEM_SETTINGS_KEY, JSON.stringify(systemSettings));
-        } catch (e) {}
+        } catch (e) { }
       }
     } catch (err) {
       console.warn('⚠️ Usando base de dados local:', err);
@@ -378,7 +378,7 @@ async function initApp() {
   renderEmployeesAdminTable();
   updateSidebarBadges();
   updateCompanySignatureButtonState();
-  
+
   const firstId = employeesDB[0]?.id || '';
   selectEmployee(firstId, false);
 
@@ -553,7 +553,7 @@ function getAuthConfig() {
   try {
     const raw = localStorage.getItem(AUTH_CREDENTIALS_KEY);
     if (raw) return { ...DEFAULT_AUTH_CONFIG, ...JSON.parse(raw) };
-  } catch (e) {}
+  } catch (e) { }
   return DEFAULT_AUTH_CONFIG;
 }
 
@@ -589,7 +589,7 @@ function updateSidebarUserUI() {
       }
       avatarEl.textContent = initials;
     }
-  } catch (e) {}
+  } catch (e) { }
 }
 
 function showLoginScreen() {
@@ -603,7 +603,7 @@ function showLoginScreen() {
   if (mainSuite) {
     mainSuite.style.setProperty('display', 'none', 'important');
   }
-  
+
   setTimeout(() => {
     const userField = document.getElementById('login-username');
     if (userField) userField.focus();
@@ -647,7 +647,7 @@ function handleLoginSubmit(e) {
     if (typeof e.preventDefault === 'function') e.preventDefault();
     if (typeof e.stopPropagation === 'function') e.stopPropagation();
   }
-  
+
   const userEl = document.getElementById('login-username');
   const passEl = document.getElementById('login-password');
   const rememberEl = document.getElementById('login-remember');
@@ -691,19 +691,19 @@ function handleLoginSubmit(e) {
     } else {
       sessionStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(sessionData));
     }
-  } catch (err) {}
+  } catch (err) { }
 
   // 1. Oculta tela de login e exibe o sistema imediatamente
   showAppSuite();
-  
+
   // 2. Inicializa os dados em background
   initApp().catch(initErr => {
     console.warn('Erro ao inicializar base de dados:', initErr);
   });
-  
+
   updateSidebarUserUI();
   showToast(`👋 Bem-vindo ao Sistema de Folha de Ponto, ${displayName.split(' ')[0]}!`);
-  
+
   return false;
 }
 
@@ -722,7 +722,7 @@ function checkUrlAuthParams() {
       handleLoginSubmit(null);
       return true;
     }
-  } catch (e) {}
+  } catch (e) { }
   return false;
 }
 
@@ -732,10 +732,10 @@ function handleLogout() {
   }
   localStorage.removeItem(AUTH_SESSION_KEY);
   sessionStorage.removeItem(AUTH_SESSION_KEY);
-  
+
   const passEl = document.getElementById('login-password');
   if (passEl) passEl.value = '';
-  
+
   showLoginScreen();
   showToast('🔒 Sessão encerrada com sucesso.');
 }
@@ -881,9 +881,9 @@ function selectEmployee(empIdOrName, navigateToTimesheet = false) {
   }
 
   const queryStr = String(empIdOrName || '').toLowerCase().trim();
-  const found = employeesDB.find(e => 
-    String(e.id).toLowerCase() === queryStr || 
-    String(e.name || '').toLowerCase().trim() === queryStr || 
+  const found = employeesDB.find(e =>
+    String(e.id).toLowerCase() === queryStr ||
+    String(e.name || '').toLowerCase().trim() === queryStr ||
     (e.cpf && e.cpf.replace(/\D/g, '') === queryStr.replace(/\D/g, ''))
   );
   if (found) {
@@ -1080,7 +1080,7 @@ function renderPeriodModal() {
 
     // Identifica histórico daquele período para o colaborador ativo
     let statusBadgeHtml = '<span class="m-badge empty">⚪ Vazio</span>';
-    
+
     if (activeEmp) {
       const sig = activeEmp.signatures && (activeEmp.signatures[targetMonthKey] || activeEmp.signatures[altMonthKey]);
       const hasTimesheet = activeEmp.timesheets && (activeEmp.timesheets[targetMonthKey] || activeEmp.timesheets[altMonthKey]);
@@ -1202,7 +1202,7 @@ async function setPeriod(year, month) {
 
   saveEmployeesToLocalStorage();
   updateMonthDisplay();
-  
+
   const currentSelectedEmp = getCurrentEmployee();
   if (currentSelectedEmp) {
     updateHeroSignatureBadge(currentSelectedEmp);
@@ -1265,8 +1265,8 @@ function calcDayMetrics(e1, s1, e2, s2, status, dow = '') {
     };
   }
 
-  const standard = (dow === 'Sábado') 
-    ? ((typeof systemSettings !== 'undefined' && systemSettings.workHoursSaturday !== undefined) ? systemSettings.workHoursSaturday : 240) 
+  const standard = (dow === 'Sábado')
+    ? ((typeof systemSettings !== 'undefined' && systemSettings.workHoursSaturday !== undefined) ? systemSettings.workHoursSaturday : 240)
     : ((typeof systemSettings !== 'undefined' && systemSettings.workHoursWeekday !== undefined) ? systemSettings.workHoursWeekday : 480);
   const tolerance = (typeof systemSettings !== 'undefined' && systemSettings.toleranceMinutes !== undefined) ? systemSettings.toleranceMinutes : 10;
 
@@ -1438,7 +1438,7 @@ function renderTimesheetTable() {
 
   emp.days.forEach((item, index) => {
     const tr = document.createElement('tr');
-    
+
     // Row classes
     if (item.status === 'dsr') tr.className = 'weekend-row';
     else if (item.status === 'feriado') tr.className = 'holiday-row';
@@ -1457,9 +1457,9 @@ function renderTimesheetTable() {
     const todayDate = now.getDate();
 
     const isToday = (todayYear === currentYear && todayMonth === currentMonth && todayDate === item.day);
-    const isFuture = (currentYear > todayYear) || 
-                     (currentYear === todayYear && currentMonth > todayMonth) || 
-                     (currentYear === todayYear && currentMonth === todayMonth && item.day > todayDate);
+    const isFuture = (currentYear > todayYear) ||
+      (currentYear === todayYear && currentMonth > todayMonth) ||
+      (currentYear === todayYear && currentMonth === todayMonth && item.day > todayDate);
 
     if (isToday) tr.classList.add('today-row');
     if (isFuture) tr.classList.add('future-row');
@@ -1498,13 +1498,13 @@ function renderTimesheetTable() {
             <option value="dsr" ${item.status === 'dsr' ? 'selected' : ''}>🟣 DSR / Folga</option>
             <option value="feriado" ${item.status === 'feriado' ? 'selected' : ''}>🔵 Feriado</option>
           </select>
-          ${ (item.status === 'atestado' || item.status === 'afastado' || item.status === 'demitido' || item.status === 'desligado' || item.status === 'justificada') ? `
+          ${(item.status === 'atestado' || item.status === 'afastado' || item.status === 'demitido' || item.status === 'desligado' || item.status === 'justificada') ? `
             <button type="button" class="btn-just-chip ${item.attachmentData ? 'has-attachment' : (item.just ? 'has-text' : '')}" onclick="openJustificationModal(${index})" title="${item.just || 'Adicionar ou visualizar observação e comprovante'}">
-              ${ item.attachmentData 
-                 ? (item.attachmentType && item.attachmentType.includes('pdf') ? '📄 PDF Anexado' : '📷 Foto Anexada')
-                 : (item.just ? '📝 ' + (item.just.length > 14 ? item.just.slice(0, 14) + '…' : item.just) : '➕ Obs / Anexo') }
+              ${item.attachmentData
+          ? (item.attachmentType && item.attachmentType.includes('pdf') ? '📄 PDF Anexado' : '📷 Foto Anexada')
+          : (item.just ? '📝 ' + (item.just.length > 14 ? item.just.slice(0, 14) + '…' : item.just) : '➕ Obs / Anexo')}
             </button>
-          ` : '' }
+          ` : ''}
         </div>
       </td>
       <td style="text-align: center;">
@@ -2135,7 +2135,7 @@ function updateSingleRowMetrics(idx) {
   const emp = getCurrentEmployee();
   const item = emp.days[idx];
   const metrics = calcDayMetrics(item.e1, item.s1, item.e2, item.s2, item.status, item.dow);
-  
+
   const extraEl = document.getElementById(`extra-${idx}`);
   if (extraEl) {
     extraEl.className = `extra-badge ${metrics.extraType}`;
@@ -2285,8 +2285,8 @@ function renderEmployeesAdminTable() {
     });
 
     const netBalanceMins = totalExtraMins - totalAtrasoMins;
-    const balanceDisplay = totalFaltas > 0 
-      ? `-08:00h` 
+    const balanceDisplay = totalFaltas > 0
+      ? `-08:00h`
       : (netBalanceMins > 0 ? `+${minutesToTime(netBalanceMins)}h` : (netBalanceMins < 0 ? `-${minutesToTime(Math.abs(netBalanceMins))}h` : `+00:00h`));
     const balanceColorClass = totalFaltas > 0 ? 'text-danger' : (netBalanceMins > 0 ? 'text-success' : 'text-muted');
 
@@ -2681,7 +2681,7 @@ function updateAfastadosBadgeCounter(hasNewNotification = false) {
 function showEmployeesView(viewMode) {
   switchScreen('screen-admin');
   localStorage.setItem('lane_last_admin_view_mode', viewMode || 'ativos');
-  
+
   const navEmployees = document.getElementById('nav-link-employees');
   const navFerias = document.getElementById('nav-link-ferias');
   const navAfastados = document.getElementById('nav-link-afastados');
@@ -2744,7 +2744,7 @@ function filterEmployees() {
 
     const matchQuery = !query || name.includes(query) || role.includes(query) || rawCpf.includes(query) || (cleanQuery && numCpf.includes(cleanQuery));
     const matchDept = dept === 'all' || rowDept === dept || (row.innerText && row.innerText.includes(dept));
-    
+
     let matchStatus = false;
     if (status === 'all') {
       matchStatus = true;
@@ -2821,7 +2821,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const formatPhoneValue = (val) => {
     let v = val.replace(/\D/g, '');
     if (v.length > 11) v = v.substring(0, 11);
-    
+
     if (v.length === 0) return '';
     if (v.length <= 2) return `(${v}`;
     if (v.length <= 6) return `(${v.slice(0, 2)}) ${v.slice(2)}`;
@@ -3002,7 +3002,7 @@ async function handleCreateEmployee(e) {
     updateSidebarBadges();
     closeNewEmployeeModal();
 
-    showToast(success 
+    showToast(success
       ? `🎉 Colaborador ${nome} cadastrado e sincronizado com sucesso!`
       : `✅ Colaborador ${nome} cadastrado com sucesso!`
     );
@@ -3093,8 +3093,8 @@ function buildEmployeePrintPageHtml(emp, pageNum = 1, totalPages = 1) {
         rubricaDisplay = emp.initials || '';
       }
 
-      const dayDisplay = isSunday 
-        ? `${dayPad} <strong>Dom</strong>` 
+      const dayDisplay = isSunday
+        ? `${dayPad} <strong>Dom</strong>`
         : `${dayPad} ${abbr}`;
 
       rowsHtml += `
@@ -3274,7 +3274,7 @@ function syncDomTableToActiveEmployee() {
   if (!emp || !emp.days) return;
   const rows = document.querySelectorAll('#timesheet-tbody tr');
   if (!rows || rows.length === 0) return;
-  
+
   rows.forEach((row, idx) => {
     if (emp.days[idx]) {
       const e1Input = row.querySelector('[data-field="e1"]');
@@ -3330,19 +3330,19 @@ function printCurrentEmployeeTimesheet() {
   if (!emp) return;
   const monthName = MONTH_NAMES[currentMonth - 1] || `${currentMonth}`;
   const previousTitle = document.title;
-  
+
   // Define o nome exato sugerido no diálogo de Salvar como PDF
   document.title = `Folha de Ponto - ${emp.name} - ${monthName} de ${currentYear}`;
-  
+
   showToast(`📄 Gerando PDF da folha de ponto de ${emp.name} (${monthName}/${currentYear})...`);
   generateSingleEmployeePrintView(emp);
-  
+
   const restoreTitle = () => {
     document.title = previousTitle;
     window.removeEventListener('afterprint', restoreTitle);
   };
   window.addEventListener('afterprint', restoreTitle);
-  
+
   setTimeout(() => {
     window.print();
     setTimeout(restoreTitle, 3000);
@@ -3353,18 +3353,18 @@ function printCurrentEmployeeTimesheet() {
 function printAllEmployeesTimesheets() {
   const monthName = MONTH_NAMES[currentMonth - 1] || `${currentMonth}`;
   const previousTitle = document.title;
-  
+
   document.title = `Folhas de Ponto - Todos os Funcionários - ${monthName} de ${currentYear}`;
-  
+
   showToast(`📄 Gerando PDF de todos os ${employeesDB.length} colaboradores (${monthName}/${currentYear})...`);
   generateAllEmployeesPrintView();
-  
+
   const restoreTitle = () => {
     document.title = previousTitle;
     window.removeEventListener('afterprint', restoreTitle);
   };
   window.addEventListener('afterprint', restoreTitle);
-  
+
   setTimeout(() => {
     window.print();
     setTimeout(restoreTitle, 3000);
@@ -3605,7 +3605,7 @@ async function saveSystemSettings() {
   if (compSig && companySettingSigHasDrawn && window.supabaseService && window.supabaseService.isConfigured()) {
     try {
       await window.supabaseService.saveCompanySignature(compSig);
-    } catch (e) {}
+    } catch (e) { }
   }
 
   applySystemSettingsToUI();
@@ -4184,7 +4184,7 @@ async function openSendSignatureModal(targetEmpId = '') {
     try {
       window.supabaseService.deleteEmployeeSignature(emp.id, currentSigTargetMonthKey, emp.cpf || '', emp.name || '');
       window.supabaseService.saveFullTimesheet(emp.id, currentSigTargetMonthKey, emp.days, emp.cpf || '');
-    } catch (e) {}
+    } catch (e) { }
   }
 
   updateHeroSignatureBadge(emp);
@@ -4326,7 +4326,7 @@ function initSignatureCanvas() {
   if (!canvas) return;
 
   const ctx = canvas.getContext('2d');
-  
+
   // Ajuste de DPI de alta resolução
   const rect = canvas.getBoundingClientRect();
   const dpr = window.devicePixelRatio || 1;
@@ -4892,7 +4892,7 @@ function closeConfirmCompanySignatureModal() {
 async function executeConfirmedCompanySignature() {
   const canvas = document.getElementById('company-direct-sig-canvas');
   const hasExisting = !!(systemSettings && systemSettings.companySignature);
-  
+
   let dataUrl = null;
   if (companyDirectSigHasDrawn && canvas) {
     dataUrl = canvas.toDataURL('image/png');
@@ -4964,7 +4964,7 @@ async function handleDeleteCompanySignature() {
   systemSettings.companySignature = null;
   try {
     localStorage.setItem(SYSTEM_SETTINGS_KEY, JSON.stringify(systemSettings));
-  } catch (e) {}
+  } catch (e) { }
 
   // 2. Remove também da folha do colaborador atual se existir
   const emp = getCurrentEmployee();
