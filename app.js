@@ -3685,17 +3685,12 @@ function getTimesheetStandaloneCss() {
   `;
 }
 
-// Geração de Blob PDF individual via html2pdf com layout oficial e CSS embutido
+// Geração de Blob PDF individual via html2canvas + jsPDF com layout oficial e CSS embutido
 async function generateEmployeePdfBlob(emp, monthKey) {
-  if (typeof html2pdf === 'undefined') {
-    console.warn('Biblioteca html2pdf não disponível.');
-    return null;
-  }
-
   const page = buildEmployeePrintPageHtml(emp, 1, 1);
   const wrapper = document.createElement('div');
   wrapper.id = 'pdf-render-offscreen';
-  wrapper.style.cssText = 'position: absolute; left: 0; top: 0; width: 794px; min-height: 1120px; background: #FFFFFF; z-index: -9999; box-sizing: border-box; padding: 12px 18px; overflow: hidden; pointer-events: none;';
+  wrapper.style.cssText = 'position: fixed; left: 0; top: 0; width: 794px; min-height: 1123px; background: #FFFFFF; z-index: -9999; box-sizing: border-box; padding: 14px 18px; overflow: hidden; pointer-events: none;';
 
   const styleEl = document.createElement('style');
   styleEl.textContent = getTimesheetStandaloneCss();
@@ -3704,25 +3699,53 @@ async function generateEmployeePdfBlob(emp, monthKey) {
   document.body.appendChild(wrapper);
 
   try {
-    const cleanName = (emp.name || 'colaborador').replace(/\s+/g, '_');
-    const opt = {
-      margin: [0, 0, 0, 0],
-      filename: `${cleanName}_${monthKey}.pdf`,
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { 
-        scale: 2, 
-        useCORS: true, 
-        letterRendering: true, 
+    // Aguarda carregar qualquer imagem de assinatura
+    const imgs = Array.from(wrapper.querySelectorAll('img'));
+    await Promise.all(imgs.map(img => {
+      if (img.complete) return Promise.resolve();
+      return new Promise(resolve => {
+        img.onload = resolve;
+        img.onerror = resolve;
+        setTimeout(resolve, 200);
+      });
+    }));
+
+    // Método 1: html2canvas + jsPDF (Renderização nativa de altíssima fidelidade e 1 página exata)
+    if (typeof html2canvas !== 'undefined') {
+      const canvas = await html2canvas(wrapper, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
         logging: false,
         backgroundColor: '#FFFFFF',
         width: 794,
         windowWidth: 794
-      },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-    };
+      });
 
-    const pdfBlob = await html2pdf().set(opt).from(wrapper).output('blob');
-    return pdfBlob;
+      const imgData = canvas.toDataURL('image/jpeg', 0.98);
+      const jsPDFConstructor = (window.jspdf && window.jspdf.jsPDF) ? window.jspdf.jsPDF : (typeof jsPDF !== 'undefined' ? jsPDF : null);
+
+      if (jsPDFConstructor) {
+        const doc = new jsPDFConstructor('p', 'mm', 'a4');
+        doc.addImage(imgData, 'JPEG', 0, 0, 210, 297);
+        return doc.output('blob');
+      }
+    }
+
+    // Método 2: html2pdf fallback
+    if (typeof html2pdf !== 'undefined') {
+      const cleanName = (emp.name || 'colaborador').replace(/\s+/g, '_');
+      const opt = {
+        margin: 0,
+        filename: `${cleanName}_${monthKey}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true, logging: false, width: 794 },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      };
+      return await html2pdf().set(opt).from(wrapper).output('blob');
+    }
+
+    return null;
   } catch (err) {
     console.warn('Erro na conversão para PDF Blob:', err);
     return null;
