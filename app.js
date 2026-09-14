@@ -225,6 +225,41 @@ function loadEmployeesFromLocalStorage() {
   return null;
 }
 
+function getStatusPillInfo(statusCategory) {
+  switch (statusCategory) {
+    case 'ferias':
+      return {
+        label: 'Em Férias',
+        pillClass: 'warning',
+        tagLabel: 'Férias',
+        tagClass: 'badge-ferias'
+      };
+    case 'afastado':
+      return {
+        label: 'Afastado (INSS)',
+        pillClass: 'danger',
+        tagLabel: 'Afastado',
+        tagClass: 'badge-afastado'
+      };
+    case 'demitido':
+    case 'desligado':
+      return {
+        label: 'Demitido / Desligado',
+        pillClass: 'danger',
+        tagLabel: 'Desligado',
+        tagClass: 'badge-demitido'
+      };
+    case 'ativo':
+    default:
+      return {
+        label: 'Ativo',
+        pillClass: 'success',
+        tagLabel: 'Ativo',
+        tagClass: 'badge-active'
+      };
+  }
+}
+
 async function initApp() {
   initScreenNavigation();
   loadSystemSettings();
@@ -560,8 +595,14 @@ function updateSidebarUserUI() {
 function showLoginScreen() {
   const loginView = document.getElementById('view-login-screen');
   const mainSuite = document.getElementById('app-main-suite');
-  if (loginView) loginView.style.display = 'flex';
-  if (mainSuite) mainSuite.style.display = 'none';
+  if (loginView) {
+    loginView.style.setProperty('display', 'flex', 'important');
+    loginView.style.visibility = 'visible';
+    loginView.style.opacity = '1';
+  }
+  if (mainSuite) {
+    mainSuite.style.setProperty('display', 'none', 'important');
+  }
   
   setTimeout(() => {
     const userField = document.getElementById('login-username');
@@ -572,8 +613,15 @@ function showLoginScreen() {
 function showAppSuite() {
   const loginView = document.getElementById('view-login-screen');
   const mainSuite = document.getElementById('app-main-suite');
-  if (loginView) loginView.style.display = 'none';
-  if (mainSuite) mainSuite.style.display = 'flex';
+  if (loginView) {
+    loginView.style.setProperty('display', 'none', 'important');
+    loginView.style.visibility = 'hidden';
+    loginView.style.opacity = '0';
+  }
+  if (mainSuite) {
+    mainSuite.style.setProperty('display', 'flex', 'important');
+    mainSuite.style.visibility = 'visible';
+  }
   updateSidebarUserUI();
 }
 
@@ -619,61 +667,51 @@ async function handleLoginSubmit(e) {
       if (alertMsgEl) alertMsgEl.textContent = 'Por favor, preencha todos os campos.';
       alertEl.style.display = 'flex';
     }
-    return;
+    return false;
   }
 
   if (submitBtn) submitBtn.disabled = true;
   if (submitText) submitText.textContent = 'Autenticando...';
 
-  // Validação suave e segura
-  await new Promise(r => setTimeout(r, 200));
+  let displayName = 'Administrador (Admin)';
+  if (username.includes('@')) {
+    const prefix = username.split('@')[0];
+    displayName = prefix.charAt(0).toUpperCase() + prefix.slice(1) + ' (Admin)';
+  } else if (username.length > 0) {
+    displayName = username.charAt(0).toUpperCase() + username.slice(1) + ' (Admin)';
+  }
 
-  const isValidUser = username.length >= 2;
-  const isValidPass = password.length >= 2;
+  const sessionData = {
+    authenticated: true,
+    username: username,
+    userDisplayName: displayName,
+    timestamp: new Date().toISOString()
+  };
 
-  if (isValidUser && isValidPass) {
-    let displayName = 'Administrador (Admin)';
-    if (username.includes('@')) {
-      const prefix = username.split('@')[0];
-      displayName = prefix.charAt(0).toUpperCase() + prefix.slice(1) + ' (Admin)';
-    } else if (username.length > 0) {
-      displayName = username.charAt(0).toUpperCase() + username.slice(1) + ' (Admin)';
-    }
-
-    const sessionData = {
-      authenticated: true,
-      username: username,
-      userDisplayName: displayName,
-      timestamp: new Date().toISOString()
-    };
-
+  try {
     if (remember) {
       localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(sessionData));
     } else {
       sessionStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(sessionData));
     }
+  } catch (err) {}
 
-    if (submitText) submitText.textContent = 'Acesso Liberado!';
-    setTimeout(() => {
-      showAppSuite();
-      initApp();
-      updateSidebarUserUI();
-      showToast(`👋 Bem-vindo ao Sistema de Folha de Ponto, ${displayName.split(' ')[0]}!`);
-      if (submitBtn) submitBtn.disabled = false;
-      if (submitText) submitText.textContent = 'Entrar no Sistema';
-    }, 150);
-  } else {
-    if (submitBtn) submitBtn.disabled = false;
-    if (submitText) submitText.textContent = 'Entrar no Sistema';
-    if (alertEl) {
-      if (alertMsgEl) alertMsgEl.textContent = 'Usuário ou senha inválidos. Tente novamente.';
-      alertEl.style.display = 'flex';
-    }
-    if (passEl) {
-      passEl.value = '';
-      passEl.focus();
-    }
+  if (submitText) submitText.textContent = 'Acesso Liberado!';
+
+  showAppSuite();
+  
+  try {
+    await initApp();
+  } catch (initErr) {
+    console.warn('Erro ao inicializar base de dados:', initErr);
   }
+  
+  updateSidebarUserUI();
+  showToast(`👋 Bem-vindo ao Sistema de Folha de Ponto, ${displayName.split(' ')[0]}!`);
+  
+  if (submitBtn) submitBtn.disabled = false;
+  if (submitText) submitText.textContent = 'Entrar no Sistema';
+  return false;
 }
 
 function checkUrlAuthParams() {
