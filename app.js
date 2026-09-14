@@ -3408,7 +3408,7 @@ async function saveAndUploadSingleEmployeePDF(emp, monthKey) {
     const pdfBlob = await generateEmployeePdfBlob(emp, monthKey);
     if (!pdfBlob) return null;
 
-    const res = await window.supabaseService.uploadTimesheetPDF(emp.id, monthKey, pdfBlob, emp.name);
+    const res = await window.supabaseService.uploadTimesheetPDF(emp.id, monthKey, pdfBlob, emp.name, emp.cpf);
     return res;
   } catch (e) {
     console.warn(`Erro ao gerar/enviar PDF de ${emp.name}:`, e);

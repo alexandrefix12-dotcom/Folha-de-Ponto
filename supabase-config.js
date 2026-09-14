@@ -687,13 +687,26 @@ async function signOutFromSupabase() {
 }
 
 // 12. Upload do PDF da Folha de Ponto para o Supabase Storage e atualização de pdf_path em folha_pontos
-async function uploadTimesheetPDFToSupabase(empId, monthKey, pdfBlobOrBase64, empName = '') {
+async function uploadTimesheetPDFToSupabase(empId, monthKey, pdfBlobOrBase64, empName = '', cpf = '') {
   const client = getSupabaseClient();
   if (!client || !empId || !pdfBlobOrBase64) return null;
 
   try {
     const cleanId = String(empId).trim();
     
+    // Nome limpo para a pasta no Storage (ex: "ALCIELE_SANTOS")
+    let folderName = cleanId;
+    if (empName && empName.trim()) {
+      folderName = empName.trim()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-zA-Z0-9_-]/g, '_')
+        .replace(/_+/g, '_')
+        .toUpperCase();
+    } else if (cpf && String(cpf).replace(/\D/g, '')) {
+      folderName = String(cpf).replace(/\D/g, '');
+    }
+
     // Normalização de mes_ano (ex: '2026-09' -> ano = '2026', mes = '09')
     let year = new Date().getFullYear();
     let monthPad = '01';
@@ -713,7 +726,7 @@ async function uploadTimesheetPDFToSupabase(empId, monthKey, pdfBlobOrBase64, em
       year = parts[1];
     }
 
-    const storagePath = `${cleanId}/${year}/${monthPad}-${year}.pdf`;
+    const storagePath = `${folderName}/${year}/${monthPad}-${year}.pdf`;
     
     let fileBody = pdfBlobOrBase64;
     if (typeof pdfBlobOrBase64 === 'string' && pdfBlobOrBase64.startsWith('data:application/pdf;base64,')) {
