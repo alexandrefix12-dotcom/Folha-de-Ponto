@@ -3110,7 +3110,6 @@ function buildEmployeePrintPageHtml(emp, pageNum = 1, totalPages = 1) {
     });
   }
 
-  const monthKey = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
   const sigData = (emp.signatures && emp.signatures[monthKey]) || emp.digitalSignature;
   const companySigData = (typeof systemSettings !== 'undefined' && systemSettings.autoApplyCompanySig !== false && systemSettings.companySignature) || (emp.signatures && emp.signatures[monthKey]?.companySignature);
 
