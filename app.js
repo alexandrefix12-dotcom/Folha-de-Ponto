@@ -642,7 +642,7 @@ function toggleLoginPasswordVisibility() {
   }
 }
 
-function handleLoginSubmit(e) {
+async function handleLoginSubmit(e) {
   if (e) {
     if (typeof e.preventDefault === 'function') e.preventDefault();
     if (typeof e.stopPropagation === 'function') e.stopPropagation();
@@ -664,50 +664,92 @@ function handleLoginSubmit(e) {
 
   if (!username || !password) {
     if (alertEl) {
-      if (alertMsgEl) alertMsgEl.textContent = 'Por favor, preencha todos os campos.';
+      if (alertMsgEl) alertMsgEl.textContent = 'Por favor, preencha o usuário/e-mail e a senha.';
       alertEl.style.display = 'flex';
     }
     return false;
   }
 
-  let displayName = 'Administrador (Admin)';
-  if (username.includes('@')) {
-    const prefix = username.split('@')[0];
-    displayName = prefix.charAt(0).toUpperCase() + prefix.slice(1) + ' (Admin)';
-  } else if (username.length > 0) {
-    displayName = username.charAt(0).toUpperCase() + username.slice(1) + ' (Admin)';
-  }
-
-  const sessionData = {
-    authenticated: true,
-    username: username,
-    userDisplayName: displayName,
-    timestamp: new Date().toISOString()
-  };
+  // Estado visual de carregamento
+  if (submitBtn) submitBtn.disabled = true;
+  if (submitText) submitText.textContent = 'Verificando no Supabase...';
 
   try {
-    if (remember) {
-      localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(sessionData));
+    let authResult = null;
+    if (window.supabaseService && typeof window.supabaseService.authenticateUser === 'function') {
+      authResult = await window.supabaseService.authenticateUser(username, password);
     } else {
-      sessionStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(sessionData));
+      authResult = { success: false, error: 'Serviço de autenticação Supabase indisponível.' };
     }
-  } catch (err) { }
 
-  // 1. Oculta tela de login e exibe o sistema imediatamente
-  showAppSuite();
+    if (!authResult || !authResult.success) {
+      if (alertEl) {
+        if (alertMsgEl) {
+          alertMsgEl.textContent = (authResult && authResult.error) ? authResult.error : 'Usuário não cadastrado no Supabase ou senha incorreta.';
+        }
+        alertEl.style.display = 'flex';
+      }
+      if (submitBtn) submitBtn.disabled = false;
+      if (submitText) submitText.textContent = 'Entrar no Sistema';
+      return false;
+    }
 
-  // 2. Inicializa os dados em background
-  initApp().catch(initErr => {
-    console.warn('Erro ao inicializar base de dados:', initErr);
-  });
+    // Usuário autenticado com sucesso no Supabase
+    let displayName = 'Administrador (Admin)';
+    if (authResult.user && authResult.user.email) {
+      const prefix = authResult.user.email.split('@')[0];
+      displayName = prefix.charAt(0).toUpperCase() + prefix.slice(1) + ' (Admin)';
+    } else if (username.includes('@')) {
+      const prefix = username.split('@')[0];
+      displayName = prefix.charAt(0).toUpperCase() + prefix.slice(1) + ' (Admin)';
+    } else if (username.length > 0) {
+      displayName = username.charAt(0).toUpperCase() + username.slice(1) + ' (Admin)';
+    }
 
-  updateSidebarUserUI();
-  showToast(`👋 Bem-vindo ao Sistema de Folha de Ponto, ${displayName.split(' ')[0]}!`);
+    const sessionData = {
+      authenticated: true,
+      username: username,
+      userDisplayName: displayName,
+      supabaseUser: authResult.user ? { id: authResult.user.id, email: authResult.user.email } : null,
+      timestamp: new Date().toISOString()
+    };
 
-  return false;
+    try {
+      if (remember) {
+        localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(sessionData));
+      } else {
+        sessionStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(sessionData));
+      }
+    } catch (err) { }
+
+    // 1. Oculta tela de login e exibe o sistema imediatamente
+    showAppSuite();
+
+    // 2. Inicializa os dados em background
+    initApp().catch(initErr => {
+      console.warn('Erro ao inicializar base de dados:', initErr);
+    });
+
+    updateSidebarUserUI();
+    showToast(`👋 Bem-vindo ao Sistema, ${displayName.split(' ')[0]}! Acesso autorizado.`);
+
+    if (submitBtn) submitBtn.disabled = false;
+    if (submitText) submitText.textContent = 'Entrar no Sistema';
+
+    return true;
+  } catch (err) {
+    console.error('Erro na autenticação com Supabase:', err);
+    if (alertEl) {
+      if (alertMsgEl) alertMsgEl.textContent = 'Erro de comunicação ao validar no Supabase. Tente novamente.';
+      alertEl.style.display = 'flex';
+    }
+    if (submitBtn) submitBtn.disabled = false;
+    if (submitText) submitText.textContent = 'Entrar no Sistema';
+    return false;
+  }
 }
 
-function checkUrlAuthParams() {
+async function checkUrlAuthParams() {
   try {
     const urlParams = new URLSearchParams(window.location.search);
     const userParam = urlParams.get('username');
@@ -719,7 +761,7 @@ function checkUrlAuthParams() {
       if (passEl) passEl.value = passParam;
       // Limpa a URL para segurança e estética
       window.history.replaceState({}, document.title, window.location.pathname);
-      handleLoginSubmit(null);
+      await handleLoginSubmit(null);
       return true;
     }
   } catch (e) { }
@@ -730,6 +772,12 @@ function handleLogout() {
   if (!confirm('Deseja realmente sair do sistema de Folha de Ponto?')) {
     return;
   }
+  try {
+    if (window.supabaseService && typeof window.supabaseService.signOut === 'function') {
+      window.supabaseService.signOut();
+    }
+  } catch (e) {}
+
   localStorage.removeItem(AUTH_SESSION_KEY);
   sessionStorage.removeItem(AUTH_SESSION_KEY);
 

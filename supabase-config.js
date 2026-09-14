@@ -623,11 +623,75 @@ async function deleteCompanySignatureFromSupabase() {
   }
 }
 
+// 10. Autenticação de Usuário no Supabase Auth
+async function authenticateUserWithSupabase(emailOrUsername, password) {
+  const client = getSupabaseClient();
+  if (!client) {
+    return { success: false, error: 'Cliente Supabase não está configurado ou inicializado.' };
+  }
+
+  let email = (emailOrUsername || '').trim();
+  if (!email || !password) {
+    return { success: false, error: 'Preencha usuário/e-mail e senha.' };
+  }
+
+  try {
+    let targetEmail = email;
+    if (!targetEmail.includes('@')) {
+      targetEmail = `${email}@gmail.com`;
+    }
+
+    const { data, error } = await client.auth.signInWithPassword({
+      email: targetEmail,
+      password: password
+    });
+
+    if (error) {
+      console.warn('Falha no Supabase Auth:', error.message);
+      let errorMsg = 'Usuário não cadastrado ou senha incorreta no Supabase.';
+      if (error.message.includes('Invalid login credentials')) {
+        errorMsg = 'Usuário não cadastrado ou senha incorreta no Supabase.';
+      } else if (error.message.includes('Email not confirmed')) {
+        errorMsg = 'E-mail cadastrado, mas ainda não confirmado no Supabase.';
+      } else if (error.message.includes('rate limit') || error.message.includes('too many requests')) {
+        errorMsg = 'Muitas tentativas. Aguarde alguns instantes e tente novamente.';
+      }
+      return { success: false, error: errorMsg };
+    }
+
+    if (data && data.user) {
+      console.log('✅ Usuário autenticado com sucesso no Supabase:', data.user.email);
+      return {
+        success: true,
+        user: data.user,
+        session: data.session
+      };
+    }
+
+    return { success: false, error: 'Usuário não encontrado no Supabase.' };
+  } catch (err) {
+    console.error('Exceção ao autenticar com Supabase:', err);
+    return { success: false, error: 'Erro de comunicação com o banco de dados Supabase.' };
+  }
+}
+
+// 11. Desconectar Usuário (Logout)
+async function signOutFromSupabase() {
+  const client = getSupabaseClient();
+  if (client && client.auth) {
+    try {
+      await client.auth.signOut();
+    } catch (e) { }
+  }
+}
+
 // Exportar globalmente
 window.supabaseService = {
   config: SUPABASE_CONFIG,
   isConfigured: isSupabaseConfigured,
   getClient: getSupabaseClient,
+  authenticateUser: authenticateUserWithSupabase,
+  signOut: signOutFromSupabase,
   loadEmployees: loadEmployeesFromSupabase,
   loadEmployeeById: loadEmployeeByIdFromSupabase,
   cadastrarFuncionario: cadastrarFuncionarioNoSupabase,
@@ -641,3 +705,4 @@ window.supabaseService = {
   deleteCompanySignature: deleteCompanySignatureFromSupabase,
   excluirFuncionario: excluirFuncionarioNoSupabase
 };
+
