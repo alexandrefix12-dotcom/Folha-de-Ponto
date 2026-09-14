@@ -4024,24 +4024,18 @@ function generateSingleEmployeePrintView(emp) {
   container.appendChild(page);
 }
 
-// Print ONLY Current Employee Timesheet (1 Page PDF)
+// Print ONLY Current Employee Timesheet (1 Page PDF - Impressão local sem envio para o Storage)
 function printCurrentEmployeeTimesheet() {
   const emp = getCurrentEmployee();
   if (!emp) return;
 
-  const isInactive = isEmployeeAfastadoOuDesligado(emp);
-  if (isInactive) {
-    showToast(`⚠️ Colaborador ${emp.name} está ${emp.statusCategory || 'afastado/desligado'}. O PDF NÃO será salvo no Supabase Storage.`);
-  }
-
   const monthName = MONTH_NAMES[currentMonth - 1] || `${currentMonth}`;
-  const monthKey = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
   const previousTitle = document.title;
 
   // Define o nome exato sugerido no diálogo de Salvar como PDF
   document.title = `Folha de Ponto - ${emp.name} - ${monthName} de ${currentYear}`;
 
-  showToast(`📄 Gerando PDF da folha de ponto de ${emp.name} (${monthName}/${currentYear})...`);
+  showToast(`📄 Gerando visualização da folha de ponto de ${emp.name} (${monthName}/${currentYear})...`);
   generateSingleEmployeePrintView(emp);
 
   const restoreTitle = () => {
@@ -4055,18 +4049,6 @@ function printCurrentEmployeeTimesheet() {
     window.print();
     setTimeout(restoreTitle, 3000);
   }, 350);
-
-  // Salva cópia individual no Supabase Storage APENAS se estiver em atividade
-  if (!isInactive) {
-    saveAndUploadSingleEmployeePDF(emp, monthKey).then(res => {
-      if (res && res.success) {
-        console.log(`✅ PDF de ${emp.name} salvo com sucesso no Supabase Storage:`, res.pdfUrl);
-        showToast(`☁️ PDF de ${emp.name} salvo no Supabase Storage com sucesso!`);
-      }
-    }).catch(err => {
-      console.warn('Aviso no envio do PDF para o Supabase Storage:', err);
-    });
-  }
 }
 
 // Print All Active Employees (Multi-page PDF - Exclui Afastados e Desligados)
